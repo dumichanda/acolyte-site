@@ -8,4 +8,9 @@ export const SITE = {
   phone: "",              // public phone / WhatsApp number
   city: "",               // e.g. "Johannesburg"
   informationOfficer: "", // POPIA Information Officer name (often a director)
+  // Contact form endpoint. Free: sign up at formspree.io, create a form, paste its URL, e.g. "https://formspree.io/f/abcdwxyz".
+  formEndpoint: "",
 };
+
+/** Site-relative link that works at the domain root or under a sub-path such as /acolyte-site/. */
+export const url = (path: string) => import.meta.env.BASE_URL + path.replace(/^\//, "");

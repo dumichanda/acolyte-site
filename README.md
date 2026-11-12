@@ -2,23 +2,31 @@
 
 | URL | Page |
 |---|---|
-| `/` | Acolyte landing page: services, ROI calculator, live index teaser, contact form (Netlify Forms) |
+| `/` | Acolyte landing page: services, ROI calculator, live index teaser, contact form (Formspree) |
 | `/automation-index/` | Live dashboard: which SA jobs are being hired for, and how much of that work could be automated |
 | `/automation-index/?report` | Printable A4 report |
 | `/privacy/` | POPIA privacy notice |
 
+Live at **https://dumichanda.github.io/acolyte-site/** (or your own domain).
+
 ```
- GitHub Actions (daily 06:17 SAST)                          Netlify
- ┌──────────────────────────────────────────────┐          ┌────────────────────────┐
- │ Adzuna API ─► fetch ─► Neon Postgres          │  commit  │ builds /web on every   │
- │              classify (rules or Claude)      ─┼─────────►│ push and serves the    │
- │              export ─► snapshot.json          │          │ site + contact form    │
- └──────────────────────────────────────────────┘          └────────────────────────┘
+ GitHub Actions, daily 06:17 SAST
+ ┌──────────────────────────────────────────────┐        ┌──────────────────────────┐
+ │ Adzuna API ─► fetch ─► Neon Postgres          │ commit │ Deploy workflow builds   │
+ │              classify (rules or Claude)      ─┼───────►│ /web ─► GitHub Pages      │
+ │              export ─► snapshot.json          │        │ (also on every site push) │
+ └──────────────────────────────────────────────┘        └──────────────────────────┘
 ```
 
 ## Deploy (one-time setup, all in the browser)
 
-**1. GitHub secrets.** Repo → Settings → Secrets and variables → Actions:
+**1. Make GitHub Pages available.** On a free GitHub account, Pages only works for **public** repos:
+Settings → General → Danger Zone → *Change visibility* → Public. (No keys are stored in the code; they live in
+Actions secrets. Alternatively, GitHub Pro allows Pages on private repos.)
+
+**2. Turn on Pages.** Settings → Pages → *Build and deployment* → Source: **GitHub Actions**.
+
+**3. Add secrets.** Settings → Secrets and variables → Actions:
 
 | Type | Name | Value |
 |---|---|---|
@@ -30,21 +38,20 @@
 | Variable | `ADZUNA_BUDGET_PERIOD` | `total` on the test plan; `month` on paid plans |
 | Variable | `USE_CLAUDE` | `true` to use Claude on the daily run (optional) |
 
-**2. First data load.** Actions tab → *Refresh Automation Index* → **Run workflow**. It creates the tables in Neon,
-fetches real jobs, and commits `web/public/data/snapshot.json`. (The repo starts with sample data so the site works immediately.)
+**4. First run.** Actions → *Refresh Automation Index* → **Run workflow**. It creates the tables in Neon, fetches real jobs,
+commits `web/public/data/snapshot.json`, then deploys the site. (The repo ships with sample data, so to publish the site
+before the keys are set, run *Deploy site to GitHub Pages* instead.)
 
-**3. Netlify.** app.netlify.com → Add new site → Import from Git → pick this repo. Settings are read from
-`netlify.toml`, so just click **Deploy**. Every data refresh commit redeploys the site automatically.
+**5. Contact form.** Sign up free at formspree.io → New form → copy its endpoint (`https://formspree.io/f/...`) into
+`formEndpoint` in `web/src/site.ts`. Enquiries are emailed to you. (Free plan: 50 submissions/month.)
 
-**4. Contact form.** Netlify → Site → Forms: the `contact` form appears after the first deploy.
-Under Forms → Notifications, add an email notification so enquiries reach your inbox.
-
-**5. Before launch:** fill in `web/src/site.ts` (registered name, email, phone, Information Officer) and connect your domain in Netlify → Domain management.
+**6. Before launch:** fill in the rest of `web/src/site.ts` (registered name, email, phone, Information Officer).
+Own domain: Settings → Pages → Custom domain; the build adjusts its links automatically.
 
 **Adzuna plan:** the test plan has 25 calls in total, and each daily run uses up to 12. Once the budget is used up, the daily run
 simply re-publishes the existing data. Upgrade to API Access (£8/month) for fresh data every day.
 
-The website only reads `snapshot.json`, so it can be hosted for free (Cloudflare Pages / Vercel / Netlify) and visitors never touch the database.
+The website only reads `snapshot.json`, so it is fully static and visitors never touch the database.
 
 ## Folder guide
 

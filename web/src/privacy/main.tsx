@@ -2,15 +2,15 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "../index.css";
 import "../landing/landing.css";
-import { SITE } from "../site";
+import { SITE, url } from "../site";
 
 const who = SITE.legalName || SITE.name;
-const contact = SITE.email ? <a href={`mailto:${SITE.email}`}>{SITE.email}</a> : <a href="/#contact">our contact form</a>;
+const contact = SITE.email ? <a href={`mailto:${SITE.email}`}>{SITE.email}</a> : <a href={url("/#contact")}>our contact form</a>;
 
 function Privacy() {
   return (
     <div className="lp">
-      <nav className="bar"><div className="inner"><a className="logo" href="/"><img src="/favicon.svg" alt="" />Acolyte</a></div></nav>
+      <nav className="bar"><div className="inner"><a className="logo" href={url("/")}><img src={url("/favicon.svg")} alt="" />Acolyte</a></div></nav>
       <section>
         <div className="inner" style={{ maxWidth: 760 }}>
           <span className="eyebrow">Privacy notice</span>
@@ -24,7 +24,7 @@ function Privacy() {
           <p>Only to reply to your enquiry and arrange a conversation you asked for. We rely on your consent, given when you submit the form. We do not add you to a mailing list or sell or share your details for marketing.</p>
 
           <h3>Who else processes it</h3>
-          <p>Our website and form submissions are hosted by Netlify, Inc., which may store data outside South Africa under appropriate safeguards. We use these service providers only to run the website.</p>
+          <p>Our website is hosted on GitHub Pages (GitHub, Inc.) and contact form submissions are delivered by Formspree. Both may store data outside South Africa under appropriate safeguards. We use these service providers only to run the website and receive your enquiry.</p>
 
           <h3>How long we keep it</h3>
           <p>Enquiries that don't lead to work are deleted within 12 months. If we work together, we keep records for as long as needed for the contract and the law.</p>

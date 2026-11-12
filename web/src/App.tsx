@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import type { Snapshot, Job } from "./types";
 import { rands } from "./types";
+import { url } from "./site";
 import { familyBar, heatmap, provinceBar, readTheme, scoreColor, scoreDist, trend, type Theme } from "./charts";
 
 const isReport = new URLSearchParams(location.search).has("report");
@@ -205,7 +206,7 @@ export default function App() {
   const [err, setErr] = useState<string | null>(null);
   const t = useTheme();
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}data/snapshot.json`)
+    fetch(url("/data/snapshot.json"))
       .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
       .then(setS)
       .catch((e) => setErr(String(e)));
@@ -219,14 +220,14 @@ export default function App() {
     <div className="wrap">
       <header className="top">
         <div>
-          <a className="brand" href="/" style={{ textDecoration: "none" }}><div className="brand-mark" />ACOLYTE</a>
+          <a className="brand" href={url("/")} style={{ textDecoration: "none" }}><div className="brand-mark" />ACOLYTE</a>
           <h1>SA Automation Opportunity Index</h1>
           <p className="sub">Which jobs South Africa is hiring for right now, and how much of that work AI and automation could do.</p>
         </div>
         <div className="updated">
           Updated {fmtDate(s.generated_at)}<br />
           <a className="btn" href="?report" target="_blank" style={{ marginTop: 8 }}>Printable report</a>{" "}
-          <a className="btn" href="/#contact" style={{ marginTop: 8, background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" }}>Talk to Acolyte</a>
+          <a className="btn" href={url("/#contact")} style={{ marginTop: 8, background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" }}>Talk to Acolyte</a>
         </div>
       </header>
       {s.meta.has_demo && (

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import type { Snapshot } from "../types";
 import { rands } from "../types";
-import { SITE } from "../site";
+import { SITE, url } from "../site";
 
 const Icon = ({ d }: { d: string }) => (
   <div className="ico"><svg viewBox="0 0 24 24"><path d={d} /></svg></div>
@@ -49,7 +49,7 @@ const SERVICES: { title: string; text: string; roles: string; icon: string }[] =
 function useSnapshot() {
   const [s, setS] = useState<Snapshot | null>(null);
   useEffect(() => {
-    fetch("/data/snapshot.json").then((r) => (r.ok ? r.json() : null)).then(setS).catch(() => setS(null));
+    fetch(url("/data/snapshot.json")).then((r) => (r.ok ? r.json() : null)).then(setS).catch(() => setS(null));
   }, []);
   return s;
 }
@@ -59,7 +59,7 @@ function LiveCard({ s }: { s: Snapshot | null }) {
   const top = s.by_family.filter((f) => f.family !== "Other").slice(0, 5);
   const max = Math.max(...top.map((f) => f.value));
   return (
-    <a className="live" href="/automation-index/" style={{ display: "block", color: "inherit", textDecoration: "none" }}>
+    <a className="live" href={url("/automation-index/")} style={{ display: "block", color: "inherit", textDecoration: "none" }}>
       <span className="pulse"><i /> LIVE · SA AUTOMATION INDEX</span>
       <div className="big">{rands(s.kpis.automatable_value)}</div>
       <div className="cap">a year of automatable work in {s.kpis.jobs.toLocaleString("en-ZA")} open South African roles</div>
@@ -124,13 +124,20 @@ function ContactForm() {
     e.preventDefault();
     setStatus("sending");
     const data = new FormData(e.currentTarget);
-    data.set("form-name", "contact");
+    if (!SITE.formEndpoint) {
+      // No form service configured yet: fall back to the visitor's email app, if we have an address.
+      if (SITE.email) {
+        const body = [...data.entries()].filter(([k]) => k !== "_gotcha").map(([k, v]) => `${k}: ${v}`).join("\n");
+        location.href = `mailto:${SITE.email}?subject=${encodeURIComponent("Automation assessment request")}&body=${encodeURIComponent(body)}`;
+        setStatus("idle");
+      } else {
+        setStatus("error");
+      }
+      return;
+    }
     try {
-      const r = await fetch("/", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams(data as unknown as Record<string, string>).toString(),
-      });
+      // Formspree (or any service that accepts multipart form posts and returns 2xx).
+      const r = await fetch(SITE.formEndpoint, { method: "POST", body: data, headers: { Accept: "application/json" } });
       setStatus(r.ok ? "sent" : "error");
     } catch {
       setStatus("error");
@@ -141,7 +148,7 @@ function ContactForm() {
   }
   return (
     <form className="f" name="contact" method="POST" onSubmit={submit}>
-      <p hidden><label>Leave empty <input name="bot-field" /></label></p>
+      <input type="text" name="_gotcha" tabIndex={-1} autoComplete="off" style={{ display: "none" }} />
       <div><label htmlFor="name">Name</label><input id="name" name="name" required autoComplete="name" /></div>
       <div><label htmlFor="company">Company</label><input id="company" name="company" required autoComplete="organization" /></div>
       <div><label htmlFor="email">Work email</label><input id="email" name="email" type="email" required autoComplete="email" /></div>
@@ -158,7 +165,7 @@ function ContactForm() {
         <textarea id="message" name="message" placeholder="e.g. Two people spend most of the day capturing supplier invoices into Sage." /></div>
       <label className="consent full">
         <input type="checkbox" name="consent" value="yes" required />
-        <span>I agree that Acolyte may use these details to respond to my enquiry, as explained in the <a href="/privacy/">privacy notice</a>. We won't add you to a mailing list.</span>
+        <span>I agree that Acolyte may use these details to respond to my enquiry, as explained in the <a href={url("/privacy/")}>privacy notice</a>. We won't add you to a mailing list.</span>
       </label>
       {status === "error" && <div className="msg err full">Sorry, that didn't send. Please try again{SITE.email ? <> or email <a href={`mailto:${SITE.email}`}>{SITE.email}</a></> : null}.</div>}
       <div className="full"><button className="cta" type="submit" disabled={status === "sending"}>{status === "sending" ? "Sending…" : "Request a free assessment"}</button></div>
@@ -183,11 +190,11 @@ export default function Landing() {
     <div className="lp">
       <nav className="bar">
         <div className="inner">
-          <a className="logo" href="/"><img src="/favicon.svg" alt="" />Acolyte</a>
+          <a className="logo" href={url("/")}><img src={url("/favicon.svg")} alt="" />Acolyte</a>
           <div className="links">
             <a href="#services">Services</a>
             <a href="#how">How we work</a>
-            <a href="/automation-index/">Automation Index</a>
+            <a href={url("/automation-index/")}>Automation Index</a>
             <a href="#calculator">Calculator</a>
             <a className="cta" href="#contact">Free assessment</a>
           </div>
@@ -205,7 +212,7 @@ export default function Landing() {
             </p>
             <div className="actions">
               <a className="cta" href="#contact">Book a free automation assessment</a>
-              <a className="ghost" href="/automation-index/">See the live SA Automation Index</a>
+              <a className="ghost" href={url("/automation-index/")}>See the live SA Automation Index</a>
             </div>
             <div className="trust">
               <span>Works with Sage, Pastel, Xero & Microsoft 365</span>
@@ -272,9 +279,9 @@ export default function Landing() {
               <li>An automation score for each role, and its value in rand</li>
               <li>Updated automatically every day, with a printable monthly report</li>
             </ul>
-            <a className="cta" href="/automation-index/">Open the live index</a>
+            <a className="cta" href={url("/automation-index/")}>Open the live index</a>
           </div>
-          <a href="/automation-index/"><img src="/img/index-preview.png" alt="Preview of the SA Automation Opportunity Index dashboard" loading="lazy" /></a>
+          <a href={url("/automation-index/")}><img src={url("/img/index-preview.png")} alt="Preview of the SA Automation Opportunity Index dashboard" loading="lazy" /></a>
         </div>
       </Section>
 
@@ -298,7 +305,7 @@ export default function Landing() {
       <footer className="site">
         <div className="inner">
           <span>© {new Date().getFullYear()} {SITE.legalName || SITE.name}{SITE.regNumber ? ` · Reg. ${SITE.regNumber}` : ""}</span>
-          <span><a href="/automation-index/">Automation Index</a> · <a href="/privacy/">Privacy notice</a> · Jobs data by <a href="https://www.adzuna.co.za" target="_blank" rel="noreferrer">Adzuna</a></span>
+          <span><a href={url("/automation-index/")}>Automation Index</a> · <a href={url("/privacy/")}>Privacy notice</a> · Jobs data by <a href="https://www.adzuna.co.za" target="_blank" rel="noreferrer">Adzuna</a></span>
         </div>
       </footer>
     </div>
