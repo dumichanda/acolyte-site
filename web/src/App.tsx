@@ -236,7 +236,7 @@ export default function App() {
       <Dashboard s={s} t={t} />
       <footer>
         <span>Automatable value = salary × 1.25 (cost-to-company) × automation score. * salary not advertised; typical salary for the role used.</span>
-        <span>Jobs data by <a href="https://www.adzuna.co.za" target="_blank" rel="noreferrer">Adzuna</a></span>
+        <span>Jobs data by <a href="https://www.adzuna.co.za" target="_blank" rel="noreferrer">Adzuna</a> and public job listings found by web search</span>
       </footer>
     </div>
   );

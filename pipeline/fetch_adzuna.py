@@ -105,7 +105,8 @@ def main() -> None:
     app_id, app_key = os.environ.get("ADZUNA_APP_ID"), os.environ.get("ADZUNA_APP_KEY")
     budget = int(os.environ.get("ADZUNA_CALL_BUDGET", "20"))
     if not (app_id and app_key):
-        sys.exit("Set ADZUNA_APP_ID and ADZUNA_APP_KEY in .env")
+        print("ADZUNA_APP_ID / ADZUNA_APP_KEY not set; skipping Adzuna.")
+        return
 
     init_db()
     plan = [(t, p) for t in SEARCH_TERMS for p in range(1, args.pages + 1)][: args.max_calls]
