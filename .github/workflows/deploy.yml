@@ -2,6 +2,7 @@ name: Deploy site to GitHub Pages
 
 # Builds /web and publishes it to GitHub Pages.
 # Runs on every push to main that touches the site, on demand, and after each daily data refresh.
+# Requires: Settings -> Pages -> Source: GitHub Actions (and a public repo on free plans).
 on:
   push:
     branches: [main]
