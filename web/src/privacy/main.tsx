@@ -10,8 +10,8 @@ const contact = SITE.email ? <a href={`mailto:${SITE.email}`}>{SITE.email}</a> :
 function Privacy() {
   return (
     <div className="lp">
-      <nav className="bar"><div className="inner"><a className="logo" href={url("/")}><img src={url("/favicon.svg")} alt="" />Acolyte</a></div></nav>
-      <section>
+      <nav className="bar"><div className="inner"><a className="logo" href={url("/")}><img src={url("/favicon.svg")} alt="" />acolyte</a></div></nav>
+      <section className="doc">
         <div className="inner" style={{ maxWidth: 760 }}>
           <span className="eyebrow">Privacy notice</span>
           <h2>How we handle your personal information</h2>

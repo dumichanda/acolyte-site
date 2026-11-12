@@ -227,7 +227,7 @@ export default function App() {
         <div className="updated">
           Updated {fmtDate(s.generated_at)}<br />
           <a className="btn" href="?report" target="_blank" style={{ marginTop: 8 }}>Printable report</a>{" "}
-          <a className="btn" href={url("/#contact")} style={{ marginTop: 8, background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" }}>Talk to Acolyte</a>
+          <a className="btn" href={url("/#contact")} style={{ marginTop: 8, background: "var(--accent)", color: "#0c0c0e", borderColor: "var(--accent)", fontWeight: 600 }}>Talk to Acolyte</a>
         </div>
       </header>
       {s.meta.has_demo && (

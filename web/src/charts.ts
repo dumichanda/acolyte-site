@@ -11,7 +11,7 @@ export function readTheme(): Theme {
 }
 
 export const scoreColor = (s: number) =>
-  s >= 65 ? "#4f46e5" : s >= 50 ? "#0d9488" : s >= 35 ? "#d97706" : "#94a3b8";
+  s >= 65 ? "#c8f135" : s >= 50 ? "#7cc4ff" : s >= 35 ? "#ffb86b" : "#8d8c93";
 
 const SHORT: Record<string, string> = {
   "Office & Admin Support": "Office admin", "Customer Service & Call Centre": "Call centre",
@@ -21,7 +21,7 @@ const SHORT: Record<string, string> = {
   "Conveyancing & Legal Admin": "Legal admin", "HR & Recruitment Admin": "HR admin", "Tender Administration": "Tenders",
 };
 
-const SCORE_RANGE =["#cbd5e1", "#5eead4", "#0d9488", "#4f46e5", "#312e81"];
+const SCORE_RANGE = ["#3a3a42", "#4d5e22", "#7fa315", "#a8d12a", "#c8f135"];
 
 const base = (t: Theme): EChartsOption => ({
   textStyle: { fontFamily: "Inter, system-ui, sans-serif", color: t.ink },
@@ -86,7 +86,7 @@ export function heatmap(cells: HeatCell[], families: string[], provinces: string
     },
     series: [{
       type: "heatmap", data,
-      label: { show: true, color: "#fff", fontSize: 10, formatter: (p: any) => String(p.data[3]) },
+      label: { show: true, color: "#fff", textBorderColor: "#0c0c0e", textBorderWidth: 2, fontSize: 10, formatter: (p: any) => String(p.data[3]) },
       itemStyle: { borderColor: t.panel, borderWidth: 2, borderRadius: 4 },
       emphasis: { itemStyle: { borderColor: t.ink, borderWidth: 1 } },
     }],
@@ -125,7 +125,7 @@ export function trend(data: TrendPoint[], t: Theme): EChartsOption {
     },
     yAxis: { type: "value", splitLine: { lineStyle: { color: t.line } }, axisLabel: { color: t.muted, fontSize: 11 } },
     series: [
-      { name: "All new roles", type: "bar", data: data.map((d) => d.jobs), itemStyle: { color: t.line, borderRadius: [4, 4, 0, 0] }, barMaxWidth: 18 },
+      { name: "All new roles", type: "bar", data: data.map((d) => d.jobs), itemStyle: { color: "#8d8c9355", borderRadius: [4, 4, 0, 0] }, barMaxWidth: 18 },
       { name: "High-potential roles (score 60+)", type: "line", smooth: true, symbol: "none", data: data.map((d) => d.high_jobs), lineStyle: { width: 3, color: t.accent }, itemStyle: { color: t.accent }, areaStyle: { color: t.accent, opacity: 0.08 } },
     ],
   };
