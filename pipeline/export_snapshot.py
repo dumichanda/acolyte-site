@@ -102,6 +102,10 @@ def main() -> None:
                    min(posted_at)::date AS from_date, max(posted_at)::date AS to_date,
                    count(*) FILTER (WHERE classify_method = 'claude') AS claude_classified
             FROM v_jobs_value""")[0]
+        if not meta["jobs"]:
+            # Keep the current snapshot rather than publishing an empty dashboard.
+            print("No classified jobs in the last 60 days; snapshot left unchanged.")
+            return
 
         kpis = rows(conn, """
             SELECT count(*) AS jobs,

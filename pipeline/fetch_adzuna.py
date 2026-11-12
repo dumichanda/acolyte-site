@@ -40,7 +40,12 @@ SEARCH_TERMS = [
 
 
 def calls_used(conn) -> int:
-    return conn.execute("SELECT count(*) FROM fetch_log WHERE source = 'adzuna'").fetchone()[0]
+    """Calls counted against the budget. ADZUNA_BUDGET_PERIOD = 'total' (test plan) or 'month' (paid plans)."""
+    if os.environ.get("ADZUNA_BUDGET_PERIOD", "total") == "month":
+        sql = "SELECT count(*) FROM fetch_log WHERE source = 'adzuna' AND run_at >= date_trunc('month', now())"
+    else:
+        sql = "SELECT count(*) FROM fetch_log WHERE source = 'adzuna'"
+    return conn.execute(sql).fetchone()[0]
 
 
 def province_city(area: list[str]) -> tuple[str | None, str | None]:
@@ -110,7 +115,9 @@ def main() -> None:
         remaining = budget - used
         print(f"Adzuna calls used so far: {used}/{budget}. Planned this run: {len(plan)}.")
         if remaining <= 0:
-            sys.exit("Call budget exhausted. Raise ADZUNA_CALL_BUDGET after upgrading your Adzuna plan.")
+            # Not an error: the rest of the pipeline still re-exports existing data.
+            print("Call budget exhausted; skipping fetch. Raise ADZUNA_CALL_BUDGET after upgrading your Adzuna plan.")
+            return
         plan = plan[:remaining]
         if args.dry_run:
             for t, p in plan:

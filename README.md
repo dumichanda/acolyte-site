@@ -1,14 +1,48 @@
-# Acolyte — SA Automation Opportunity Index
+# Acolyte — website + SA Automation Opportunity Index
 
-Live public dashboard: which jobs South Africa is hiring for, and how much of that work AI and automation could do.
+| URL | Page |
+|---|---|
+| `/` | Acolyte landing page: services, ROI calculator, live index teaser, contact form (Netlify Forms) |
+| `/automation-index/` | Live dashboard: which SA jobs are being hired for, and how much of that work could be automated |
+| `/automation-index/?report` | Printable A4 report |
+| `/privacy/` | POPIA privacy notice |
 
 ```
-Adzuna API ─► fetch_adzuna.py ─► Postgres (Neon) ─► classify.py (rules or Claude)
-                                       │
-                                       └─► export_snapshot.py ─► web/public/data/snapshot.json
-                                                                    │
-                                    React + ECharts site (Vite) ◄───┘ ──► ?report ─► PDF (Playwright)
+ GitHub Actions (daily 06:17 SAST)                          Netlify
+ ┌──────────────────────────────────────────────┐          ┌────────────────────────┐
+ │ Adzuna API ─► fetch ─► Neon Postgres          │  commit  │ builds /web on every   │
+ │              classify (rules or Claude)      ─┼─────────►│ push and serves the    │
+ │              export ─► snapshot.json          │          │ site + contact form    │
+ └──────────────────────────────────────────────┘          └────────────────────────┘
 ```
+
+## Deploy (one-time setup, all in the browser)
+
+**1. GitHub secrets.** Repo → Settings → Secrets and variables → Actions:
+
+| Type | Name | Value |
+|---|---|---|
+| Secret | `DATABASE_URL` | Neon → your project → Connect → connection string (`...?sslmode=require`) |
+| Secret | `ADZUNA_APP_ID` | Adzuna dashboard → Application ID |
+| Secret | `ADZUNA_APP_KEY` | Adzuna dashboard → Application Keys |
+| Secret | `ANTHROPIC_API_KEY` | Optional, for Claude classification and commentary |
+| Variable | `ADZUNA_CALL_BUDGET` | `20` on the test plan; `4500` on API Access |
+| Variable | `ADZUNA_BUDGET_PERIOD` | `total` on the test plan; `month` on paid plans |
+| Variable | `USE_CLAUDE` | `true` to use Claude on the daily run (optional) |
+
+**2. First data load.** Actions tab → *Refresh Automation Index* → **Run workflow**. It creates the tables in Neon,
+fetches real jobs, and commits `web/public/data/snapshot.json`. (The repo starts with sample data so the site works immediately.)
+
+**3. Netlify.** app.netlify.com → Add new site → Import from Git → pick this repo. Settings are read from
+`netlify.toml`, so just click **Deploy**. Every data refresh commit redeploys the site automatically.
+
+**4. Contact form.** Netlify → Site → Forms: the `contact` form appears after the first deploy.
+Under Forms → Notifications, add an email notification so enquiries reach your inbox.
+
+**5. Before launch:** fill in `web/src/site.ts` (registered name, email, phone, Information Officer) and connect your domain in Netlify → Domain management.
+
+**Adzuna plan:** the test plan has 25 calls in total, and each daily run uses up to 12. Once the budget is used up, the daily run
+simply re-publishes the existing data. Upgrade to API Access (£8/month) for fresh data every day.
 
 The website only reads `snapshot.json`, so it can be hosted for free (Cloudflare Pages / Vercel / Netlify) and visitors never touch the database.
 
@@ -23,7 +57,7 @@ The website only reads `snapshot.json`, so it can be hosted for free (Cloudflare
 | `pipeline/classify.py` | Keyword rules, or `--claude` for Claude Haiku 5.5 to read each posting |
 | `pipeline/export_snapshot.py` | Builds the dashboard JSON + written commentary (`--claude` for Claude Opus 5.5) |
 | `refresh.py` | Runs the whole pipeline in one go |
-| `web/` | The dashboard site; `?report` is the A4 print layout |
+| `web/` | The website: landing (`src/landing`), dashboard (`src/App.tsx`), privacy (`src/privacy`), business details (`src/site.ts`) |
 | `web/scripts/make-report.mjs` | Saves the report as PDF into `reports/` |
 
 ## Run it on your laptop (Windows)
@@ -65,7 +99,7 @@ cd web
 npm install
 npm run dev
 ```
-Open http://localhost:5173. Add `?report` to the URL for the printable version.
+Open http://localhost:5173 (landing) or http://localhost:5173/automation-index/ (dashboard; add `?report` for the print version).
 
 **6. Save the PDF report** (first time only: `npx playwright install chromium`)
 ```powershell

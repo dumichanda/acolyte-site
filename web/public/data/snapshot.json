@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-12T13:12:27.767653+00:00",
+ "generated_at": "2026-11-12T22:08:37.480794+00:00",
  "meta": {
   "jobs": 450,
   "has_demo": true,
@@ -15,7 +15,7 @@
   "high_share": 48.0,
   "automatable_value": 68044379.0,
   "median_salary": 205750.0,
-  "jobs_7d": 124
+  "jobs_7d": 121
  },
  "by_family": [
   {
@@ -5417,7 +5417,7 @@
    "Office & Admin Support carries the most automatable value (R7.9m across 75 roles).",
    "Data Capture roles are the most automatable, averaging 88/100.",
    "Gauteng accounts for 43% of postings; 48% of all roles score 60+ (high potential).",
-   "124 new roles were posted in the last 7 days."
+   "121 new roles were posted in the last 7 days."
   ],
   "recommendation": "Creditors & Debtors roles in Gauteng: high automation score (66/100) and R6.6m a year of value. Pitch: invoice & payment automation (Sage / Pastel / Xero integration).",
   "source": "template"

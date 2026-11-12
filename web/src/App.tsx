@@ -219,13 +219,14 @@ export default function App() {
     <div className="wrap">
       <header className="top">
         <div>
-          <div className="brand"><div className="brand-mark" />ACOLYTE</div>
+          <a className="brand" href="/" style={{ textDecoration: "none" }}><div className="brand-mark" />ACOLYTE</a>
           <h1>SA Automation Opportunity Index</h1>
           <p className="sub">Which jobs South Africa is hiring for right now, and how much of that work AI and automation could do.</p>
         </div>
         <div className="updated">
           Updated {fmtDate(s.generated_at)}<br />
-          <a className="btn" href="?report" target="_blank" style={{ marginTop: 8 }}>Printable report</a>
+          <a className="btn" href="?report" target="_blank" style={{ marginTop: 8 }}>Printable report</a>{" "}
+          <a className="btn" href="/#contact" style={{ marginTop: 8, background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" }}>Talk to Acolyte</a>
         </div>
       </header>
       {s.meta.has_demo && (

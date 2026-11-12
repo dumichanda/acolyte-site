@@ -17,7 +17,9 @@ SELECT
     (j.salary_min IS NULL AND j.salary_max IS NULL) AS salary_imputed
 FROM jobs j
 JOIN classifications c ON c.job_id = j.id
-LEFT JOIN family_salary_default d ON d.role_family = c.role_family;
+LEFT JOIN family_salary_default d ON d.role_family = c.role_family
+-- "Open roles" = posted in the last 60 days. Older postings stay in the table for trend history.
+WHERE j.posted_at IS NULL OR j.posted_at >= now() - interval '60 days';
 
 CREATE OR REPLACE VIEW v_jobs_value AS
 SELECT v.*,

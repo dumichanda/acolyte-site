@@ -1,13 +1,21 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-ZA">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SA Automation Index</title>
+    <title>Acolyte | AI & Automation for South African Business</title>
+    <meta name="description" content="Acolyte designs and implements AI agents, document automation and finance workflows that take repetitive work off South African teams." />
+    <meta property="og:title" content="Acolyte | AI & Automation for South African Business" />
+    <meta property="og:description" content="AI agents, document automation and finance workflows that give your team its time back." />
   </head>
   <body>
+    <!-- Static copy of the contact form so Netlify Forms detects it at deploy time. The visible form is rendered by React. -->
+    <form name="contact" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input name="bot-field" /><input name="name" /><input name="company" /><input name="email" />
+      <input name="phone" /><input name="interest" /><textarea name="message"></textarea><input name="consent" />
+    </form>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/src/landing/main.tsx"></script>
   </body>
 </html>

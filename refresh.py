@@ -30,4 +30,4 @@ else:
     run("fetch_adzuna.py", *(["--max-calls", a.max_calls] if a.max_calls else []))
 run("classify.py", *(["--claude"] if a.claude else []))
 run("export_snapshot.py", *(["--claude"] if a.claude else []))
-print("\nDone. Start the site with:  cd web && npm run dev")
+print("\nDone.")

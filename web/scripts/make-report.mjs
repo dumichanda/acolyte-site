@@ -4,7 +4,7 @@
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
 
-const url = process.argv[2] ?? "http://localhost:4173/?report";
+const url = process.argv[2] ?? "http://localhost:4173/automation-index/?report";
 const date = new Date().toISOString().slice(0, 10);
 const out = process.argv[3] ?? `../reports/acolyte-index-${date}.pdf`;
 
