@@ -33,7 +33,8 @@ Actions secrets. Alternatively, GitHub Pro allows Pages on private repos.)
 | Secret | `DATABASE_URL` | Neon → your project → Connect → connection string (`...?sslmode=require`) |
 | Secret | `ADZUNA_APP_ID` | Adzuna dashboard → Application ID |
 | Secret | `ADZUNA_APP_KEY` | Adzuna dashboard → Application Keys |
-| Secret | `ANTHROPIC_API_KEY` | Claude web job search (main source of jobs), plus optional Claude classification and commentary |
+| Secret | `GEMINI_API_KEY` | **Free** at aistudio.google.com/apikey: Gemini + Google Search job finder |
+| Secret | `ANTHROPIC_API_KEY` | Optional: Claude web job search, Claude classification and commentary |
 | Variable | `ADZUNA_CALL_BUDGET` | `20` on the test plan; `4500` on API Access |
 | Variable | `ADZUNA_BUDGET_PERIOD` | `total` on the test plan; `month` on paid plans |
 | Variable | `USE_CLAUDE` | `true` to use Claude for classification + commentary on the daily run (optional) |
@@ -50,12 +51,18 @@ before the keys are set, run *Deploy site to GitHub Pages* instead.)
 **6. Before launch:** fill in the rest of `web/src/site.ts` (registered name, email, phone, Information Officer).
 Own domain: Settings → Pages → Custom domain; the build adjusts its links automatically.
 
-**Where jobs come from**
+**Where jobs come from** (each source is skipped if its key isn't set)
+- **Gemini + Google Search** (`pipeline/gemini_jobs.py`): Gemini searches Google for current SA postings. A job is kept only if its
+  URL matches a page Google returned, or the URL opens and the page shows the job title. Free tier works for daily runs.
 - **Claude web search** (`pipeline/claude_jobs.py`): each day Claude searches PNet, Careers24, CareerJunction, Indeed, LinkedIn,
   company career pages etc. for current SA postings of a few roles (rotating through all 12). A job is only stored if its URL
   appeared in Claude's actual search results or a page it opened, so made-up listings are discarded. Rough cost: a few searches
   per role ($10 per 1,000 searches) plus tokens, roughly $0.10–0.30 per role on Opus.
 - **Adzuna API** (`pipeline/fetch_adzuna.py`): used within its call budget, then skipped.
+
+**Run it from Google Colab** (on demand, optional Google Sheets copy):
+[Open colab/find_jobs.ipynb in Colab](https://colab.research.google.com/github/dumichanda/acolyte-site/blob/main/colab/find_jobs.ipynb).
+Add `DATABASE_URL` and `GEMINI_API_KEY` under Colab's 🔑 Secrets, then run the cells.
 
 **Adzuna plan:** the test plan has 25 calls in total, and each daily run uses up to 12. Once the budget is used up, the daily run
 simply re-publishes the existing data. Upgrade to API Access (£8/month) for fresh data every day.

@@ -23,7 +23,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--claude", action="store_true")
 ap.add_argument("--demo", action="store_true")
 ap.add_argument("--max-calls", default=None)
-ap.add_argument("--no-web", action="store_true", help="skip the Claude web job search")
+ap.add_argument("--no-web", action="store_true", help="skip the Gemini/Claude web job search")
 a = ap.parse_args()
 
 if a.demo:
@@ -31,6 +31,7 @@ if a.demo:
 else:
     run("fetch_adzuna.py", *(["--max-calls", a.max_calls] if a.max_calls else []))
     if not a.no_web:
+        run("gemini_jobs.py")  # skips itself when GEMINI_API_KEY is not set
         run("claude_jobs.py")  # skips itself when ANTHROPIC_API_KEY is not set
 run("classify.py", *(["--claude"] if a.claude else []))
 run("export_snapshot.py", *(["--claude"] if a.claude else []))
