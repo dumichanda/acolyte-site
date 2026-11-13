@@ -21,8 +21,40 @@ from typing import Iterator
 import psycopg
 
 HERE = Path(__file__).resolve().parent
-MODEL = os.environ.get("ANALYST_MODEL", "claude-opus-5-5")
-EFFORT = os.environ.get("ANALYST_EFFORT", "medium")
+# Model routing: each question goes to the cheapest tier that can handle it, and moves up a tier if it struggles.
+TIERS = {
+    "fast": {"model": os.environ.get("ANALYST_MODEL_FAST", "claude-haiku-5-5"), "effort": "low", "fallback": False},
+    "standard": {"model": os.environ.get("ANALYST_MODEL_STANDARD", "claude-sonnet-5-5"), "effort": "medium", "fallback": True},
+    "deep": {"model": os.environ.get("ANALYST_MODEL_DEEP", os.environ.get("ANALYST_MODEL", "claude-opus-5-5")),
+             "effort": os.environ.get("ANALYST_EFFORT", "medium"), "fallback": True},
+}
+ORDER = ["fast", "standard", "deep"]
+MODEL = TIERS["deep"]["model"]   # shown in /health
+# USD per 1M tokens: input, output, cache-read multiplier (cache writes are 1.25x input)
+PRICES = {"claude-opus-5-5": (4.0, 20.0, 0.05), "claude-sonnet-5-5": (2.0, 10.0, 0.05), "claude-haiku-5-5": (0.10, 0.50, 0.10)}
+DEEP_RX = re.compile(r"report|pack|deck|presentation|power ?point|\bppt|\bpdf|board|strategy|strategic|recommend|proposal|plan\b|business case", re.I)
+STANDARD_RX = re.compile(r"compar|versus|\bvs\.?\b|why|trend|over time|explain|break ?down|correlat|forecast|driver|segment|impact|opportunit|insight", re.I)
+
+
+def route(question: str, mode: str = "auto") -> str:
+    """Pick a tier: an explicit mode wins; otherwise keywords and question size decide."""
+    if mode in TIERS:
+        return mode
+    q = question.strip()
+    if DEEP_RX.search(q):
+        return "deep"
+    if STANDARD_RX.search(q) or len(q) > 220 or q.count("?") > 1:
+        return "standard"
+    return "fast"
+
+
+def cost_of(model: str, usage) -> tuple[float, dict]:
+    pin, pout, cr = PRICES.get(model, PRICES["claude-opus-5-5"])
+    g = lambda k: getattr(usage, k, 0) or 0  # noqa: E731
+    t = {"input": g("input_tokens"), "cache_read": g("cache_read_input_tokens"),
+         "cache_write": g("cache_creation_input_tokens"), "output": g("output_tokens")}
+    usd = (t["input"] * pin + t["cache_write"] * pin * 1.25 + t["cache_read"] * pin * cr + t["output"] * pout) / 1e6
+    return usd, t
 MAX_STEPS = 10            # model calls per question
 MAX_ROWS = 500            # rows kept per dataset
 ROWS_TO_MODEL = 60        # rows shown to the model per query
@@ -176,22 +208,31 @@ class Session:
 
 
 class Budget:
-    """Rough daily spend guard for the public demo (USD, list prices of the configured model)."""
-    PRICES = {"claude-opus-5-5": (4.0, 20.0), "claude-sonnet-5-5": (2.0, 10.0), "claude-haiku-5-5": (0.10, 0.50)}
+    """Daily spend guard + usage stats for the public demo (USD at list prices)."""
 
     def __init__(self, daily_usd: float):
-        self.daily, self.day, self.spent = daily_usd, date.today(), 0.0
+        self.daily = daily_usd
+        self._reset(date.today())
+
+    def _reset(self, day):
+        self.day, self.spent, self.questions, self.by_tier = day, 0.0, 0, {t: {"questions": 0, "usd": 0.0} for t in TIERS}
 
     def ok(self) -> bool:
         if date.today() != self.day:
-            self.day, self.spent = date.today(), 0.0
+            self._reset(date.today())
         return self.spent < self.daily
 
-    def add(self, model: str, usage) -> None:
-        pin, pout = self.PRICES.get(model, (4.0, 20.0))
-        u = lambda k: getattr(usage, k, 0) or 0  # noqa: E731
-        tokens_in = u("input_tokens") + 1.25 * u("cache_creation_input_tokens") + 0.1 * u("cache_read_input_tokens")
-        self.spent += (tokens_in * pin + u("output_tokens") * pout) / 1e6
+    def add_cost(self, usd: float, tier: str) -> None:
+        self.spent += usd
+        self.by_tier.setdefault(tier, {"questions": 0, "usd": 0.0})["usd"] += usd
+
+    def count(self, tier: str) -> None:
+        self.questions += 1
+        self.by_tier.setdefault(tier, {"questions": 0, "usd": 0.0})["questions"] += 1
+
+    def stats(self) -> dict:
+        return {"day": self.day.isoformat(), "spent_usd": round(self.spent, 4), "cap_usd": self.daily, "questions": self.questions,
+                "by_tier": {t: {"questions": v["questions"], "usd": round(v["usd"], 4)} for t, v in self.by_tier.items()}}
 
 
 # ------------------------------------------------------------------ tools
@@ -292,7 +333,19 @@ def _traceable(v: float, known: list[float]) -> bool:
 
 
 def review_report(s: Session, a: dict, flagged: list[str]) -> list[str]:
+    """Checks are tolerant of malformed input (strings where objects are expected): they never crash the turn."""
     issues = []
+    D = lambda x: x if isinstance(x, dict) else {}  # noqa: E731
+    Ls = lambda x: [i for i in x if isinstance(i, dict)] if isinstance(x, list) else []  # noqa: E731
+    summ = D(a.get("summary"))
+    if isinstance(a.get("summary"), str) or not summ:
+        issues.append("'summary' must be an object with title, takeaway, kpis, so_what and catch.")
+    a = {**a, "summary": summ, "sections": Ls(a.get("sections")), "qa": Ls(a.get("qa")), "cover_kpis": Ls(a.get("cover_kpis"))}
+    summ["kpis"] = Ls(summ.get("kpis"))
+    for sec in a["sections"]:
+        sec["kpis"] = Ls(sec.get("kpis"))
+        sec["chart_ids"] = [c for c in sec.get("chart_ids") or [] if isinstance(c, str)]
+        sec["bullets"] = [b for b in sec.get("bullets") or [] if isinstance(b, str)]
     L = lambda t, n: len(str(t or "")) > n  # noqa: E731
     if L(a.get("title"), 90):
         issues.append("Pack title is longer than 90 characters; shorten it.")
@@ -418,11 +471,11 @@ def execute(s: Session, name: str, args, db_url: str) -> tuple[str, dict | None,
 
 
 # ------------------------------------------------------------------ agent loop
-def answer(client, s: Session, question: str, db_url: str, budget: Budget) -> Iterator[dict]:
+def answer(client, s: Session, question: str, db_url: str, budget: Budget, mode: str = "auto") -> Iterator[dict]:
     """Run one question; on any failure the conversation is rolled back so the next question starts clean."""
     start, finished = len(s.messages), False
     try:
-        for ev in _answer(client, s, question, db_url, budget):
+        for ev in _answer(client, s, question, db_url, budget, mode):
             if ev["type"] == "done":
                 finished = True
             yield ev
@@ -431,76 +484,105 @@ def answer(client, s: Session, question: str, db_url: str, budget: Budget) -> It
             del s.messages[start:]
 
 
-def _answer(client, s: Session, question: str, db_url: str, budget: Budget) -> Iterator[dict]:
+def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode: str = "auto") -> Iterator[dict]:
     import anthropic
 
     s.turns += 1
     s.updated = time.time()
     s.messages.append({"role": "user", "content": question})
-    json_retries = 0
-    for _ in range(MAX_STEPS):
-        if not budget.ok():
-            yield {"type": "error", "text": "The demo has reached its daily limit. Please try again tomorrow, or talk to Acolyte about a private install."}
-            return
-        try:
-            with client.beta.messages.stream(
-                model=MODEL,
-                max_tokens=16000,
-                system=[{"type": "text", "text": SYSTEM, "cache_control": {"type": "ephemeral"}}],
-                tools=TOOLS,
-                messages=s.messages,
-                output_config={"effort": EFFORT},
-                betas=["server-side-fallback-2026-07-01"],
-                fallbacks="default",
-            ) as stream:
-                for event in stream:
-                    if event.type == "text":
-                        yield {"type": "text", "text": event.text}
-                response = stream.get_final_message()
-            json_retries = 0
-        except ValueError:  # tool input JSON the SDK could not parse: re-issue the turn
-            json_retries += 1
-            if json_retries > 2:
-                yield {"type": "error", "text": "The analyst produced an invalid tool call. Please rephrase."}
+    tier = route(question, mode)
+    budget.count(tier)
+    used = {"usd": 0.0, "input": 0, "cache_read": 0, "cache_write": 0, "output": 0, "models": []}
+    json_retries, tool_errors = 0, 0
+
+    def usage_event(final: bool):
+        return {"type": "usage", "tier": tier, "models": used["models"], "cost_usd": round(used["usd"], 5),
+                "tokens": {k: used[k] for k in ("input", "cache_read", "cache_write", "output")}, "final": final}
+
+    try:
+        for _ in range(MAX_STEPS):
+            if not budget.ok():
+                yield {"type": "error", "text": "The demo has reached its daily limit. Please try again tomorrow, or talk to Acolyte about a private install."}
                 return
-            continue
-        except anthropic.RateLimitError:
-            yield {"type": "error", "text": "The analyst is busy right now. Please try again in a minute."}
-            return
-        except anthropic.BadRequestError as e:
-            msg = getattr(e, "message", None) or str(e)
-            print(f"Anthropic 400: {msg}", flush=True)
-            yield {"type": "error", "text": f"The AI request was rejected: {msg[:300]}"}
-            return
-        except (anthropic.APIConnectionError, anthropic.APIStatusError) as e:
-            print(f"Anthropic error: {e.__class__.__name__}: {e}", flush=True)
-            yield {"type": "error", "text": f"The AI service is unavailable ({e.__class__.__name__})."}
-            return
+            cfg = TIERS[tier]
+            extra = {"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"} if cfg["fallback"] else {}
+            try:
+                with client.beta.messages.stream(
+                    model=cfg["model"],
+                    max_tokens=16000,
+                    # explicit breakpoint on the static prefix + automatic caching of the growing conversation
+                    system=[{"type": "text", "text": SYSTEM, "cache_control": {"type": "ephemeral"}}],
+                    cache_control={"type": "ephemeral"},
+                    tools=TOOLS,
+                    messages=s.messages,
+                    output_config={"effort": cfg["effort"]},
+                    **extra,
+                ) as stream:
+                    for event in stream:
+                        if event.type == "text":
+                            yield {"type": "text", "text": event.text}
+                    response = stream.get_final_message()
+                json_retries = 0
+            except ValueError:  # tool input JSON the SDK could not parse: re-issue the turn
+                json_retries += 1
+                if json_retries > 2:
+                    yield {"type": "error", "text": "The analyst produced an invalid tool call. Please rephrase."}
+                    return
+                continue
+            except anthropic.RateLimitError:
+                yield {"type": "error", "text": "The analyst is busy right now. Please try again in a minute."}
+                return
+            except anthropic.BadRequestError as e:
+                msg = getattr(e, "message", None) or str(e)
+                print(f"Anthropic 400: {msg}", flush=True)
+                yield {"type": "error", "text": f"The AI request was rejected: {msg[:300]}"}
+                return
+            except (anthropic.APIConnectionError, anthropic.APIStatusError) as e:
+                print(f"Anthropic error: {e.__class__.__name__}: {e}", flush=True)
+                yield {"type": "error", "text": f"The AI service is unavailable ({e.__class__.__name__})."}
+                return
 
-        budget.add(response.model or MODEL, response.usage)
-        s.messages.append({"role": "assistant", "content": response.content})
+            served = response.model or cfg["model"]
+            usd, t = cost_of(served, response.usage)
+            used["usd"] += usd
+            for k in t:
+                used[k] += t[k]
+            if served not in used["models"]:
+                used["models"].append(served)
+            budget.add_cost(usd, tier)
+            s.messages.append({"role": "assistant", "content": response.content})
 
-        if response.stop_reason == "refusal":
-            yield {"type": "error", "text": "The analyst can't help with that request."}
-            return
-        if response.stop_reason == "pause_turn":
-            continue
-        tool_uses = [b for b in response.content if b.type == "tool_use"]
-        if not tool_uses:
-            yield {"type": "done"}
-            return
-        if response.stop_reason == "max_tokens":
-            yield {"type": "error", "text": "The answer got too long. Please ask a narrower question."}
-            return
+            if response.stop_reason == "refusal":
+                yield {"type": "error", "text": "The analyst can't help with that request."}
+                return
+            if response.stop_reason == "pause_turn":
+                continue
+            tool_uses = [b for b in response.content if b.type == "tool_use"]
+            if not tool_uses:
+                yield usage_event(True)
+                yield {"type": "done"}
+                return
+            if response.stop_reason == "max_tokens":
+                yield {"type": "error", "text": "The answer got too long. Please ask a narrower question."}
+                return
 
-        results = []
-        for b in tool_uses:
-            label = {"run_sql": "Querying", "make_chart": "Charting", "write_report": "Writing report"}.get(b.name, b.name)
-            title = (b.input or {}).get("title", "") if isinstance(b.input, dict) else ""
-            yield {"type": "status", "text": f"{label}: {title}".rstrip(": ")}
-            text, ev, err = execute(s, b.name, b.input, db_url)
-            if ev:
-                yield ev
-            results.append({"type": "tool_result", "tool_use_id": b.id, "content": text, **({"is_error": True} if err else {})})
-        s.messages.append({"role": "user", "content": results})
-    yield {"type": "error", "text": "That took too many steps. Please ask a more specific question."}
+            results = []
+            for b in tool_uses:
+                label = {"run_sql": "Querying", "make_chart": "Charting", "write_report": "Writing report"}.get(b.name, b.name)
+                title = (b.input or {}).get("title", "") if isinstance(b.input, dict) else ""
+                yield {"type": "status", "text": f"{label}: {title}".rstrip(": ")}
+                text, ev, err = execute(s, b.name, b.input, db_url)
+                if ev:
+                    yield ev
+                tool_errors += bool(err)
+                results.append({"type": "tool_result", "tool_use_id": b.id, "content": text, **({"is_error": True} if err else {})})
+            s.messages.append({"role": "user", "content": results})
+            # Struggling on a cheap tier (repeated failed queries / rejected report): move up a tier for the rest.
+            if tool_errors >= 2 and tier != "deep" and mode == "auto":
+                tier = ORDER[ORDER.index(tier) + 1]
+                tool_errors = 0
+                yield {"type": "status", "text": f"Switching to a stronger model ({TIERS[tier]['model']})"}
+        yield {"type": "error", "text": "That took too many steps. Please ask a more specific question."}
+    finally:
+        print(f"[usage] tier={tier} models={','.join(used['models']) or '-'} in={used['input']} cache_read={used['cache_read']} "
+              f"cache_write={used['cache_write']} out={used['output']} cost=${used['usd']:.4f} q={question[:80]!r}", flush=True)

@@ -24,7 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from .agent import MODEL, Budget, Session, answer
+from .agent import MODEL, TIERS, Budget, Session, answer
 
 DB_URL = os.environ.get("ANALYST_DATABASE_URL", "")
 ORIGINS = [o.strip() for o in os.environ.get(
@@ -54,6 +54,7 @@ def client():
 class Ask(BaseModel):
     session_id: str | None = Field(default=None, max_length=64)
     question: str = Field(min_length=1, max_length=1500)
+    mode: str = Field(default="auto", pattern="^(auto|fast|standard|deep)$")
 
 
 def visitor(req: Request) -> str:
@@ -77,8 +78,8 @@ def rate_ok(ip: str) -> bool:
 
 @app.get("/health")
 def health():
-    return {"ok": True, "model": MODEL, "db": bool(DB_URL), "ai": bool(os.environ.get("ANTHROPIC_API_KEY")),
-            "budget_left": budget.ok()}
+    return {"ok": True, "model": MODEL, "tiers": {t: c["model"] for t, c in TIERS.items()}, "db": bool(DB_URL),
+            "ai": bool(os.environ.get("ANTHROPIC_API_KEY")), "budget_left": budget.ok(), "today": budget.stats()}
 
 
 @app.post("/ask")
@@ -98,7 +99,7 @@ def ask(body: Ask, req: Request):
     def stream():
         yield f"data: {json.dumps({'type': 'session', 'session_id': s.id})}\n\n"
         try:
-            for ev in answer(client(), s, body.question.strip(), DB_URL, budget):
+            for ev in answer(client(), s, body.question.strip(), DB_URL, budget, body.mode):
                 yield f"data: {json.dumps(ev, default=str)}\n\n"
         except Exception as e:  # never leave the browser hanging
             yield f"data: {json.dumps({'type': 'error', 'text': f'Something went wrong ({e.__class__.__name__}).'})}\n\n"

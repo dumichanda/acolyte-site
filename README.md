@@ -149,6 +149,13 @@ and the first thing to edit when answers are off. The same container installs on
    swapped for `analyst_web` and `ANALYST_DB_PASSWORD`.
 4. Put the Render URL (e.g. `https://acolyte-analyst.onrender.com`) in `web/src/site.ts → analystApi` and push.
 
+Cost control: each question is routed to the cheapest model that can handle it: **Fast** (Claude Haiku 5.5) for simple
+lookups and single charts, **Balanced** (Claude Sonnet 5.5) for comparisons and "why" questions, **Deep** (Claude Opus 5.5)
+for report packs and strategy. A question that struggles on a cheap tier moves up automatically; visitors can also pick a
+tier. The whole conversation is prompt-cached between steps. Every answer shows its model and cost; `/health` shows
+today's spend by tier; Render logs one `[usage]` line per question. Override models with `ANALYST_MODEL_FAST`,
+`ANALYST_MODEL_STANDARD`, `ANALYST_MODEL_DEEP`.
+
 Safety for a public demo: per-visitor hourly limit, daily spend cap (`ANALYST_DAILY_BUDGET_USD`, default $3), read-only
 database role with a 10s statement timeout, CRM tables invisible to it. Also set a monthly limit in the Anthropic Console.
 The free plan sleeps when idle; the page shows "waking up" for up to a minute.

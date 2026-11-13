@@ -35,7 +35,17 @@ const STARTERS = [
 interface Dataset { id: string; title: string; sql: string; columns: string[]; rows: unknown[][]; row_count: number }
 type Item =
   | { kind: "user"; text: string }
-  | { kind: "assistant"; text: string; status: string[]; queries: Dataset[]; artifacts: string[]; error?: string; done: boolean };
+  | { kind: "assistant"; text: string; status: string[]; queries: Dataset[]; artifacts: string[]; error?: string; done: boolean; usage?: Usage };
+
+interface Usage { tier: string; models: string[]; cost_usd: number; tokens: { input: number; cache_read: number; cache_write: number; output: number } }
+const MODEL_NAME: Record<string, string> = { "claude-haiku-5-5": "Haiku 5.5", "claude-sonnet-5-5": "Sonnet 5.5", "claude-opus-5-5": "Opus 5.5" };
+function UsageLine({ u }: { u: Usage }) {
+  const t = u.tokens, total = t.input + t.cache_read + t.cache_write + t.output;
+  const cost = u.cost_usd < 0.01 ? `${(u.cost_usd * 100).toFixed(2)} US cents` : `$${u.cost_usd.toFixed(3)}`;
+  return <div className="usage" title={`input ${t.input} / cached ${t.cache_read} / cache write ${t.cache_write} / output ${t.output} tokens`}>
+    {u.models.map((m) => MODEL_NAME[m] ?? m).join(" then ")} · {cost} · {(total / 1000).toFixed(1)}k tokens ({Math.round(100 * t.cache_read / Math.max(total, 1))}% cached)
+  </div>;
+}
 
 /** Tiny, safe markdown: paragraphs, - bullets, **bold**. Everything is escaped first. */
 function Md({ text }: { text: string }) {
@@ -174,6 +184,7 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [health, setHealth] = useState<"checking" | "ok" | "down" | "unconfigured">(API ? "checking" : "unconfigured");
   const [speak, setSpeak] = useState(false);
+  const [mode, setMode] = useState<"auto" | "fast" | "standard" | "deep">("auto");
   const session = useRef<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -196,7 +207,7 @@ function App() {
     let answerText = "";
     try {
       const r = await fetch(`${API}/ask`, { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: session.current, question }) });
+        body: JSON.stringify({ session_id: session.current, question, mode }) });
       if (!r.ok || !r.body) {
         const err = await r.json().catch(() => ({ detail: r.statusText }));
         throw new Error(err.detail || "The analyst is unavailable.");
@@ -223,6 +234,7 @@ function App() {
             setActive(art.id);
             patchLast((a) => { a.artifacts = [...a.artifacts, art.id]; });
           } else if (ev.type === "error") patchLast((a) => { a.error = ev.text; });
+          else if (ev.type === "usage") patchLast((a) => { a.usage = ev; });
           else if (ev.type === "done") patchLast((a) => { a.done = true; });
         }
       }
@@ -288,6 +300,7 @@ function App() {
                         {artifacts[id].kind === "report" ? "▤ " : "▥ "}{artifacts[id].title}</button>))}</div>
                   )}
                   {it.error && <div className="err">{it.error}</div>}
+                  {it.usage && <UsageLine u={it.usage} />}
                 </div>
               ))}
             <div ref={endRef} />
@@ -299,7 +312,11 @@ function App() {
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(q); } }} />
             <div className="row">
               <Voice onText={(t) => ask(t)} />
-              <label className="speak"><input type="checkbox" checked={speak} onChange={(e) => setSpeak(e.target.checked)} /> Read answers aloud</label>
+              <label className="speak"><input type="checkbox" checked={speak} onChange={(e) => setSpeak(e.target.checked)} /> Read aloud</label>
+              <select className="mode" value={mode} onChange={(e) => setMode(e.target.value as typeof mode)} title="Which AI model answers">
+                <option value="auto">Auto model</option><option value="fast">Fast (Haiku)</option>
+                <option value="standard">Balanced (Sonnet)</option><option value="deep">Deep (Opus)</option>
+              </select>
               <span style={{ flex: 1 }} />
               {items.length > 0 && <button type="button" className="btn sm" onClick={reset}>New chat</button>}
               <button className="btn primary" disabled={!ready || busy || !q.trim()}>{busy ? "Thinking…" : "Ask"}</button>
