@@ -10,6 +10,8 @@ export const SITE = {
   informationOfficer: "", // POPIA Information Officer name (often a director)
   // Contact form endpoint. Free: sign up at formspree.io, create a form, paste its URL, e.g. "https://formspree.io/f/abcdwxyz".
   formEndpoint: "",
+  // Acolyte Analyst API (analyst/server.py), e.g. "https://acolyte-analyst.onrender.com". Empty = page shows setup note.
+  analystApi: "",
 };
 
 /** Site-relative link that works at the domain root or under a sub-path such as /acolyte-site/. */

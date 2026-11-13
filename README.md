@@ -7,6 +7,7 @@
 | `/automation-index/?report` | Printable A4 report |
 | `/employers/` | Who is hiring: every direct employer behind the ads, with profile, open roles, tools and the Acolyte pitch |
 | `/tools/` | Tools & skills in demand: software, skills, qualifications, work mode and seniority from the ad text |
+| `/analyst/` | **Acolyte Analyst**: ask the data in plain English; answers with charts, tables and a downloadable report. Needs the analyst API (below) |
 | `/crm/` | **Private** sales pipeline. Works only while `python crm/server.py` runs on your computer (see below) |
 | `/privacy/` | POPIA privacy notice |
 
@@ -113,6 +114,25 @@ automatable value ─► first-email draft ─► YOU review + send ─► log r
 personal addresses; the first email asks permission and offers an opt-out; one follow-up only; "not interested" or
 "don't contact me" puts the address on the `suppression` list, which every draft and send checks. Personal contacts
 you add yourself should be people who agreed to be contacted (e.g. met at an event, replied to you).
+
+## Acolyte Analyst (chat with the data)
+
+`analyst/` is a small Python service (FastAPI + Claude tool use). Claude gets three tools: `run_sql`
+(read-only, `analyst` schema only), `make_chart` (the page draws it from the query result, so numbers are never
+typed by the model) and `write_report`. Business definitions live in `analyst/semantic.md`, which is the semantic layer
+and the first thing to edit when answers are off. The same container installs on a client's own server against their data.
+
+**Deploy the public demo (free Render plan):**
+1. GitHub → repo Settings → Secrets → Actions: add `ANALYST_DB_PASSWORD` (any long random password). Run the
+   *Refresh* workflow once; it creates the read-only database login `analyst_web`.
+2. https://dashboard.render.com → **New → Blueprint** → pick this repo (it reads `render.yaml`).
+3. Fill in `ANTHROPIC_API_KEY` and `ANALYST_DATABASE_URL` = your Neon connection string with the user and password
+   swapped for `analyst_web` and `ANALYST_DB_PASSWORD`.
+4. Put the Render URL (e.g. `https://acolyte-analyst.onrender.com`) in `web/src/site.ts → analystApi` and push.
+
+Safety for a public demo: per-visitor hourly limit, daily spend cap (`ANALYST_DAILY_BUDGET_USD`, default $3), read-only
+database role with a 10s statement timeout, CRM tables invisible to it. Also set a monthly limit in the Anthropic Console.
+The free plan sleeps when idle; the page shows "waking up" for up to a minute.
 
 ## Run it on your laptop (Windows)
 

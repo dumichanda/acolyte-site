@@ -1,0 +1,300 @@
+import { StrictMode, useEffect, useMemo, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
+import ReactECharts from "../Chart";
+import "../index.css";
+import "./analyst.css";
+import PlatformNav from "../PlatformNav";
+import { SITE, url } from "../site";
+import { readTheme } from "../charts";
+import { chartOption, download, fmt, toCSV, type Artifact, type ChartArtifact, type ReportArtifact } from "./chart";
+
+const API = (() => {
+  const q = new URLSearchParams(location.search).get("api");
+  try { if (q) localStorage.setItem("analystApi", q); return q || localStorage.getItem("analystApi") || SITE.analystApi; }
+  catch { return q || SITE.analystApi; }
+})().replace(/\/$/, "");
+
+const STARTERS = [
+  "Which role types have the most automatable work, and where?",
+  "Which software do finance admin job ads ask for most?",
+  "Who are the top 10 direct employers by automatable value?",
+  "Compare Gauteng and Western Cape: roles, scores and salaries",
+  "Make me a one-page report on collections and call-centre roles",
+];
+
+interface Dataset { id: string; title: string; sql: string; columns: string[]; rows: unknown[][]; row_count: number }
+type Item =
+  | { kind: "user"; text: string }
+  | { kind: "assistant"; text: string; status: string[]; queries: Dataset[]; artifacts: string[]; error?: string; done: boolean };
+
+/** Tiny, safe markdown: paragraphs, - bullets, **bold**. Everything is escaped first. */
+function Md({ text }: { text: string }) {
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const inline = (s: string) => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>");
+  const blocks = text.trim().split(/\n{2,}/);
+  return (
+    <>
+      {blocks.map((b, i) => {
+        const lines = b.split("\n");
+        if (lines.every((l) => /^\s*([-*•]|\d+\.)\s+/.test(l)))
+          return <ul key={i}>{lines.map((l, j) => <li key={j} dangerouslySetInnerHTML={{ __html: inline(l.replace(/^\s*([-*•]|\d+\.)\s+/, "")) }} />)}</ul>;
+        return <p key={i} dangerouslySetInnerHTML={{ __html: lines.map(inline).join("<br/>") }} />;
+      })}
+    </>
+  );
+}
+
+function useTheme() {
+  const [t, setT] = useState<ReturnType<typeof readTheme> | null>(null);
+  useEffect(() => setT(readTheme()), []);
+  return t;
+}
+
+function ChartView({ c, height = 340, print = false }: { c: ChartArtifact; height?: number; print?: boolean }) {
+  const t = useTheme();
+  const ref = useRef<any>(null);
+  if (!t) return null;
+  const pt = print ? { ink: "#16140f", muted: "#6b6656", line: "#e7e2d6", panel: "#ffffff" } : t;
+  const csv = () => download(`${c.title}.csv`, toCSV(c), "text/csv");
+  const png = () => {
+    const inst = ref.current?.getEchartsInstance();
+    if (inst) download(`${c.title}.png`, inst.getDataURL({ pixelRatio: 2, backgroundColor: "#141417" }), "image/png");
+  };
+  let body;
+  if (c.type === "kpi") {
+    const yi = c.columns.indexOf(c.y[0]);
+    body = <div className="kpi-art"><div className="v">{fmt(c.rows[0]?.[yi], c.value_format)}</div><div className="muted">{c.y[0]}</div></div>;
+  } else if (c.type === "table") {
+    const idx = [c.columns.indexOf(c.x), ...c.y.map((y) => c.columns.indexOf(y))].filter((i, k, a) => i >= 0 && a.indexOf(i) === k);
+    body = (
+      <div className="table-scroll" style={{ maxHeight: print ? "none" : 380 }}>
+        <table><thead><tr>{idx.map((i) => <th key={i}>{c.columns[i]}</th>)}</tr></thead>
+          <tbody>{c.rows.slice(0, print ? 25 : 200).map((r, k) => <tr key={k}>{idx.map((i) => <td key={i} className={typeof r[i] === "number" ? "num" : ""}>{typeof r[i] === "number" ? fmt(r[i], c.y.includes(c.columns[i]) ? c.value_format : "number") : String(r[i] ?? "—")}</td>)}</tr>)}</tbody>
+        </table>
+      </div>
+    );
+  } else {
+    body = <ReactECharts ref={ref} style={{ height }} option={chartOption(c, pt, print)} opts={print ? { renderer: "svg" } : undefined} {...(print ? { theme: "acolyte-light" } : {})} notMerge />;
+  }
+  return (
+    <div className="art-chart">
+      <div className="art-head">
+        <div><h3>{c.title}</h3>{c.subtitle && <div className="muted small">{c.subtitle}</div>}</div>
+        {!print && <div className="art-actions">
+          {c.type !== "table" && c.type !== "kpi" && <button className="btn sm" onClick={png}>PNG</button>}
+          <button className="btn sm" onClick={csv}>CSV</button>
+        </div>}
+      </div>
+      {body}
+      {!print && <details className="sql"><summary>How this was calculated</summary><pre>{c.sql}</pre></details>}
+    </div>
+  );
+}
+
+function ReportView({ r, onPrint }: { r: ReportArtifact; onPrint?: () => void }) {
+  return (
+    <div className="report-art">
+      <div className="art-head">
+        <div><span className="tag">Report</span><h2>{r.title}</h2><div className="muted small">Acolyte Analyst · {new Date(r.generated).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</div></div>
+        {onPrint && <div className="art-actions"><button className="btn primary sm" onClick={onPrint}>Download PDF</button></div>}
+      </div>
+      <p className="lead">{r.summary}</p>
+      {r.sections.map((s, i) => (
+        <section key={i}>
+          <h3>{s.heading}</h3>
+          <Md text={s.body} />
+          {s.chart_ids.map((id) => r.charts[id] && <ChartView key={id} c={r.charts[id]} height={280} print={!onPrint} />)}
+        </section>
+      ))}
+      <div className="muted small foot">Source: SA Automation Opportunity Index (public job ads, refreshed daily). Figures computed from live data at the time of the report.</div>
+    </div>
+  );
+}
+
+function Voice({ onText }: { onText: (t: string) => void }) {
+  const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  const [on, setOn] = useState(false);
+  if (!SR) return null;
+  const start = () => {
+    const rec = new SR();
+    rec.lang = "en-ZA"; rec.interimResults = false; rec.maxAlternatives = 1;
+    rec.onresult = (e: any) => onText(e.results[0][0].transcript);
+    rec.onend = () => setOn(false);
+    rec.onerror = () => setOn(false);
+    setOn(true); rec.start();
+  };
+  return <button className={"mic" + (on ? " on" : "")} onClick={start} title="Ask by voice" aria-label="Ask by voice">{on ? "● Listening" : "🎙"}</button>;
+}
+
+function App() {
+  const [items, setItems] = useState<Item[]>([]);
+  const [artifacts, setArtifacts] = useState<Record<string, Artifact>>({});
+  const [order, setOrder] = useState<string[]>([]);
+  const [active, setActive] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [health, setHealth] = useState<"checking" | "ok" | "down" | "unconfigured">(API ? "checking" : "unconfigured");
+  const [speak, setSpeak] = useState(false);
+  const [printing, setPrinting] = useState<ReportArtifact | null>(null);
+  const session = useRef<string | null>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!API) return;
+    let tries = 0;
+    const ping = () => fetch(`${API}/health`).then((r) => r.json()).then((h) => setHealth(h.ai && h.db ? "ok" : "unconfigured"))
+      .catch(() => (++tries < 8 ? setTimeout(ping, 8000) : setHealth("down")));
+    ping();
+  }, []);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [items]);
+  useEffect(() => {
+    if (!printing) return;
+    const t = setTimeout(() => { window.print(); setPrinting(null); }, 600);
+    return () => clearTimeout(t);
+  }, [printing]);
+
+  const patchLast = (f: (a: Extract<Item, { kind: "assistant" }>) => void) =>
+    setItems((xs) => { const ys = [...xs]; const last = { ...(ys[ys.length - 1] as any) }; f(last); ys[ys.length - 1] = last; return ys; });
+
+  async function ask(question: string) {
+    if (!question.trim() || busy) return;
+    setQ(""); setBusy(true);
+    setItems((xs) => [...xs, { kind: "user", text: question }, { kind: "assistant", text: "", status: [], queries: [], artifacts: [], done: false }]);
+    let answerText = "";
+    try {
+      const r = await fetch(`${API}/ask`, { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: session.current, question }) });
+      if (!r.ok || !r.body) {
+        const err = await r.json().catch(() => ({ detail: r.statusText }));
+        throw new Error(err.detail || "The analyst is unavailable.");
+      }
+      const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i;
+        while ((i = buf.indexOf("\n\n")) >= 0) {
+          const chunk = buf.slice(0, i); buf = buf.slice(i + 2);
+          const line = chunk.split("\n").find((l) => l.startsWith("data: "));
+          if (!line) continue;
+          const ev = JSON.parse(line.slice(6));
+          if (ev.type === "session") session.current = ev.session_id;
+          else if (ev.type === "text") { answerText += ev.text; patchLast((a) => { a.text += ev.text; }); }
+          else if (ev.type === "status") patchLast((a) => { a.status = [...a.status, ev.text]; });
+          else if (ev.type === "query") patchLast((a) => { a.queries = [...a.queries, ev.dataset]; });
+          else if (ev.type === "artifact") {
+            const art = ev.artifact as Artifact;
+            setArtifacts((m) => ({ ...m, [art.id]: art }));
+            setOrder((o) => [art.id, ...o.filter((x) => x !== art.id)]);
+            setActive(art.id);
+            patchLast((a) => { a.artifacts = [...a.artifacts, art.id]; });
+          } else if (ev.type === "error") patchLast((a) => { a.error = ev.text; });
+          else if (ev.type === "done") patchLast((a) => { a.done = true; });
+        }
+      }
+    } catch (e) {
+      patchLast((a) => { a.error = (e as Error).message || "Connection lost."; });
+    } finally {
+      patchLast((a) => { a.done = true; });
+      setBusy(false);
+      if (speak && answerText && "speechSynthesis" in window) {
+        const u = new SpeechSynthesisUtterance(answerText.replace(/\*\*/g, "").replace(/^[-•]\s*/gm, ""));
+        u.lang = "en-ZA"; speechSynthesis.cancel(); speechSynthesis.speak(u);
+      }
+    }
+  }
+
+  const reset = () => { session.current = null; setItems([]); setArtifacts({}); setOrder([]); setActive(null); };
+  const current = active ? artifacts[active] : null;
+  const ready = health === "ok";
+  const placeholder = useMemo(() => (ready ? "Ask about South Africa's job market…" : health === "checking" ? "Waking up the analyst (can take up to a minute)…" : "Analyst offline"), [ready, health]);
+
+  return (
+    <div className="wrap analyst">
+      <PlatformNav active="/analyst/" />
+      <div className="an-grid">
+        <section className="chat">
+          <header>
+            <h1>Ask the data</h1>
+            <p className="sub">Acolyte Analyst queries the live SA job-market data, draws the charts and writes the report. Every number comes from a real query you can inspect.</p>
+          </header>
+          {health === "unconfigured" && <div className="banner">The analyst service isn't connected yet. It runs as a small server (see <code>analyst/</code> in the repo). Once it's deployed, its address goes in <code>site.ts → analystApi</code>.</div>}
+          {health === "down" && <div className="banner">The analyst isn't responding. Please try again shortly.</div>}
+
+          <div className="thread">
+            {items.length === 0 && (
+              <div className="starters">
+                <div className="muted small">Try one of these</div>
+                {STARTERS.map((s) => <button key={s} className="starter" disabled={!ready} onClick={() => ask(s)}>{s}</button>)}
+              </div>
+            )}
+            {items.map((it, i) => it.kind === "user"
+              ? <div key={i} className="msg user">{it.text}</div>
+              : (
+                <div key={i} className="msg bot">
+                  {it.status.length > 0 && (
+                    <div className="steps">
+                      {it.status.map((s, k) => <span key={k} className={"step" + (k === it.status.length - 1 && !it.done ? " live" : "")}>{s}</span>)}
+                    </div>
+                  )}
+                  {it.queries.length > 0 && (
+                    <details className="queries"><summary>{it.queries.length} quer{it.queries.length > 1 ? "ies" : "y"} run</summary>
+                      {it.queries.map((d) => (
+                        <div key={d.id} className="q"><b>{d.title}</b> <span className="muted">· {d.row_count} rows</span>
+                          <pre>{d.sql}</pre>
+                          <button className="btn sm" onClick={() => download(`${d.title}.csv`, toCSV(d), "text/csv")}>Download CSV</button>
+                        </div>
+                      ))}
+                    </details>
+                  )}
+                  {it.text ? <div className="answer"><Md text={it.text} /></div> : !it.done && !it.error && <div className="typing"><span /><span /><span /></div>}
+                  {it.artifacts.length > 0 && (
+                    <div className="chips">{it.artifacts.map((id) => artifacts[id] && (
+                      <button key={id} className={"chip-art" + (active === id ? " on" : "")} onClick={() => setActive(id)}>
+                        {artifacts[id].kind === "report" ? "▤ " : "▥ "}{artifacts[id].title}</button>))}</div>
+                  )}
+                  {it.error && <div className="err">{it.error}</div>}
+                </div>
+              ))}
+            <div ref={endRef} />
+          </div>
+
+          <form className="composer" onSubmit={(e) => { e.preventDefault(); ask(q); }}>
+            <textarea rows={2} value={q} placeholder={placeholder} disabled={!ready}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(q); } }} />
+            <div className="row">
+              <Voice onText={(t) => ask(t)} />
+              <label className="speak"><input type="checkbox" checked={speak} onChange={(e) => setSpeak(e.target.checked)} /> Read answers aloud</label>
+              <span style={{ flex: 1 }} />
+              {items.length > 0 && <button type="button" className="btn sm" onClick={reset}>New chat</button>}
+              <button className="btn primary" disabled={!ready || busy || !q.trim()}>{busy ? "Thinking…" : "Ask"}</button>
+            </div>
+          </form>
+          <p className="muted small">Demo on public job-ad data. Answers can be wrong; check the queries. <a href={url("/#contact")}>Want this on your own data?</a></p>
+        </section>
+
+        <section className="canvas">
+          {order.length > 1 && (
+            <div className="tabs">{order.map((id) => (
+              <button key={id} className={"tab" + (id === active ? " on" : "")} onClick={() => setActive(id)}>
+                {artifacts[id].kind === "report" ? "▤ " : ""}{artifacts[id].title}</button>))}
+            </div>
+          )}
+          {!current && (
+            <div className="canvas-empty">
+              <div className="big">Charts and reports appear here</div>
+              <p className="muted">Each one is drawn from the live data, can be downloaded as PNG, CSV or PDF, and shows the query behind it.</p>
+            </div>
+          )}
+          {current?.kind === "chart" && <div className="card"><ChartView c={current} /></div>}
+          {current?.kind === "report" && <div className="card"><ReportView r={current} onPrint={() => setPrinting(current)} /></div>}
+        </section>
+      </div>
+      {printing && <div className="print-only"><ReportView r={printing} /></div>}
+    </div>
+  );
+}
+
+createRoot(document.getElementById("root")!).render(<StrictMode><App /></StrictMode>);

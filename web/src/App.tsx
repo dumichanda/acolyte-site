@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import ReactECharts from "echarts-for-react";
+import ReactECharts from "./Chart";
 import type { Snapshot, Job } from "./types";
 import { rands } from "./types";
 import { url } from "./site";
 import PlatformNav from "./PlatformNav";
-import { familyBar, heatmap, provinceBar, readTheme, scoreColor, scoreDist, trend, type Theme } from "./charts";
+import { familyBar, heatmap, provinceBar, readTheme, scoreDist, trend, type Theme } from "./charts";
+import { scoreChip } from "./viz";
 
 const isReport = new URLSearchParams(location.search).has("report");
 
@@ -71,7 +72,7 @@ function JobsTable({ jobs, limit }: { jobs: Job[]; limit?: number }) {
               <td>{j.url ? <a href={j.url} target="_blank" rel="noreferrer">{j.title}</a> : j.title}<div className="muted" style={{ fontSize: 11 }}>{j.family}</div></td>
               <td>{j.company ?? "—"}</td>
               <td>{[j.city, j.province].filter(Boolean).join(", ") || "—"}</td>
-              <td className="num"><span className="score" style={{ background: scoreColor(j.score) }}>{j.score}</span></td>
+              <td className="num"><span className="score" style={{ ...scoreChip(j.score) }}>{j.score}</span></td>
               <td className="num">{rands(j.value)}{j.salary_imputed && <span className="muted" title="Salary not advertised; typical salary for this role used">*</span>}</td>
               <td className="muted">{j.service}</td>
             </tr>

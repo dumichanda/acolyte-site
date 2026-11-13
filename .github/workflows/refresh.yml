@@ -47,6 +47,7 @@ jobs:
       ENRICH_PER_RUN: ${{ vars.ENRICH_PER_RUN || '25' }}      # companies researched per run
       FULLTEXT_PER_RUN: ${{ vars.FULLTEXT_PER_RUN || '20' }}  # full ad texts looked up per run
       DRAFTS_PER_RUN: ${{ vars.DRAFTS_PER_RUN || '10' }}      # first-email drafts prepared per run
+      ANALYST_DB_PASSWORD: ${{ secrets.ANALYST_DB_PASSWORD }}  # creates the read-only login for the AI analyst
       SENDER_NAME: ${{ vars.SENDER_NAME }}
       SENDER_TITLE: ${{ vars.SENDER_TITLE }}
       SENDER_EMAIL: ${{ vars.SENDER_EMAIL }}

@@ -1,0 +1,24 @@
+# Render blueprint for the Acolyte Analyst API (free plan; sleeps when idle, wakes in ~30-60s).
+# Render dashboard -> New -> Blueprint -> pick this repo. Then fill in the two secret values.
+services:
+  - type: web
+    name: acolyte-analyst
+    runtime: docker
+    plan: free
+    dockerfilePath: ./analyst/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    buildFilter:
+      paths: ["analyst/**", "render.yaml"]
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANALYST_DATABASE_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://dumichanda.github.io
+      - key: ANALYST_DAILY_BUDGET_USD
+        value: "3"
+      - key: ANALYST_HOURLY_LIMIT
+        value: "20"

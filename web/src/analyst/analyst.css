@@ -1,0 +1,62 @@
+.analyst .an-grid { display: grid; grid-template-columns: minmax(340px, 5fr) 7fr; gap: 18px; align-items: start; }
+.analyst .chat { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.analyst .chat h1 { font-family: "Instrument Serif", serif; font-weight: 400; font-size: 44px; letter-spacing: -.01em; margin: 0; }
+.analyst .thread { display: flex; flex-direction: column; gap: 12px; min-height: 180px; }
+.analyst .starters { display: flex; flex-direction: column; gap: 8px; }
+.analyst .starter { text-align: left; background: var(--panel); border: 1px solid var(--line); color: var(--ink); border-radius: 12px; padding: 10px 14px; font: inherit; cursor: pointer; }
+.analyst .starter:hover:not(:disabled) { border-color: var(--accent); }
+.analyst .starter:disabled { opacity: .5; cursor: default; }
+.analyst .msg.user { align-self: flex-end; background: var(--accent); color: #0c0c0e; border-radius: 16px 16px 4px 16px; padding: 10px 14px; max-width: 85%; font-weight: 500; }
+.analyst .msg.bot { background: var(--panel); border: 1px solid var(--line); border-radius: 16px 16px 16px 4px; padding: 12px 14px; }
+.analyst .answer p { margin: 0 0 8px; } .analyst .answer ul { margin: 0 0 8px; padding-left: 18px; }
+.analyst .answer code { font-family: "JetBrains Mono", monospace; font-size: 12px; }
+.analyst .steps { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.analyst .step { font-size: 11px; font-family: "JetBrains Mono", monospace; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; }
+.analyst .step.live { color: var(--accent); border-color: var(--accent); animation: pulse 1.2s infinite; }
+@keyframes pulse { 50% { opacity: .5; } }
+.analyst .queries { font-size: 12px; margin-bottom: 8px; color: var(--muted); }
+.analyst .queries summary { cursor: pointer; }
+.analyst .queries .q { margin: 8px 0; }
+.analyst pre { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; overflow-x: auto; font-family: "JetBrains Mono", monospace; font-size: 11px; white-space: pre-wrap; color: var(--ink); }
+.analyst .typing span { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); margin-right: 4px; animation: pulse 1s infinite; }
+.analyst .typing span:nth-child(2) { animation-delay: .2s; } .analyst .typing span:nth-child(3) { animation-delay: .4s; }
+.analyst .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.analyst .chip-art { background: var(--accent-soft); color: var(--accent); border: 1px solid transparent; border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+.analyst .chip-art.on { border-color: var(--accent); }
+.analyst .err { color: #ff6a3d; font-size: 13px; margin-top: 6px; }
+.analyst .composer { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 10px; position: sticky; bottom: 12px; }
+.analyst .composer textarea { width: 100%; background: transparent; border: none; color: var(--ink); font: inherit; font-size: 15px; resize: none; outline: none; }
+.analyst .composer .row { display: flex; align-items: center; gap: 10px; }
+.analyst .speak { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.analyst .mic { background: var(--bg); border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 6px 12px; cursor: pointer; font: inherit; }
+.analyst .mic.on { border-color: #ff6a3d; color: #ff6a3d; }
+.analyst .btn.sm { padding: 4px 10px; font-size: 12px; }
+.analyst .btn.primary { background: var(--accent); color: #0c0c0e; border-color: var(--accent); font-weight: 600; }
+.analyst .btn:disabled { opacity: .45; cursor: default; }
+.analyst .canvas { position: sticky; top: 12px; min-width: 0; }
+.analyst .canvas-empty { border: 1px dashed var(--line); border-radius: 18px; padding: 60px 30px; text-align: center; }
+.analyst .canvas-empty .big { font-family: "Instrument Serif", serif; font-size: 32px; font-style: italic; }
+.analyst .tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 10px; }
+.analyst .tab { white-space: nowrap; background: var(--panel); border: 1px solid var(--line); color: var(--muted); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 12px; cursor: pointer; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+.analyst .tab.on { color: var(--ink); border-color: var(--accent); }
+.art-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+.art-head h3 { margin: 0; font-size: 16px; } .art-head h2 { margin: 6px 0 2px; font-size: 24px; letter-spacing: -.02em; }
+.art-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.art-chart + .art-chart { margin-top: 18px; }
+.art-chart .sql { margin-top: 8px; font-size: 12px; color: var(--muted); } .art-chart .sql summary { cursor: pointer; }
+.kpi-art { padding: 30px 0; text-align: center; } .kpi-art .v { font-size: 56px; font-weight: 700; color: var(--accent); letter-spacing: -.03em; }
+.report-art .lead { font-size: 16px; line-height: 1.55; border-left: 3px solid var(--accent); padding-left: 12px; }
+.report-art section { margin-top: 18px; } .report-art section h3 { font-size: 17px; margin: 0 0 6px; }
+.report-art .foot { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 10px; }
+.small { font-size: 12px; }
+.print-only { display: none; }
+@media (max-width: 960px) { .analyst .an-grid { grid-template-columns: 1fr; } .analyst .canvas { position: static; } }
+@media print {
+  @page { size: A4; margin: 14mm; }
+  body { background: #fff !important; color: #16140f !important; }
+  body * { visibility: hidden; }
+  .print-only, .print-only * { visibility: visible; }
+  .print-only { display: block; position: absolute; inset: 0; color: #16140f; --ink: #16140f; --muted: #6b6656; --line: #e7e2d6; --panel: #fff; --bg: #fff; --accent: #5a7a00; --accent-soft: #f3efe6; }
+  .print-only .art-chart { break-inside: avoid; }
+  .print-only table td, .print-only table th { color: #16140f; }
+}

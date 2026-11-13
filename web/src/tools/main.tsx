@@ -1,10 +1,11 @@
 import { StrictMode, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import ReactECharts from "echarts-for-react";
+import ReactECharts from "../Chart";
 import "../index.css";
 import PlatformNav from "../PlatformNav";
 import { fmtDate, useChartTheme, useSnapshot } from "../data";
 import { scoreColor, type Theme } from "../charts";
+import { barEnd, CATEGORICAL, HEAT_RAMP, mode } from "../viz";
 import type { Counted, Insights, Snapshot } from "../types";
 
 const LABELS: Record<string, string> = { onsite: "On-site", hybrid: "Hybrid", remote: "Remote", junior: "Junior", mid: "Mid-level", senior: "Senior", manager: "Manager" };
@@ -21,14 +22,14 @@ function hbar(items: Counted[], total: number, t: Theme, colorByScore = true) {
     yAxis: { type: "category", data: rows.map((r) => r.name), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: t.ink, fontSize: 11, width: 180, overflow: "truncate" } },
     series: [{
       type: "bar", barWidth: "62%", barMaxWidth: 22,
-      data: rows.map((r) => ({ value: r.jobs, itemStyle: { color: colorByScore && r.avg_score != null ? scoreColor(r.avg_score) : "#7cc4ff", borderRadius: [0, 6, 6, 0] } })),
+      data: rows.map((r) => ({ value: r.jobs, itemStyle: { color: colorByScore && r.avg_score != null ? scoreColor(r.avg_score) : CATEGORICAL[mode()][1], borderRadius: barEnd(true) } })),
       label: { show: true, position: "right", color: t.muted, fontSize: 11, formatter: (p: any) => `${Math.round(100 * p.value / total)}%` },
     }],
   };
 }
 
 function donut(items: Counted[], t: Theme) {
-  const palette = ["#c8f135", "#7cc4ff", "#ff6a3d", "#ffb86b", "#8d8c93"];
+  const palette = CATEGORICAL[mode()];
   return {
     tooltip: { ...tip(t), trigger: "item", formatter: "{b}: {c} ({d}%)" },
     legend: { bottom: 0, textStyle: { color: t.muted, fontSize: 11 }, icon: "circle" },
@@ -49,7 +50,7 @@ function toolHeatmap(ins: Insights, families: string[], t: Theme) {
     grid: { left: 8, right: 8, top: 8, bottom: 60, containLabel: true },
     xAxis: { type: "category", data: tools, axisLabel: { color: t.muted, fontSize: 10, rotate: 35, interval: 0 }, axisLine: { show: false }, axisTick: { show: false } },
     yAxis: { type: "category", data: families, axisLabel: { color: t.ink, fontSize: 11 }, axisLine: { show: false }, axisTick: { show: false } },
-    visualMap: { min: 0, max, show: false, inRange: { color: ["#1d1f14", "#4d5e22", "#7fa315", "#c8f135"] } },
+    visualMap: { min: 0, max, show: false, inRange: { color: HEAT_RAMP[mode()] } },
     series: [{ type: "heatmap", data, label: { show: true, color: "#ecebe6", fontSize: 10, textBorderColor: "#0c0c0e", textBorderWidth: 2 }, itemStyle: { borderColor: t.panel, borderWidth: 2, borderRadius: 4 } }],
   };
 }

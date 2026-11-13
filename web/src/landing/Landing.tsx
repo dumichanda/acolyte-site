@@ -373,7 +373,7 @@ export default function Landing() {
             </p>
             <div className="actions reveal d3">
               <a className="btn-signal" href="#contact">Book a free data session <span className="arr">→</span></a>
-              <a className="btn-line" href={url("/automation-index/")}>Explore the live index</a>
+              <a className="btn-line" href={url("/analyst/")}>Ask the data yourself</a>
             </div>
             <div className="meta mono reveal d3">
               <span><b>Daily</b> refresh</span><span><b>WhatsApp</b> ready</span><span><b>POPIA</b>-aware</span>

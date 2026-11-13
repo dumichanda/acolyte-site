@@ -1,6 +1,9 @@
 import type { EChartsOption } from "echarts";
 import type { Family, HeatCell, Province, TrendPoint } from "./types";
 import { rands } from "./types";
+import { barEnd, HEAT_RAMP, mode, NEUTRAL, scoreColor, tick } from "./viz";
+
+export { scoreColor };
 
 export interface Theme { ink: string; muted: string; line: string; accent: string; teal: string; panel: string }
 
@@ -10,8 +13,6 @@ export function readTheme(): Theme {
   return { ink: v("--ink"), muted: v("--muted"), line: v("--line"), accent: v("--accent"), teal: v("--teal"), panel: v("--panel") };
 }
 
-export const scoreColor = (s: number) =>
-  s >= 65 ? "#c8f135" : s >= 50 ? "#7cc4ff" : s >= 35 ? "#ffb86b" : "#8d8c93";
 
 const SHORT: Record<string, string> = {
   "Office & Admin Support": "Office admin", "Customer Service & Call Centre": "Call centre",
@@ -21,13 +22,9 @@ const SHORT: Record<string, string> = {
   "Conveyancing & Legal Admin": "Legal admin", "HR & Recruitment Admin": "HR admin", "Tender Administration": "Tenders",
 };
 
-const SCORE_RANGE = ["#3a3a42", "#4d5e22", "#7fa315", "#a8d12a", "#c8f135"];
 
-const base = (t: Theme): EChartsOption => ({
-  textStyle: { fontFamily: "Inter, system-ui, sans-serif", color: t.ink },
-  tooltip: { backgroundColor: t.panel, borderColor: t.line, textStyle: { color: t.ink } },
-  animationDuration: 600,
-});
+// Colours, fonts, tooltip card, grid and mark specs come from the registered Acolyte theme (viz.ts).
+const base = (_t: Theme): EChartsOption => ({ tooltip: {} });
 
 export function familyBar(data: Family[], t: Theme, selected: string | null): EChartsOption {
   const rows = [...data].sort((a, b) => a.value - b.value);
@@ -48,11 +45,11 @@ export function familyBar(data: Family[], t: Theme, selected: string | null): EC
       axisLabel: { color: t.ink, fontSize: 12 },
     },
     series: [{
-      type: "bar", barWidth: "62%",
+      type: "bar", barWidth: "62%", barMaxWidth: 24,
       data: rows.map((r) => ({
         value: r.value,
         itemStyle: {
-          color: scoreColor(r.avg_score), borderRadius: [0, 6, 6, 0],
+          color: scoreColor(r.avg_score), borderRadius: barEnd(true),
           opacity: selected && selected !== r.family ? 0.25 : 1,
         },
       })),
@@ -81,7 +78,7 @@ export function heatmap(cells: HeatCell[], families: string[], provinces: string
     yAxis: { type: "category", data: provinces, axisLabel: { color: t.ink, fontSize: 11 }, axisLine: { show: false }, axisTick: { show: false } },
     visualMap: {
       min: 20, max: 90, dimension: 2, orient: "horizontal", left: "center", bottom: 0, itemHeight: 120, itemWidth: 10,
-      text: ["more automatable", "less"], textStyle: { color: t.muted, fontSize: 11 }, inRange: { color: SCORE_RANGE },
+      text: ["more automatable", "less"], textStyle: { color: t.muted, fontSize: 11 }, inRange: { color: HEAT_RAMP[mode()] },
       calculable: false,
     },
     series: [{
@@ -105,8 +102,8 @@ export function provinceBar(data: Province[], t: Theme, selected: string | null)
     xAxis: { type: "value", show: false },
     yAxis: { type: "category", data: rows.map((r) => r.province), axisLabel: { color: t.ink, fontSize: 12 }, axisLine: { show: false }, axisTick: { show: false } },
     series: [{
-      type: "bar", barWidth: "60%",
-      data: rows.map((r) => ({ value: r.jobs, itemStyle: { color: t.accent, borderRadius: [0, 6, 6, 0], opacity: selected && selected !== r.province ? 0.25 : 1 } })),
+      type: "bar", barWidth: "60%", barMaxWidth: 24,
+      data: rows.map((r) => ({ value: r.jobs, itemStyle: { color: t.accent, borderRadius: barEnd(true), opacity: selected && selected !== r.province ? 0.25 : 1 } })),
       label: { show: true, position: "right", color: t.muted, fontSize: 11 },
     }],
   };
@@ -123,10 +120,10 @@ export function trend(data: TrendPoint[], t: Theme): EChartsOption {
       axisLabel: { color: t.muted, fontSize: 11, formatter: (v: string) => new Date(v).toLocaleDateString("en-ZA", { day: "numeric", month: "short" }) },
       axisLine: { lineStyle: { color: t.line } }, axisTick: { show: false },
     },
-    yAxis: { type: "value", splitLine: { lineStyle: { color: t.line } }, axisLabel: { color: t.muted, fontSize: 11 } },
+    yAxis: { type: "value", axisLabel: { formatter: tick } },
     series: [
-      { name: "All new roles", type: "bar", data: data.map((d) => d.jobs), itemStyle: { color: "#8d8c9355", borderRadius: [4, 4, 0, 0] }, barMaxWidth: 18 },
-      { name: "High-potential roles (score 60+)", type: "line", smooth: true, symbol: "none", data: data.map((d) => d.high_jobs), lineStyle: { width: 3, color: t.accent }, itemStyle: { color: t.accent }, areaStyle: { color: t.accent, opacity: 0.08 } },
+      { name: "All new roles", type: "bar", data: data.map((d) => d.jobs), itemStyle: { color: NEUTRAL[mode()], borderRadius: barEnd(false) }, barMaxWidth: 14 },
+      { name: "High-potential roles (score 60+)", type: "line", smooth: true, symbol: "none", data: data.map((d) => d.high_jobs), lineStyle: { width: 2, color: t.accent }, itemStyle: { color: t.accent }, areaStyle: { color: t.accent, opacity: 0.1 }, endLabel: { show: true, color: t.ink, fontSize: 11 } },
     ],
   };
 }
@@ -139,7 +136,7 @@ export function scoreDist(data: { bucket: number; jobs: number }[], t: Theme): E
     grid: { left: 8, right: 8, top: 10, bottom: 8, containLabel: true },
     tooltip: { ...base(t).tooltip as object, trigger: "axis" },
     xAxis: { type: "category", data: buckets.map((b) => `${(b - 1) * 10}–${b * 10}`), axisLabel: { color: t.muted, fontSize: 10 }, axisTick: { show: false }, axisLine: { lineStyle: { color: t.line } } },
-    yAxis: { type: "value", splitLine: { lineStyle: { color: t.line } }, axisLabel: { color: t.muted, fontSize: 11 } },
+    yAxis: { type: "value", axisLabel: { formatter: tick } },
     series: [{ type: "bar", data: buckets.map((b) => ({ value: m.get(b) ?? 0, itemStyle: { color: scoreColor((b - 0.5) * 10), borderRadius: [4, 4, 0, 0] } })) }],
   };
 }

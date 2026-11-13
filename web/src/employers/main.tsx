@@ -1,21 +1,23 @@
 import { StrictMode, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import ReactECharts from "echarts-for-react";
+import ReactECharts from "../Chart";
 import "../index.css";
 import PlatformNav from "../PlatformNav";
 import { fmtDate, useChartTheme, useSnapshot } from "../data";
 import { scoreColor, type Theme } from "../charts";
+import { barEnd, CATEGORICAL, mode, NEUTRAL, scoreChip } from "../viz";
 import { rands, type Employer, type Snapshot } from "../types";
 
 type SortKey = "value" | "jobs" | "avg_score";
 
 function postersDonut(p: { kind: string; jobs: number }[], t: Theme) {
-  const colors: Record<string, string> = { "Direct employer": "#c8f135", "Recruitment agency": "#7cc4ff", "Employer not named": "#3a3a42" };
+  const cat = CATEGORICAL[mode()];
+  const colors: Record<string, string> = { "Direct employer": cat[0], "Recruitment agency": cat[1], "Employer not named": NEUTRAL[mode()] };
   return {
     tooltip: { trigger: "item", backgroundColor: t.panel, borderColor: t.line, textStyle: { color: t.ink }, formatter: "{b}: {c} roles ({d}%)" },
     legend: { bottom: 0, textStyle: { color: t.muted, fontSize: 11 }, icon: "circle" },
     series: [{
-      type: "pie", radius: ["55%", "80%"], center: ["50%", "44%"], label: { show: false },
+      type: "pie", padAngle: 1, radius: ["58%", "80%"], center: ["50%", "44%"], label: { show: false },
       itemStyle: { borderColor: t.panel, borderWidth: 3 },
       data: p.map((x) => ({ name: x.kind, value: x.jobs, itemStyle: { color: colors[x.kind] ?? "#8d8c93" } })),
     }],
@@ -29,7 +31,7 @@ function EmployerRow({ e, open, onToggle }: { e: Employer; open: boolean; onTogg
         <td><b>{e.name}</b><div className="muted" style={{ fontSize: 11 }}>{e.industry ?? e.main_family}</div></td>
         <td>{[e.city, e.province].filter(Boolean).join(", ") || "—"}</td>
         <td className="num">{e.jobs}</td>
-        <td className="num"><span className="score" style={{ background: scoreColor(e.avg_score) }}>{e.avg_score}</span></td>
+        <td className="num"><span className="score" style={{ ...scoreChip(e.avg_score) }}>{e.avg_score}</span></td>
         <td className="num">{rands(e.value)}</td>
         <td>{(e.tools ?? []).slice(0, 3).map((t) => <span className="pill" key={t}>{t}</span>)}</td>
         <td className="muted" style={{ textAlign: "right" }}>{open ? "▲" : "▼"}</td>
@@ -54,7 +56,7 @@ function EmployerRow({ e, open, onToggle }: { e: Employer; open: boolean; onTogg
                 <h4>Open roles</h4>
                 {(e.roles ?? []).map((r, i) => (
                   <div key={i} style={{ marginBottom: 4 }}>
-                    <span className="score" style={{ background: scoreColor(r.score), marginRight: 6 }}>{r.score}</span>
+                    <span className="score" style={{ ...scoreChip(r.score), marginRight: 6 }}>{r.score}</span>
                     {r.url ? <a href={r.url} target="_blank" rel="noreferrer">{r.title}</a> : r.title}
                   </div>
                 ))}
@@ -116,7 +118,7 @@ function Page({ s, t }: { s: Snapshot; t: Theme }) {
             grid: { left: 8, right: 60, top: 4, bottom: 4, containLabel: true },
             xAxis: { type: "value", show: false },
             yAxis: { type: "category", data: all.slice(0, 15).reverse().map((e) => e.name), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: t.ink, fontSize: 11, width: 170, overflow: "truncate" } },
-            series: [{ type: "bar", barWidth: "60%", barMaxWidth: 22, data: all.slice(0, 15).reverse().map((e) => ({ value: e.value, itemStyle: { color: scoreColor(e.avg_score), borderRadius: [0, 6, 6, 0] } })),
+            series: [{ type: "bar", barWidth: "60%", barMaxWidth: 22, data: all.slice(0, 15).reverse().map((e) => ({ value: e.value, itemStyle: { color: scoreColor(e.avg_score), borderRadius: barEnd(true) } })),
               label: { show: true, position: "right", color: t.muted, fontSize: 11, formatter: (p: any) => rands(p.value) } }],
           }} />
         </div>
