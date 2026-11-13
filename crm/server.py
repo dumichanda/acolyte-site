@@ -199,7 +199,23 @@ def suppress(conn, b):
     return {"ok": True}
 
 
+def agent_runs(conn, _b):
+    return {"runs": q(conn, """SELECT id, agent, model, status, steps, tool_calls, cost_usd, left(summary, 600) AS summary,
+                                      error, started_at, finished_at FROM agent_runs ORDER BY id DESC LIMIT 40""")}
+
+
+def agent_run(conn, rid):
+    run = q(conn, "SELECT * FROM agent_runs WHERE id = %s", (rid,), one=True)
+    if not run:
+        raise ApiError(404, "run not found")
+    run["steps"] = q(conn, "SELECT n, kind, name, input, output, is_error, cost_usd, created_at FROM agent_steps "
+                           "WHERE run_id = %s ORDER BY id", (rid,))
+    return run
+
+
 ROUTES = [
+    ("GET", "/api/agents", lambda c, b, *a: agent_runs(c, b)),
+    ("GET", "/api/agents/{id}", lambda c, b, i: agent_run(c, i)),
     ("GET", "/api/health", lambda c, b, *a: {"ok": True}),
     ("GET", "/api/pipeline", lambda c, b, *a: pipeline(c, b)),
     ("GET", "/api/opportunity/{id}", lambda c, b, i: opportunity(c, i)),

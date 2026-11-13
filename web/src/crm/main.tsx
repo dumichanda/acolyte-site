@@ -1,4 +1,4 @@
-import { StrictMode, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, StrictMode, useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../index.css";
 import "./crm.css";
@@ -244,12 +244,59 @@ function Panel({ id, close, changed }: { id: number; close: () => void; changed:
   );
 }
 
+
+interface Run { id: number; agent: string; model: string; status: string; steps: number; tool_calls: number; cost_usd: number; summary: string | null; error: string | null; started_at: string }
+interface Step { n: number; kind: string; name: string | null; input: any; output: string | null; is_error: boolean; cost_usd: number | null }
+
+function AgentRuns() {
+  const [runs, setRuns] = useState<Run[] | null>(null);
+  const [open, setOpen] = useState<number | null>(null);
+  const [steps, setSteps] = useState<Step[]>([]);
+  useEffect(() => { api("/api/agents").then((x) => setRuns(x.runs)).catch(() => setRuns([])); }, []);
+  useEffect(() => { if (open !== null) api(`/api/agents/${open}`).then((x) => setSteps(x.steps)); }, [open]);
+  if (!runs) return <div className="muted">Loading…</div>;
+  if (!runs.length) return <div className="card empty">No agent runs yet. They appear after the daily refresh once an OpenRouter or Anthropic key is set.</div>;
+  return (
+    <div className="card">
+      <p className="desc">Every agent run is logged: each model turn and each tool call (search, page opened, save), with its cost. Click a run to see what the agent did.</p>
+      <table>
+        <thead><tr><th>When</th><th>Agent</th><th>Model</th><th>Status</th><th className="num">Tool calls</th><th className="num">Cost</th><th>Summary</th></tr></thead>
+        <tbody>
+          {runs.map((r) => (
+            <Fragment key={r.id}>
+              <tr className="rowx" onClick={() => setOpen(open === r.id ? null : r.id)}>
+                <td className="small">{when(r.started_at)}</td><td>{r.agent.replace("_", " ")}</td><td className="small muted">{r.model}</td>
+                <td><span className={"pill" + (r.status === "done" ? " lime" : "")}>{r.status}</span></td>
+                <td className="num">{r.tool_calls}</td><td className="num">${Number(r.cost_usd).toFixed(3)}</td>
+                <td className="small">{(r.error ? `Error: ${r.error}. ` : "") + (r.summary ?? "").slice(0, 140)}</td>
+              </tr>
+              {open === r.id && (
+                <tr className="detail"><td colSpan={7}>
+                  <ol className="steps-log">
+                    {steps.map((st, i) => (
+                      <li key={i} className={st.kind + (st.is_error ? " err" : "")}>
+                        <b>{st.kind === "model" ? "Model" : st.name}</b>
+                        {st.input && <code>{JSON.stringify(st.input).slice(0, 220)}</code>}
+                        {st.output && <div className="out">{st.output.slice(0, 400)}</div>}
+                      </li>))}
+                  </ol>
+                </td></tr>
+              )}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function App() {
   const [data, setData] = useState<{ stages: string[]; opportunities: Opp[]; stats: any } | null>(null);
   const [err, setErr] = useState("");
   const [open, setOpen] = useState<number | null>(null);
   const [q, setQ] = useState("");
   const [only, setOnly] = useState<"" | "drafts" | "due" | "noemail">("");
+  const [view, setView] = useState<"pipeline" | "agents">("pipeline");
   const load = useCallback(() => api("/api/pipeline").then((x) => { setData(x); setErr(""); }).catch((e) => setErr(e.message || "not reachable")), []);
   useEffect(() => { load(); }, [load]);
 
@@ -268,11 +315,16 @@ function App() {
           <h1>Sales pipeline</h1>
           <p className="sub">Every hiring employer becomes an opportunity. Research it, send one permission-based email, track the reply.</p>
         </div>
-        {data && <button className="btn" onClick={load}>Refresh</button>}
+        {data && <div className="actions">
+          <button className={"btn" + (view === "pipeline" ? " primary" : "")} onClick={() => setView("pipeline")}>Pipeline</button>
+          <button className={"btn" + (view === "agents" ? " primary" : "")} onClick={() => setView("agents")}>Agent runs</button>
+          <button className="btn" onClick={load}>Refresh</button>
+        </div>}
       </header>
       {!data && !err && <div className="muted">Connecting…</div>}
       {!data && err && <Setup error={err} retry={load} />}
-      {data && (
+      {data && view === "agents" && <AgentRuns />}
+      {data && view === "pipeline" && (
         <>
           <section className="kpis">
             <div className="kpi"><div className="label">Opportunities</div><div className="value">{data.stats.opportunities}</div><div className="hint">hiring employers</div></div>

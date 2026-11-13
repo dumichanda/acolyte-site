@@ -115,6 +115,25 @@ personal addresses; the first email asks permission and offers an opt-out; one f
 "don't contact me" puts the address on the `suppression` list, which every draft and send checks. Personal contacts
 you add yourself should be people who agreed to be contacted (e.g. met at an event, replied to you).
 
+## Agent harness (`harness/`, `agents/`)
+
+A small, model-agnostic agent loop: the model plans, calls tools, reads the results and repeats until done.
+Any model on OpenRouter (`OPENROUTER_API_KEY`, choose with `AGENT_MODEL`) or Claude directly (`ANTHROPIC_API_KEY`).
+
+Guardrails the harness enforces, whatever the model: per-run USD budget (`AGENT_MAX_COST`), step and per-tool call
+limits, schema checks on every tool call, truncated tool outputs, and an audit log of every model turn and tool call
+(`agent_runs`, `agent_steps`, visible in the CRM under **Agent runs**). Agents change data only through *write tools*
+that verify their input against pages actually opened in that run.
+
+| Agent | What it does | Verification |
+|---|---|---|
+| `job_scout` | Searches the web for current SA job ads for 3 roles a day and saves new ones | saves only ads it opened, whose page names the title; no search-result pages |
+| `company_researcher` | Profiles 8 hiring employers a day: website, industry, size, HQ, LinkedIn, recruiter or not | website must be opened and name the company; LinkedIn must appear in results/site; inboxes extracted by code (info@ etc. only) |
+
+Run by hand: `python -m agents.run job_scout --role "payroll administrator"` or
+`python -m agents.run company_researcher --companies 5`. Add an agent: write tools (`harness.Tool`) + a system prompt
+and call `Agent(...).run(task, conn)`.
+
 ## Acolyte Analyst (chat with the data)
 
 `analyst/` is a small Python service (FastAPI + Claude tool use). Claude gets three tools: `run_sql`

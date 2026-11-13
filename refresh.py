@@ -24,6 +24,13 @@ def run(script: str, *args: str, optional: bool = False) -> None:
         print(f"(optional step {script} failed; continuing)")
 
 
+def agent(name: str) -> None:
+    print(f"\n== agent {name}", flush=True)
+    r = subprocess.run([sys.executable, "-m", "agents.run", name], cwd=P.parent)
+    if r.returncode:
+        print(f"(agent {name} failed; continuing)")
+
+
 ap = argparse.ArgumentParser()
 ap.add_argument("--claude", action="store_true")
 ap.add_argument("--demo", action="store_true")
@@ -38,11 +45,11 @@ if a.demo:
 else:
     run("fetch_adzuna.py", *(["--max-calls", a.max_calls] if a.max_calls else []))
     if not a.no_web:
-        run("gemini_jobs.py", optional=True)  # skips itself when GEMINI_API_KEY is not set
-        run("claude_jobs.py", optional=True)  # skips itself when ANTHROPIC_API_KEY is not set
+        agent("job_scout")  # agentic web job search (OpenRouter or Claude); skips itself without a key
 run("classify.py", *claude)
 run("companies.py")
 if not a.demo and not a.no_enrich:
+    agent("company_researcher")  # agentic company profiles; skips itself without a key
     run("enrich_companies.py", optional=True)
     run("full_descriptions.py", optional=True)
 run("insights.py")

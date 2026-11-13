@@ -37,6 +37,10 @@ jobs:
       ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}   # agent harness (Job Scout, Company Researcher)
+      AGENT_MODEL: ${{ vars.AGENT_MODEL }}                  # blank = auto (Claude Opus 5.5 if ANTHROPIC_API_KEY, else an OpenRouter model)
+      SEARCH_MODEL: ${{ vars.SEARCH_MODEL }}                # model used for OpenRouter web search (blank = AGENT_MODEL)
+      AGENT_MAX_COST: ${{ vars.AGENT_MAX_COST || '0.40' }}  # USD cap per agent run
       GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}   # blank = newest available Gemini Flash
       ADZUNA_CALL_BUDGET: ${{ vars.ADZUNA_CALL_BUDGET || '20' }}
       ADZUNA_BUDGET_PERIOD: ${{ vars.ADZUNA_BUDGET_PERIOD || 'total' }}
@@ -67,10 +71,10 @@ jobs:
           ok=true
           if [ -z "$DATABASE_URL" ]; then echo "::error::Secret DATABASE_URL is missing or empty. Add your Neon connection string under Settings > Secrets and variables > Actions > Repository secrets."; ok=false; fi
           case "$DATABASE_URL" in ""|postgres://*|postgresql://*) ;; *) echo "::error::DATABASE_URL should start with postgresql:// (copy it from Neon > Connect)."; ok=false;; esac
-          for k in GEMINI_API_KEY ANTHROPIC_API_KEY ADZUNA_APP_ID ADZUNA_APP_KEY BRAVE_API_KEY; do
+          for k in OPENROUTER_API_KEY ANTHROPIC_API_KEY ADZUNA_APP_ID ADZUNA_APP_KEY BRAVE_API_KEY; do
             if [ -n "${!k}" ]; then echo "$k: set"; else echo "$k: not set (that source is skipped)"; fi
           done
-          if [ -z "$GEMINI_API_KEY$ANTHROPIC_API_KEY$ADZUNA_APP_KEY" ]; then echo "::warning::No job source key is set (GEMINI_API_KEY, ANTHROPIC_API_KEY or ADZUNA keys), so no new jobs can be found."; fi
+          if [ -z "$OPENROUTER_API_KEY$ANTHROPIC_API_KEY$ADZUNA_APP_KEY" ]; then echo "::warning::No job source key is set (GEMINI_API_KEY, ANTHROPIC_API_KEY or ADZUNA keys), so no new jobs can be found."; fi
           $ok
 
       - name: Remove sample data

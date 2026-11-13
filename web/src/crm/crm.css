@@ -41,3 +41,9 @@
 .setup { max-width: 760px; }
 .setup ol { padding-left: 20px; } .setup li { margin-bottom: 12px; }
 .setup pre { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; overflow-x: auto; font-family: "JetBrains Mono", monospace; font-size: 12px; }
+.steps-log { margin: 4px 0; padding-left: 22px; font-size: 12px; }
+.steps-log li { padding: 4px 0; border-bottom: 1px solid var(--line); }
+.steps-log li.model b { color: var(--muted); }
+.steps-log li.err b { color: #ff6a3d; }
+.steps-log code { display: block; font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--muted); white-space: pre-wrap; word-break: break-all; }
+.steps-log .out { white-space: pre-wrap; color: var(--ink); opacity: .85; margin-top: 2px; word-break: break-word; }
