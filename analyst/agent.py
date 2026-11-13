@@ -244,6 +244,9 @@ def execute(s: Session, name: str, args, db_url: str) -> tuple[str, dict | None,
         else:
             return f"Error: unknown tool {name}", None, True
         return text, ev, False
+    except psycopg.OperationalError as e:  # connection problems: details to the server log only, never to visitors
+        print(f"DB connection error: {e}", flush=True)
+        return "The database is unavailable right now.", {"type": "status", "text": "Database unavailable"}, True
     except psycopg.Error as e:
         msg = (getattr(e, "diag", None) and e.diag.message_primary) or str(e)
         return f"SQL error: {msg}", {"type": "status", "text": f"Query failed, retrying: {msg[:120]}"}, True
