@@ -97,8 +97,10 @@ ON CONFLICT (id) DO UPDATE SET
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--max-calls", type=int, default=len(SEARCH_TERMS))
-    ap.add_argument("--pages", type=int, default=1, help="pages per search term (50 jobs each)")
+    ap.add_argument("--max-calls", type=int, default=int(os.environ.get("ADZUNA_MAX_CALLS_PER_RUN", "400")),
+                    help="cap per run (paid plan: 500 a day)")
+    ap.add_argument("--pages", type=int, default=int(os.environ.get("ADZUNA_PAGES", "1")),
+                    help="pages per search term (50 jobs each)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 

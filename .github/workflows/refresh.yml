@@ -42,8 +42,9 @@ jobs:
       SEARCH_MODEL: ${{ vars.SEARCH_MODEL }}                # model used for OpenRouter web search (blank = AGENT_MODEL)
       AGENT_MAX_COST: ${{ vars.AGENT_MAX_COST || '0.40' }}  # USD cap per agent run
       GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}   # blank = newest available Gemini Flash
-      ADZUNA_CALL_BUDGET: ${{ vars.ADZUNA_CALL_BUDGET || '20' }}
-      ADZUNA_BUDGET_PERIOD: ${{ vars.ADZUNA_BUDGET_PERIOD || 'total' }}
+      ADZUNA_CALL_BUDGET: ${{ vars.ADZUNA_CALL_BUDGET || '4800' }}   # paid plan: 5,000 calls a month
+      ADZUNA_BUDGET_PERIOD: ${{ vars.ADZUNA_BUDGET_PERIOD || 'month' }}
+      ADZUNA_PAGES: ${{ vars.ADZUNA_PAGES || '4' }}                    # 50 ads per page, per role
       WEB_SEARCH_TERMS_PER_RUN: ${{ vars.WEB_SEARCH_TERMS_PER_RUN || '5' }}
       JOB_SEARCH_MODEL: ${{ vars.JOB_SEARCH_MODEL || 'claude-opus-5-5' }}
       # Enrichment + CRM (all optional)
