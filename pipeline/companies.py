@@ -116,6 +116,16 @@ def main() -> None:
                ON CONFLICT (company_id) DO UPDATE SET est_value = EXCLUDED.est_value, pitch = EXCLUDED.pitch
                RETURNING (xmax = 0)"""
         ).fetchall()
+        # Untouched opportunities that no longer apply: the company turned out to be a recruiter, or its ads now
+        # belong to a renamed/merged company record. Anything with activity is kept for you to close by hand.
+        removed = conn.execute(
+            """DELETE FROM opportunities o
+               WHERE o.stage = 'new'
+                 AND NOT EXISTS (SELECT 1 FROM activities a WHERE a.opportunity_id = o.id AND a.kind <> 'email_draft')
+                 AND (EXISTS (SELECT 1 FROM companies c WHERE c.id = o.company_id AND c.is_recruiter)
+                      OR NOT EXISTS (SELECT 1 FROM jobs j WHERE j.company_id = o.company_id))""").rowcount
+        if removed:
+            print(f"Removed {removed} opportunities for recruiters or merged companies.")
         conn.commit()
         stats = conn.execute(
             "SELECT count(*), count(*) FILTER (WHERE is_recruiter), count(*) FILTER (WHERE website IS NOT NULL) FROM companies"
