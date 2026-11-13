@@ -13,6 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Response headers (diagnostics)
+        run: |
+          curl -sS -i --max-time 60 https://acolyte-analyst.onrender.com/health | head -25 || true
+          echo; echo "--- root:"; curl -sS -i --max-time 30 https://acolyte-analyst.onrender.com/ | head -15 || true
       - name: Health (wakes the free instance)
         run: |
           for i in $(seq 1 12); do
