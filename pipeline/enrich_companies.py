@@ -40,11 +40,35 @@ def pick_website(name: str, results: list[dict]) -> tuple[str | None, str | None
     return site, li
 
 
+def guess_website(name: str) -> str | None:
+    """No search results (e.g. the search engine blocks CI servers): try likely domains and keep the first whose
+    homepage title or description names the company."""
+    words = re.findall(r"[a-z0-9]+", re.sub(r"\(.*?\)", "", name.lower()))
+    core = [w for w in words if w not in {"pty", "ltd", "limited", "llc", "the", "sa", "south", "africa", "careers"}]
+    toks = name_tokens(name)
+    if not core:
+        return None
+    stems = list(dict.fromkeys(["".join(core), "".join(core[:2]), core[0], "-".join(core)]))
+    for stem in stems:
+        if len(stem) < 4:
+            continue
+        for tld in (".co.za", ".com", ".africa", ".org.za"):
+            d = stem + tld
+            page = fetch(f"https://{d}", timeout=8) or fetch(f"https://www.{d}", timeout=8)
+            if not page:
+                continue
+            head = (re.search(r"<title[^>]*>(.*?)</title>", page, re.I | re.S) or [None, ""])[1] + " " + meta_description(page)
+            if any(t in head.lower() for t in toks):
+                return d
+    return None
+
+
 def enrich(conn, c: dict) -> str:
     name, site, li = c["name"], c["website"], c["linkedin_url"]
     if not site or not li:
         found_site, found_li = pick_website(name, search(f"{name} South Africa"))
         site, li = site or found_site, li or found_li
+        site = site or guess_website(name)
     desc, emails, tel, contact_url = c["description"], [], [], None
     if site:
         home = fetch(f"https://{site}") or fetch(f"http://{site}")
