@@ -51,6 +51,17 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      - name: Check secrets
+        run: |
+          ok=true
+          if [ -z "$DATABASE_URL" ]; then echo "::error::Secret DATABASE_URL is missing or empty. Add your Neon connection string under Settings > Secrets and variables > Actions > Repository secrets."; ok=false; fi
+          case "$DATABASE_URL" in ""|postgres://*|postgresql://*) ;; *) echo "::error::DATABASE_URL should start with postgresql:// (copy it from Neon > Connect)."; ok=false;; esac
+          for k in GEMINI_API_KEY ANTHROPIC_API_KEY ADZUNA_APP_ID ADZUNA_APP_KEY; do
+            if [ -n "${!k}" ]; then echo "$k: set"; else echo "$k: not set (that source is skipped)"; fi
+          done
+          if [ -z "$GEMINI_API_KEY$ANTHROPIC_API_KEY$ADZUNA_APP_KEY" ]; then echo "::warning::No job source key is set (GEMINI_API_KEY, ANTHROPIC_API_KEY or ADZUNA keys), so no new jobs can be found."; fi
+          $ok
+
       - name: Remove sample data
         if: ${{ inputs.wipe_demo }}
         run: python pipeline/seed_demo.py --wipe

@@ -12,7 +12,10 @@ DEFAULT_URL = "postgresql://postgres@localhost:5432/acolyte"
 
 
 def connect() -> psycopg.Connection:
-    return psycopg.connect(os.environ.get("DATABASE_URL", DEFAULT_URL))
+    url = os.environ.get("DATABASE_URL") or ("" if os.environ.get("GITHUB_ACTIONS") else DEFAULT_URL)
+    if not url:
+        raise SystemExit("DATABASE_URL is empty. Add your Neon connection string as a GitHub Actions secret.")
+    return psycopg.connect(url)
 
 
 def init_db() -> None:
