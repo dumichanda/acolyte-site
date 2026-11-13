@@ -29,7 +29,8 @@ jobs:
         run: |
           body=$(python3 -c 'import json,os; print(json.dumps({"question": os.environ["Q"]}))')
           curl -sS -N --max-time 240 -H "Content-Type: application/json" -H "Origin: https://dumichanda.github.io" \
-            -d "$body" https://acolyte-site.onrender.com/ask > out.txt || true
+            -d "$body" -D headers.txt -w "\nCURL_STATUS %{http_code} in %{time_total}s\n" https://acolyte-site.onrender.com/ask > out.txt || echo "curl exit $?"
+          echo "--- response headers"; cat headers.txt; echo "--- body size: $(wc -c < out.txt) bytes"; tail -3 out.txt
           python3 - <<'PY'
           import json
           text = ""
