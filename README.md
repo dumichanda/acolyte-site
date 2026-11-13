@@ -156,6 +156,11 @@ tier. The whole conversation is prompt-cached between steps. Every answer shows 
 today's spend by tier; Render logs one `[usage]` line per question. Override models with `ANALYST_MODEL_FAST`,
 `ANALYST_MODEL_STANDARD`, `ANALYST_MODEL_DEEP`.
 
+**Admin page** (`/admin/`, private): set `ADMIN_TOKEN` (any long random string) on the Render service, then open the page
+and enter it. Shows spend by day and model tier, questions with their SQL, unique visitors (daily anonymous ID, no IPs),
+countries, errors, agent runs and costs, Adzuna usage and the sales pipeline. Usage is logged to `admin.analyst_usage`
+(kept 90 days) through the `analyst_admin` login, which the database setup creates with the same password as `analyst_web`.
+
 Safety for a public demo: per-visitor hourly limit, daily spend cap (`ANALYST_DAILY_BUDGET_USD`, default $3), read-only
 database role with a 10s statement timeout, CRM tables invisible to it. Also set a monthly limit in the Anthropic Console.
 The free plan sleeps when idle; the page shows "waking up" for up to a minute.

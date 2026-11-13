@@ -41,6 +41,15 @@ def setup_analyst_role(conn: psycopg.Connection) -> None:
     conn.execute("ALTER ROLE analyst_web SET default_transaction_read_only = on")
     conn.execute("ALTER ROLE analyst_web SET statement_timeout = '10s'")
     conn.execute("ALTER ROLE analyst_web SET search_path = analyst")
+    # Admin login for the analyst server (usage log + admin page). Same password as analyst_web, different rights:
+    # it can write the usage log and read admin summaries, nothing else. The AI's queries never run as this role.
+    exists = conn.execute("SELECT 1 FROM pg_roles WHERE rolname = 'analyst_admin'").fetchone()
+    conn.execute(sql.SQL(("ALTER" if exists else "CREATE") + " ROLE analyst_admin WITH LOGIN PASSWORD {}").format(sql.Literal(pw)))
+    conn.execute("GRANT USAGE ON SCHEMA admin TO analyst_admin")
+    conn.execute("GRANT SELECT, INSERT ON admin.analyst_usage TO analyst_admin")
+    conn.execute("GRANT USAGE ON SEQUENCE admin.analyst_usage_id_seq TO analyst_admin")
+    conn.execute("GRANT SELECT ON admin.agent_costs, admin.adzuna_usage, admin.pipeline_totals, admin.crm_totals TO analyst_admin")
+    conn.execute("ALTER ROLE analyst_admin SET statement_timeout = '15s'")
 
 
 def init_db() -> None:
@@ -53,6 +62,7 @@ def init_db() -> None:
         conn.execute((ROOT / "db" / "crm.sql").read_text())
         conn.execute((ROOT / "db" / "analyst.sql").read_text())
         conn.execute((ROOT / "db" / "agents.sql").read_text())
+        conn.execute((ROOT / "db" / "admin.sql").read_text())
         setup_analyst_role(conn)
         with conn.cursor() as cur:
             cur.executemany(
