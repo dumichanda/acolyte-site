@@ -1,0 +1,43 @@
+name: Analyst smoke test
+
+# Asks the live Acolyte Analyst one question and prints what it streamed back (costs a few cents).
+on:
+  workflow_dispatch:
+    inputs:
+      question:
+        description: "Question to ask"
+        default: "Which 5 role types have the most automatable value? Show a chart."
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Health (wakes the free instance)
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS --max-time 60 https://acolyte-analyst.onrender.com/health; then echo; break; fi
+            echo "waiting for the service to wake up ($i)"; sleep 10
+          done
+      - name: Ask a question
+        env:
+          Q: ${{ inputs.question }}
+        run: |
+          body=$(python3 -c 'import json,os; print(json.dumps({"question": os.environ["Q"]}))')
+          curl -sS -N --max-time 240 -H "Content-Type: application/json" -H "Origin: https://dumichanda.github.io" \
+            -d "$body" https://acolyte-analyst.onrender.com/ask > out.txt || true
+          python3 - <<'PY'
+          import json
+          text = ""
+          for line in open("out.txt", encoding="utf-8"):
+              if not line.startswith("data: "):
+                  if line.strip(): print("RAW:", line.strip()[:300])
+                  continue
+              ev = json.loads(line[6:])
+              t = ev.get("type")
+              if t == "text": text += ev["text"]
+              elif t == "query": print(f"QUERY  {ev['dataset']['title']}: {ev['dataset']['row_count']} rows\n  {ev['dataset']['sql'][:300]}")
+              elif t == "artifact": print(f"ARTIFACT {ev['artifact']['kind']}: {ev['artifact'].get('title')}")
+              elif t in ("status", "error", "done"): print(t.upper(), ev.get("text", ""))
+          print("\nANSWER:\n" + text)
+          PY
