@@ -98,7 +98,8 @@ jobs:
             echo "No data changes."
           else
             git commit -m "Data refresh $(date -u +%Y-%m-%d)"
-            git push
+            # main may have moved while the pipeline ran: rebase onto it, retry a few times
+            for i in 1 2 3 4; do git pull --rebase origin main && git push && break; sleep $((i * 10)); done
           fi
 
   deploy:

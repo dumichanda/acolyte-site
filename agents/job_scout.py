@@ -41,6 +41,8 @@ def known_jobs(ctx, role: str) -> dict:
 
 def save_job(ctx, url: str, title: str, company: str, role: str, city: str = "", province: str = "",
              posted_date: str = "", salary_text: str = "", summary: str = "") -> dict:
+    if "grounding-api-redirect" in url or "vertexaisearch" in url:
+        raise ValueError("That is a temporary redirect link, not the ad's own URL. Use the real URL from the search result.")
     page = ctx.get("fetched", {}).get(norm(url))
     hit = ctx.get("search_hits", {}).get(norm(url))
     if not page and not hit:

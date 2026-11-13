@@ -93,7 +93,7 @@ def pick_companies(conn, n: int) -> list[dict]:
                   (SELECT string_agg(title, '; ') FROM (SELECT DISTINCT title FROM jobs j WHERE j.company_id = l.id LIMIT 3) t) AS titles
            FROM v_company_leads l
            WHERE (l.source IS DISTINCT FROM 'research' AND l.source IS DISTINCT FROM 'agent') AND l.enrich_tries < 4
-             AND NOT (l.is_recruiter AND l.source = 'research')
+             AND NOT l.is_recruiter
            ORDER BY l.automatable_value DESC NULLS LAST LIMIT %s""", (n,)).fetchall()
     return [dict(zip(("id", "name", "family", "roles", "cities", "titles"), r)) for r in rows]
 

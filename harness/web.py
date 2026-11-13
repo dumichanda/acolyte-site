@@ -28,14 +28,21 @@ def _openrouter_search(ctx, query: str, n: int) -> list[dict]:
         model = os.environ.get("SEARCH_MODEL", "")
     if not model:
         return []
-    a = OpenRouterAdapter(model, plugins=[{"id": "web", "max_results": n}])
+    # Exa engine: real result URLs and predictable cost (native Google search returns expiring redirect links).
+    a = OpenRouterAdapter(model, plugins=[{"id": "web", "engine": os.environ.get("SEARCH_ENGINE", "exa"), "max_results": n}])
     turn = a.step("You are a search engine. List the most relevant results for the query, one per line: title - URL.",
                   [{"role": "user", "content": query}], [])
     ctx["extra_cost"] = ctx.get("extra_cost", 0.0) + turn.cost
     out = [{"title": c["title"], "url": c["url"], "snippet": (c.get("content") or "")[:300]} for c in turn.citations if c.get("url")]
     if not out:  # some models put the links in the text instead of annotations
         out = [{"title": "", "url": u, "snippet": ""} for u in re.findall(r"https?://[^\s)\]>\"']+", turn.text or "")]
-    return out[:n]
+    for r in out:  # resolve any search-engine redirect links to the real page
+        if re.search(r"grounding-api-redirect|/url\?|redirect", r["url"]):
+            try:
+                r["url"] = requests.head(r["url"], allow_redirects=True, timeout=10).url
+            except requests.RequestException:
+                pass
+    return [r for r in out if "grounding-api-redirect" not in r["url"]][:n]
 
 
 def web_search(ctx, query: str, max_results: int = 5) -> dict:
