@@ -36,7 +36,7 @@ jobs:
       ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
+      GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}   # blank = newest available Gemini Flash
       ADZUNA_CALL_BUDGET: ${{ vars.ADZUNA_CALL_BUDGET || '20' }}
       ADZUNA_BUDGET_PERIOD: ${{ vars.ADZUNA_BUDGET_PERIOD || 'total' }}
       WEB_SEARCH_TERMS_PER_RUN: ${{ vars.WEB_SEARCH_TERMS_PER_RUN || '5' }}

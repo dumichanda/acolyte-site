@@ -1,7 +1,7 @@
 """Find real South African job postings with Gemini + Google Search grounding.
 
 Free API key: https://aistudio.google.com/apikey  ->  GEMINI_API_KEY
-Model: GEMINI_MODEL (default gemini-2.5-flash).
+Model: GEMINI_MODEL (default: newest available Gemini Flash model).
 
 Gemini searches Google for current SA postings and lists them as JSON. Each job is then
 verified before it is stored, because a language model can make up links:
@@ -27,7 +27,9 @@ from db import connect, init_db
 from fetch_adzuna import SEARCH_TERMS
 from taxonomy import PROVINCES
 
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+# Google retires model names over time, so by default use the "latest Flash" alias and,
+# if that is unavailable, pick the newest Flash model this API key can use.
+MODEL = os.environ.get("GEMINI_MODEL") or "gemini-flash-latest"
 ALIASES = {"GP": "Gauteng", "GAUTENG": "Gauteng", "WC": "Western Cape", "KZN": "KwaZulu-Natal", "KWAZULUNATAL": "KwaZulu-Natal",
            "EC": "Eastern Cape", "FS": "Free State", "MP": "Mpumalanga", "LP": "Limpopo", "NW": "North West", "NC": "Northern Cape"}
 UA = {"User-Agent": "Mozilla/5.0 (compatible; AcolyteIndexBot/1.0; job-market research)"}
@@ -108,6 +110,20 @@ def verify(proposed: list[dict], sources: list[str], session: requests.Session) 
     return out, by
 
 
+def pick_model(client) -> str | None:
+    """Newest stable Gemini Flash text model available to this key (e.g. models/gemini-3-flash)."""
+    names = []
+    for m in client.models.list():
+        n = (m.name or "").removeprefix("models/")
+        actions = m.supported_actions or []
+        if "flash" in n and "generateContent" in actions and not re.search(r"lite|image|tts|audio|live|embed|8b", n):
+            names.append(n)
+    def key(n: str):
+        v = [float(x) for x in re.findall(r"(\d+(?:\.\d+)?)", n)[:1]] or [0.0]
+        return (v[0], "preview" not in n and "exp" not in n, "latest" not in n, n)
+    return max(names, key=key) if names else None
+
+
 def search_term(client, term: str, session: requests.Session) -> tuple[list[dict], dict]:
     from google.genai import types
 
@@ -142,9 +158,20 @@ def main() -> None:
     from google import genai
     from google.genai import errors
 
+    global MODEL
     client = genai.Client(api_key=key)
     session = requests.Session()
     init_db()
+    try:  # confirm the model exists before spending searches; fall back to the newest Flash model
+        client.models.get(model=MODEL)
+    except errors.ClientError:
+        picked = pick_model(client)
+        if not picked:
+            print(f"Model {MODEL} unavailable and no Gemini Flash model found for this key; skipping.")
+            return
+        print(f"Model {MODEL} unavailable; using {picked}.")
+        MODEL = picked
+    print(f"Gemini model: {MODEL}")
 
     if args.term:
         terms = args.term
