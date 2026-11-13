@@ -11,7 +11,7 @@ import { chartOption, fmt, type ChartArtifact, type ReportArtifact } from "./cha
 
 const INK = "0C0C0E", LIME = "C8F135", OLIVE = "5D7A0A", PAPER = "F3EFE6", MUTED = "6B6656", LINE = "E7E2D6", WHITE = "FFFFFF";
 const PALETTE = CATEGORICAL.light.map((c) => c.replace("#", "").toUpperCase());
-const FONT = "Arial";
+const FONT = "Poppins";   // brand font: embedded in PDFs; PowerPoint shows it where Poppins is installed (free, Google Fonts)
 const SITE_URL = "dumichanda.github.io/acolyte-site";
 
 const clean = (s: string) => s.replace(/\*\*(.+?)\*\*/g, "$1").replace(/`([^`]+)`/g, "$1");
@@ -24,6 +24,31 @@ function blocks(body: string): { bullet: boolean; text: string }[] {
     const m = l.match(/^([-*•]|\d+\.)\s+(.*)$/);
     return { bullet: !!m, text: clean(m ? m[2] : l) };
   });
+}
+
+const fontCache: Record<string, string> = {};
+/** Poppins TTF as base64 (self-hosted under /fonts, SIL Open Font License). */
+async function fontB64(file: string): Promise<string | null> {
+  if (fontCache[file]) return fontCache[file];
+  try {
+    const buf = new Uint8Array(await (await fetch(url(`/fonts/${file}`))).arrayBuffer());
+    let bin = "";
+    for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+    return (fontCache[file] = btoa(bin));
+  } catch {
+    return null;
+  }
+}
+
+/** Make Poppins available to the canvas so chart images are drawn in it. */
+async function loadWebPoppins() {
+  try {
+    if ([...document.fonts].some((f) => f.family.replace(/"/g, "") === "Poppins")) return;
+    for (const [file, weight] of [["Poppins-Regular.ttf", "400"], ["Poppins-Bold.ttf", "700"]]) {
+      const face = new FontFace("Poppins", `url(${url(`/fonts/${file}`)})`, { weight });
+      document.fonts.add(await face.load());
+    }
+  } catch { /* fall back to the theme font */ }
 }
 
 let logoCache: string | null = null;
@@ -54,7 +79,8 @@ function chartImage(c: ChartArtifact, w = 880, h = 480): string | null {
   document.body.appendChild(div);
   try {
     const inst = echarts.init(div, "acolyte-light", { renderer: "canvas", width: w, height: h });
-    inst.setOption(chartOption(c, { ink: "#16140f", muted: "#6b6656", line: "#e7e2d6", panel: "#ffffff" }, true));
+    inst.setOption({ ...chartOption(c, { ink: "#16140f", muted: "#6b6656", line: "#e7e2d6", panel: "#ffffff" }, true),
+      textStyle: { fontFamily: "Poppins, Arial, sans-serif", color: "#16140f" } });
     // JPEG keeps PDFs small (a 2x PNG chart is several MB inside a PDF)
     const data = inst.getDataURL({ type: "jpeg", pixelRatio: 3, backgroundColor: "#ffffff" });
     inst.dispose();
@@ -258,29 +284,37 @@ export async function reportToPdf(r: ReportArtifact) {
   const doc = new jsPDF({ unit: "mm", format: "a4", compress: true });
   const W = 210, H = 297, M = 16, CW = W - 2 * M;
   const logo = await logoPng();
+  await loadWebPoppins();
+  let PF = "helvetica";
+  const [reg, bold] = await Promise.all([fontB64("Poppins-Regular.ttf"), fontB64("Poppins-Bold.ttf")]);
+  if (reg && bold) {
+    doc.addFileToVFS("Poppins-Regular.ttf", reg); doc.addFont("Poppins-Regular.ttf", "Poppins", "normal");
+    doc.addFileToVFS("Poppins-Bold.ttf", bold); doc.addFont("Poppins-Bold.ttf", "Poppins", "bold");
+    PF = "Poppins";
+  }
   const rgb = (hex: string): [number, number, number] => [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
   let y = 0, page = 1;
 
   const footer = () => {
     doc.setDrawColor(...rgb(LINE)); doc.setLineWidth(0.3); doc.line(M, H - 14, W - M, H - 14);
     if (logo) doc.addImage(logo, "PNG", M, H - 11.5, 4.5, 4.5);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(...rgb(INK)); doc.text("ACOLYTE", M + 6, H - 8.2);
-    doc.setFont("helvetica", "normal"); doc.setTextColor(...rgb(MUTED));
+    doc.setFont(PF, "bold"); doc.setFontSize(8); doc.setTextColor(...rgb(INK)); doc.text("ACOLYTE", M + 6, H - 8.2);
+    doc.setFont(PF, "normal"); doc.setTextColor(...rgb(MUTED));
     doc.text(`SA Automation Opportunity Index · ${SITE_URL}`, M + 22, H - 8.2);
     doc.text(String(page), W - M, H - 8.2, { align: "right" });
   };
   const newPage = () => {
     footer(); doc.addPage(); page++;
     doc.setFillColor(...rgb(LIME)); doc.rect(0, 0, W, 1.6, "F");
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...rgb(MUTED));
+    doc.setFont(PF, "normal"); doc.setFontSize(8); doc.setTextColor(...rgb(MUTED));
     doc.text(r.title, M, 9);
     y = 16;
   };
   const need = (h: number) => { if (y + h > H - 20) newPage(); };
   const para = (text: string, size: number, opts: { bold?: boolean; color?: string; indent?: number; gap?: number } = {}) => {
-    doc.setFont("helvetica", opts.bold ? "bold" : "normal"); doc.setFontSize(size); doc.setTextColor(...rgb(opts.color ?? INK));
+    doc.setFont(PF, opts.bold ? "bold" : "normal"); doc.setFontSize(size); doc.setTextColor(...rgb(opts.color ?? INK));
     const lines: string[] = doc.splitTextToSize(text, CW - (opts.indent ?? 0));
-    const lh = size * 0.42;
+    const lh = size * 0.46;
     for (const ln of lines) { need(lh); doc.text(ln, M + (opts.indent ?? 0), y); y += lh; }
     y += opts.gap ?? 2;
   };
@@ -289,21 +323,21 @@ export async function reportToPdf(r: ReportArtifact) {
   doc.setFillColor(...rgb(INK)); doc.rect(0, 0, W, 62, "F");
   doc.setFillColor(...rgb(LIME)); doc.rect(M, 34, 18, 1.2, "F");
   if (logo) doc.addImage(logo, "PNG", M, 12, 8, 8);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(255, 255, 255); doc.text("ACOLYTE", M + 11, 17.6);
+  doc.setFont(PF, "bold"); doc.setFontSize(11); doc.setTextColor(255, 255, 255); doc.text("ACOLYTE", M + 11, 17.6);
   doc.setFontSize(20);
   const titleLines: string[] = doc.splitTextToSize(r.title, CW);
   doc.text(titleLines.slice(0, 2), M, 44);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(183, 182, 189);
+  doc.setFont(PF, "normal"); doc.setFontSize(9); doc.setTextColor(183, 182, 189);
   doc.text(`${today()} · Prepared with Acolyte Analyst`, M, 57);
   y = 74;
 
   // Executive summary box
-  doc.setFont("helvetica", "normal"); doc.setFontSize(11.5);
+  doc.setFont(PF, "normal"); doc.setFontSize(11.5);
   const sumLines: string[] = doc.splitTextToSize(clean(r.summary), CW - 10);
-  const boxH = sumLines.length * 5 + 8;
+  const boxH = sumLines.length * 5.6 + 8;
   doc.setFillColor(...rgb(PAPER)); doc.rect(M, y - 5, CW, boxH, "F");
   doc.setFillColor(...rgb(OLIVE)); doc.rect(M, y - 5, 1.4, boxH, "F");
-  doc.setTextColor(...rgb(INK)); doc.text(sumLines, M + 6, y + 1);
+  doc.setTextColor(...rgb(INK)); doc.text(sumLines, M + 6, y + 1, { lineHeightFactor: 1.35 });
   y += boxH + 6;
 
   for (const sec of r.sections) {
@@ -331,9 +365,9 @@ export async function reportToPdf(r: ReportArtifact) {
         else {
           const colW = CW / idx.length;
           doc.setFillColor(...rgb(INK)); doc.rect(M, y - 4, CW, 6, "F");
-          doc.setFont("helvetica", "bold"); doc.setFontSize(8.5); doc.setTextColor(255, 255, 255);
+          doc.setFont(PF, "bold"); doc.setFontSize(8.5); doc.setTextColor(255, 255, 255);
           idx.forEach((i, k) => doc.text(String(c.columns[i]).slice(0, 28), M + k * colW + 1.5, y));
-          y += 6; doc.setFont("helvetica", "normal"); doc.setTextColor(...rgb(INK));
+          y += 6; doc.setFont(PF, "normal"); doc.setTextColor(...rgb(INK));
           c.rows.slice(0, 20).forEach((row) => {
             need(5.5);
             idx.forEach((i, k) => doc.text((typeof row[i] === "number" ? fmt(row[i], c.y.includes(c.columns[i]) ? c.value_format : "number") : String(row[i] ?? "—")).slice(0, 34), M + k * colW + 1.5, y));
