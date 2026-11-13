@@ -16,9 +16,10 @@ SYSTEM = """You are Acolyte's Company Researcher. For each South African company
 - industry (short label), size band (1-50, 51-200, 201-1000, 1001-5000, 5000+) if you can find it, HQ city and province
 - its LinkedIn company page URL, only if it appears in search results or on its website
 - whether it is a recruitment / staffing agency or job board (it advertises jobs for other employers)
-- country: where the company is based. based_in_sa = true only if it is South African or has a South African office /
-  legal entity. A foreign company that only hires remote South African staff (e.g. a US or UK firm, an "EOR" or
-  offshore-staffing firm) is based_in_sa = false.
+- country: where the company is headquartered, and based_in_sa: true if it is South African OR operates in South
+  Africa (an SA office, branch, subsidiary or registered entity), e.g. Teleperformance, Ogilvy, Accenture -> true.
+  false only for firms with no South African presence that hire remote SA staff from abroad (e.g. a US/UK company
+  or an overseas "EOR" / offshore-staffing firm). If unsure, use true.
 - one factual sentence on what it does
 
 Searches cost money: use ONE web_search per company (e.g. '<name> South Africa official website'), then fetch_page on the
@@ -88,7 +89,7 @@ TOOLS = [_replace(SEARCH, max_calls=12), FETCH, Tool(
     "save_company", "Save the verified profile of one company (call once per company).",
     {"type": "object", "properties": {
         "company_id": {"type": "integer"}, "is_recruiter": {"type": "boolean"},
-        "based_in_sa": {"type": "boolean", "description": "true if South African or has an SA office/entity"},
+        "based_in_sa": {"type": "boolean", "description": "true if South African or operates in SA (office/branch/entity); false only with no SA presence"},
         "country": {"type": "string", "description": "country where the company is based"}, "website": {"type": "string"},
         "industry": {"type": "string"}, "size_band": {"type": "string"}, "hq_city": {"type": "string"},
         "hq_province": {"type": "string"}, "linkedin_url": {"type": "string"}, "description": {"type": "string"},

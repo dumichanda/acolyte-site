@@ -31,9 +31,10 @@ CREATE TABLE IF NOT EXISTS companies (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Foreign firms (e.g. overseas companies hiring remote SA staff) are kept for market stats but left out of the sales pipeline.
+-- Firms with NO South African presence (overseas companies hiring remote SA staff) are kept for market stats but left
+-- out of the sales pipeline. Foreign multinationals that operate in SA are not 'foreign' here.
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS country TEXT;
-ALTER TABLE companies ADD COLUMN IF NOT EXISTS is_foreign BOOLEAN;   -- NULL = not checked yet
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS is_foreign BOOLEAN;   -- true = no SA presence; NULL = not checked yet
 
 CREATE TABLE IF NOT EXISTS company_aliases (       -- every spelling seen in ads -> one company
     alias_key   TEXT PRIMARY KEY,

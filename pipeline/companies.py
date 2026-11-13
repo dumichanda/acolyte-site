@@ -111,11 +111,8 @@ def main() -> None:
                 (norm_key(raw), raw),
             )
 
-        # A website on a foreign country domain (e.g. .co.uk) marks the firm as foreign when nothing else is known.
-        conn.execute(r"""UPDATE companies SET is_foreign = TRUE
-                         WHERE is_foreign IS NULL AND website ~ '\.(co\.uk|uk|com\.au|au|us|ca|de|nl|ie|in|ph|co\.nz|ng|ke)$'""")
-
-        # One opportunity per hiring employer with open roles; refresh its value and pitch. Foreign firms excluded.
+        # One opportunity per hiring employer with open roles; refresh its value and pitch.
+        # Excluded: firms with no South African presence (is_foreign). Multinationals operating in SA are kept.
         opened = conn.execute(
             """INSERT INTO opportunities (company_id, est_value, pitch)
                SELECT id, automatable_value, best_pitch FROM v_company_leads
