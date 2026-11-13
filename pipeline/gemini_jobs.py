@@ -110,25 +110,25 @@ def verify(proposed: list[dict], sources: list[str], session: requests.Session) 
     return out, by
 
 
-def pick_model(client) -> str | None:
-    """Newest stable Gemini Flash text model available to this key (e.g. models/gemini-3-flash)."""
+def flash_models(client) -> list[str]:
+    """Gemini Flash text models this key can call, best first (newest stable, then previews, then lite)."""
     names = []
     for m in client.models.list():
         n = (m.name or "").removeprefix("models/")
         actions = m.supported_actions or []
-        if "flash" in n and "generateContent" in actions and not re.search(r"lite|image|tts|audio|live|embed|8b", n):
+        if "flash" in n and "generateContent" in actions and not re.search(r"image|tts|audio|live|embed|8b", n):
             names.append(n)
     def key(n: str):
         v = [float(x) for x in re.findall(r"(\d+(?:\.\d+)?)", n)[:1]] or [0.0]
-        return (v[0], "preview" not in n and "exp" not in n, "latest" not in n, n)
-    return max(names, key=key) if names else None
+        return ("lite" not in n, "preview" not in n and "exp" not in n, v[0], "latest" not in n, n)
+    return sorted(set(names), key=key, reverse=True)
 
 
-def search_term(client, term: str, session: requests.Session) -> tuple[list[dict], dict]:
+def search_term(client, model: str, term: str, session: requests.Session) -> tuple[list[dict], dict]:
     from google.genai import types
 
     resp = client.models.generate_content(
-        model=MODEL,
+        model=model,
         contents=PROMPT.format(term=term, provinces=json.dumps(PROVINCES)),
         config=types.GenerateContentConfig(tools=[types.Tool(google_search=types.GoogleSearch())], temperature=0.2),
     )
@@ -158,20 +158,13 @@ def main() -> None:
     from google import genai
     from google.genai import errors
 
-    global MODEL
     client = genai.Client(api_key=key)
     session = requests.Session()
     init_db()
-    try:  # confirm the model exists before spending searches; fall back to the newest Flash model
-        client.models.get(model=MODEL)
-    except errors.ClientError:
-        picked = pick_model(client)
-        if not picked:
-            print(f"Model {MODEL} unavailable and no Gemini Flash model found for this key; skipping.")
-            return
-        print(f"Model {MODEL} unavailable; using {picked}.")
-        MODEL = picked
-    print(f"Gemini model: {MODEL}")
+    # Free-tier quotas differ per model (some are 0 on the free tier), so keep a ranked list of
+    # candidates and move to the next one whenever a model reports it is unavailable or out of quota.
+    candidates = [MODEL] + [m for m in flash_models(client) if m != MODEL]
+    print("Gemini models to try:", ", ".join(candidates[:6]))
 
     if args.term:
         terms = args.term
@@ -182,23 +175,38 @@ def main() -> None:
     total = 0
     with connect() as conn:
         for term in terms:
-            try:
-                jobs, stats = search_term(client, term, session)
-                status = "ok"
-            except errors.ClientError as e:  # 4xx: bad key, quota exhausted, unknown model
-                jobs, stats, status = [], {"term": term}, f"error: {e.code} {str(e)[:120]}"
-            except errors.ServerError as e:
-                jobs, stats, status = [], {"term": term}, f"error: {e.code}"
+            jobs, stats, status = [], {"term": term}, "error: no model available"
+            while candidates:
+                model = candidates[0]
+                try:
+                    jobs, stats = search_term(client, model, term, session)
+                    status = f"ok ({model})"
+                    break
+                except errors.ClientError as e:  # 404 retired model, 429 quota, 400 bad request
+                    msg = getattr(e, "message", None) or str(e)
+                    print(f"  {model}: {e.code} {msg[:400]}")
+                    if e.code in (404, 429) or "not found" in msg.lower():
+                        candidates.pop(0)  # try the next model
+                        status = f"error: {e.code}"
+                        continue
+                    status = f"error: {e.code}"
+                    break
+                except errors.ServerError as e:
+                    status = f"error: {e.code}"
+                    break
             saved = store(conn, jobs, term) if jobs else 0
             conn.execute(
                 "INSERT INTO fetch_log (source, search_term, page, results, status) VALUES ('gemini_web', %s, 1, %s, %s)",
-                (term, saved, status),
+                (term, saved, status[:200]),
             )
             conn.commit()
             total += saved
             print(f"  '{term}': proposed {stats.get('proposed', 0)}, verified via search {stats.get('source', 0)} "
                   f"+ live page {stats.get('live', 0)}, rejected {stats.get('rejected', 0)}, new {saved} ({status})")
-            time.sleep(4)  # stay inside free-tier rate limits
+            if not candidates:
+                print("No Gemini model has free quota left for this key today. Check https://aistudio.google.com/usage")
+                break
+            time.sleep(6)  # stay inside free-tier per-minute limits
     print(f"Gemini web search added {total} postings.")
 
 
