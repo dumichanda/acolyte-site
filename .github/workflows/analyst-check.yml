@@ -43,6 +43,8 @@ jobs:
               if t == "text": text += ev["text"]
               elif t == "query": print(f"QUERY  {ev['dataset']['title']}: {ev['dataset']['row_count']} rows\n  {ev['dataset']['sql'][:300]}")
               elif t == "artifact": print(f"ARTIFACT {ev['artifact']['kind']}: {ev['artifact'].get('title')}")
+              elif t == "usage": print(f"USAGE  tier={ev['tier']} models={','.join(ev['models'])} cost=${ev['cost_usd']:.4f} tokens={ev['tokens']}")
               elif t in ("status", "error", "done"): print(t.upper(), ev.get("text", ""))
           print("\nANSWER:\n" + text)
           PY
+          echo "--- today:"; curl -s --max-time 30 https://acolyte-site.onrender.com/health | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin).get("today"), indent=1))' || true
