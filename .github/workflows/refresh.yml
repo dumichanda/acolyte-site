@@ -19,6 +19,10 @@ on:
         description: "Delete sample data from the database first"
         type: boolean
         default: false
+      setup_only:
+        description: "Only set up the database (tables, views, analyst login). No fetching, no agents"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -82,7 +86,12 @@ jobs:
         if: ${{ inputs.wipe_demo }}
         run: python pipeline/seed_demo.py --wipe
 
+      - name: Database setup only
+        if: ${{ inputs.setup_only }}
+        run: python pipeline/db.py
+
       - name: Fetch, classify, export
+        if: ${{ !inputs.setup_only }}
         run: |
           ARGS=""
           if [ "${{ inputs.use_claude }}" = "true" ] || [ "${{ vars.USE_CLAUDE }}" = "true" ]; then ARGS="$ARGS --claude"; fi
