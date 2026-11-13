@@ -25,6 +25,7 @@ def init_db() -> None:
     with connect() as conn:
         conn.execute((ROOT / "db" / "schema.sql").read_text())
         conn.execute((ROOT / "db" / "views.sql").read_text())
+        conn.execute((ROOT / "db" / "crm.sql").read_text())
         with conn.cursor() as cur:
             cur.executemany(
                 """INSERT INTO family_salary_default (role_family, annual_salary) VALUES (%s, %s)

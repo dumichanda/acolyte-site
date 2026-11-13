@@ -12,7 +12,7 @@ export interface Job {
 }
 export interface Company { company: string; jobs: number; avg_score: number; value: number; main_family: string }
 
-export interface Snapshot {
+export interface Snapshot extends SnapshotExtra {
   generated_at: string;
   meta: { jobs: number; has_demo: boolean; all_demo: boolean; from_date: string; to_date: string; claude_classified: number };
   kpis: {
@@ -31,3 +31,26 @@ export interface Snapshot {
 
 export const rands = (v: number) =>
   v >= 1e9 ? `R${(v / 1e9).toFixed(1)}bn` : v >= 1e6 ? `R${(v / 1e6).toFixed(1)}m` : `R${Math.round(v / 1e3)}k`;
+
+export interface Employer {
+  name: string; website: string | null; industry: string | null; size_band: string | null; linkedin_url: string | null;
+  description: string | null; lat: number | null; lon: number | null; province: string | null; city: string | null;
+  jobs: number; avg_score: number; value: number; main_family: string; pitch: string; families: string[];
+  last_posted: string | null; tools: string[] | null; roles: { title: string; url: string | null; score: number }[] | null;
+}
+export interface Counted { name: string; jobs: number; avg_score?: number }
+export interface Insights {
+  jobs_analysed: number; full_text: number;
+  tools: Counted[]; skills: Counted[]; qualifications: Counted[]; languages: Counted[];
+  tool_by_family: { family: string; tool: string; jobs: number }[];
+  work_mode: Counted[]; seniority: Counted[];
+  experience: { family: string; avg_years: number; jobs: number }[];
+}
+export interface HistoryPoint { day: string; jobs: number; employers: number; recruiter_jobs: number; avg_score: number; automatable_value: number }
+/** Sections added with the employer/tools/CRM release; optional so older snapshots still load. */
+export interface SnapshotExtra {
+  employers?: Employer[];
+  posters?: { kind: string; jobs: number }[];
+  insights?: Insights;
+  history?: HistoryPoint[];
+}

@@ -5,6 +5,9 @@ import react from "@vitejs/plugin-react";
 //   /                     Acolyte landing page
 //   /automation-index/    SA Automation Opportunity Index dashboard (?report = printable)
 //   /privacy/             POPIA privacy notice
+//   /employers/           Who is hiring (company profiles)
+//   /tools/               Tools & skills in demand
+//   /crm/                 Private CRM: talks to crm/server.py on your own computer
 // BASE_PATH: "/acolyte-site/" on GitHub Pages (set by the deploy workflow), "/" on a custom domain or locally.
 export default defineConfig({
   base: process.env.BASE_PATH || "/",
@@ -15,6 +18,9 @@ export default defineConfig({
         main: "index.html",
         index: "automation-index/index.html",
         privacy: "privacy/index.html",
+        employers: "employers/index.html",
+        tools: "tools/index.html",
+        crm: "crm/index.html",
       },
     },
   },

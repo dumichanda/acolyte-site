@@ -22,6 +22,12 @@ CREATE TABLE IF NOT EXISTS jobs (
     fetched_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     raw                 JSONB
 );
+-- Added for enrichment (see crm.sql)
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS company_id INT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS full_description TEXT;     -- full ad text from the employer's own page
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS full_description_url TEXT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS full_description_at TIMESTAMPTZ;
+
 CREATE INDEX IF NOT EXISTS jobs_posted_idx ON jobs (posted_at);
 CREATE INDEX IF NOT EXISTS jobs_demo_idx   ON jobs (is_demo);
 

@@ -23,8 +23,11 @@ function Privacy() {
           <h3>Why we use it</h3>
           <p>Only to reply to your enquiry and arrange a conversation you asked for. We rely on your consent, given when you submit the form. We do not add you to a mailing list or sell or share your details for marketing.</p>
 
+          <h3>Business contact details from public sources</h3>
+          <p>When an organisation advertises a vacancy that our services could help with, we record the organisation's name, its public job ads, and contact details it has published for enquiries (for example a general info@ address or switchboard number on its own website). We use these only to send one short message asking whether the organisation would like to hear more. We do not collect personal email addresses from websites. If you reply that you are not interested, or ask us not to contact you, we add the address to a do-not-contact list and will not contact it again. You can make that request at any time by replying to our message or contacting {contact}.</p>
+
           <h3>Who else processes it</h3>
-          <p>Our website is hosted on GitHub Pages (GitHub, Inc.) and contact form submissions are delivered by Formspree. Both may store data outside South Africa under appropriate safeguards. We use these service providers only to run the website and receive your enquiry.</p>
+          <p>Our website is hosted on GitHub Pages (GitHub, Inc.), contact form submissions are delivered by Formspree, and our records are stored in a Neon (Neon Inc.) database. Both may store data outside South Africa under appropriate safeguards. We use these service providers only to run the website and receive your enquiry.</p>
 
           <h3>How long we keep it</h3>
           <p>Enquiries that don't lead to work are deleted within 12 months. If we work together, we keep records for as long as needed for the contract and the law.</p>

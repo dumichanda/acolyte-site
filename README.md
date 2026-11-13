@@ -5,6 +5,9 @@
 | `/` | Acolyte landing page: services, ROI calculator, live index teaser, contact form (Formspree) |
 | `/automation-index/` | Live dashboard: which SA jobs are being hired for, and how much of that work could be automated |
 | `/automation-index/?report` | Printable A4 report |
+| `/employers/` | Who is hiring: every direct employer behind the ads, with profile, open roles, tools and the Acolyte pitch |
+| `/tools/` | Tools & skills in demand: software, skills, qualifications, work mode and seniority from the ad text |
+| `/crm/` | **Private** sales pipeline. Works only while `python crm/server.py` runs on your computer (see below) |
 | `/privacy/` | POPIA privacy notice |
 
 Live at **https://dumichanda.github.io/acolyte-site/** (or your own domain).
@@ -79,9 +82,37 @@ The website only reads `snapshot.json`, so it is fully static and visitors never
 | `pipeline/seed_demo.py` | Sample data with fictional employers (`is_demo = true`); `--wipe` removes it |
 | `pipeline/classify.py` | Keyword rules, or `--claude` for Claude Haiku 5.5 to read each posting |
 | `pipeline/export_snapshot.py` | Builds the dashboard JSON + written commentary (`--claude` for Claude Opus 5.5) |
+| `db/crm.sql` | Companies, contacts, opportunities, activities, opt-outs (`suppression`), tools/skills (`job_insights`), `daily_stats` |
+| `pipeline/companies.py` | Merges employer name spellings, flags recruiters, loads `data/company_research.csv`, opens one opportunity per employer |
+| `pipeline/enrich_companies.py` | Finds website, LinkedIn page, published inbox (info@…) and location. Free search by default; `BRAVE_API_KEY` optional |
+| `pipeline/full_descriptions.py` | Fetches full ad text from the employer's own site (never from job boards) |
+| `pipeline/insights.py` | Pulls tools (Pastel, SAP, Syspro…), skills, experience, qualifications and work mode from ad text |
+| `pipeline/draft_outreach.py` | Prepares POPIA-friendly first emails (template, or `--claude`). Drafts only: you send them |
+| `data/company_research.csv` | Researched company profiles (website, industry, size, LinkedIn). Edit freely; loaded every run |
+| `crm/server.py` | The private CRM server (localhost only) |
 | `refresh.py` | Runs the whole pipeline in one go |
 | `web/` | The website: landing (`src/landing`), dashboard (`src/App.tsx`), privacy (`src/privacy`), business details (`src/site.ts`) |
 | `web/scripts/make-report.mjs` | Saves the report as PDF into `reports/` |
+
+## From job ad to client: the process
+
+```
+jobs (Adzuna, web search) ─► companies (merge names, flag recruiters) ─► enrich (website, LinkedIn,
+published inbox, location) ─► full ad text ─► tools & skills ─► opportunity per employer, ranked by
+automatable value ─► first-email draft ─► YOU review + send ─► log reply ─► meeting ─► proposal ─► won
+```
+
+**Using the CRM** (on your own computer; it never runs on the public site):
+
+1. Once: install Python 3.12+, clone this repo, `pip install -r requirements.txt`, and create `.env` with
+   `DATABASE_URL=` your Neon connection string (and optionally `SENDER_NAME`, `SENDER_EMAIL`…).
+2. Each time: `python crm/server.py`, then open https://dumichanda.github.io/acolyte-site/crm/ (Chrome or Edge).
+3. Open a company, check the draft, send it from your own mailbox, click **I've sent it**. Log replies as they come in.
+
+**POPIA rules built in:** only published, role-based inboxes (info@, hello@…) are collected automatically, never
+personal addresses; the first email asks permission and offers an opt-out; one follow-up only; "not interested" or
+"don't contact me" puts the address on the `suppression` list, which every draft and send checks. Personal contacts
+you add yourself should be people who agreed to be contacted (e.g. met at an event, replied to you).
 
 ## Run it on your laptop (Windows)
 

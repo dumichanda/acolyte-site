@@ -104,3 +104,28 @@ footer { color: var(--muted); font-size: 12px; margin-top: 18px; display: flex; 
 .report .kpis { grid-template-columns: repeat(5, 1fr); }
 .report .pfoot { position: absolute; bottom: 8mm; left: 14mm; right: 14mm; font-size: 10px; color: #5c6078; display: flex; justify-content: space-between; }
 @page { size: A4; margin: 0; }
+
+/* ---- Platform navigation (dashboard, employers, tools, CRM) ---- */
+.pnav { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 4px 0 18px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
+.pnav-links { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+.pnav-links a { color: var(--muted); text-decoration: none; padding: 6px 12px; border-radius: 999px; font-weight: 500; font-size: 13px; }
+.pnav-links a:hover { color: var(--ink); }
+.pnav-links a.on { color: #0c0c0e; background: var(--accent); }
+.pnav .lock { font-size: 8px; margin-left: 6px; vertical-align: middle; color: #ff6a3d; }
+.pnav .cta { background: var(--accent); color: #0c0c0e; border-color: var(--accent); font-weight: 600; }
+
+/* ---- Shared bits for the new pages ---- */
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.toolbar input, .toolbar select, .field input, .field select, .field textarea {
+  background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font: inherit; min-width: 0;
+}
+.toolbar input { flex: 1 1 220px; }
+.pill { display: inline-block; font-size: 11px; border-radius: 999px; padding: 2px 8px; background: #ffffff0d; color: var(--ink); margin: 2px 4px 2px 0; }
+.pill.lime { background: var(--accent-soft); color: var(--accent); }
+.rowx { cursor: pointer; }
+.rowx:hover td { background: #ffffff06; }
+.detail td { background: #ffffff05; }
+.detail-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 16px; padding: 6px 2px; }
+.detail-grid h4 { margin: 0 0 6px; font-size: 12px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
+.empty { color: var(--muted); padding: 24px; text-align: center; }
+@media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } }

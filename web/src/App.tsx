@@ -3,6 +3,7 @@ import ReactECharts from "echarts-for-react";
 import type { Snapshot, Job } from "./types";
 import { rands } from "./types";
 import { url } from "./site";
+import PlatformNav from "./PlatformNav";
 import { familyBar, heatmap, provinceBar, readTheme, scoreColor, scoreDist, trend, type Theme } from "./charts";
 
 const isReport = new URLSearchParams(location.search).has("report");
@@ -218,20 +219,19 @@ export default function App() {
 
   return (
     <div className="wrap">
+      <PlatformNav active="/automation-index/" />
       <header className="top">
         <div>
-          <a className="brand" href={url("/")} style={{ textDecoration: "none" }}><div className="brand-mark" />ACOLYTE</a>
           <h1>SA Automation Opportunity Index</h1>
           <p className="sub">Which jobs South Africa is hiring for right now, and how much of that work AI and automation could do.</p>
         </div>
         <div className="updated">
           Updated {fmtDate(s.generated_at)}<br />
-          <a className="btn" href="?report" target="_blank" style={{ marginTop: 8 }}>Printable report</a>{" "}
-          <a className="btn" href={url("/#contact")} style={{ marginTop: 8, background: "var(--accent)", color: "#0c0c0e", borderColor: "var(--accent)", fontWeight: 600 }}>Talk to Acolyte</a>
+          <a className="btn" href="?report" target="_blank" style={{ marginTop: 8 }}>Printable report</a>
         </div>
       </header>
       {s.meta.has_demo && (
-        <div className="banner"><b>Sample data.</b> These figures are generated for demonstration and the employers are fictional. Live Adzuna data replaces them on the next refresh.</div>
+        <div className="banner"><b>Sample data.</b> These figures are generated for demonstration and the employers are fictional. Live data replaces them on the next refresh.</div>
       )}
       <Dashboard s={s} t={t} />
       <footer>

@@ -94,6 +94,76 @@ def commentary(s: dict, use_claude: bool) -> dict:
     return template_commentary(s)
 
 
+def employers_and_tools(conn, kpis: dict) -> dict:
+    """Employer explorer, tools & skills in demand, and daily history. Public data only: no contacts."""
+    employers = rows(conn, """
+        SELECT l.id, l.name, l.website, l.industry, l.size_band, l.linkedin_url, l.description, l.lat, l.lon,
+               COALESCE(l.hq_province, (SELECT province FROM jobs j WHERE j.company_id = l.id AND province IS NOT NULL
+                                        GROUP BY 1 ORDER BY count(*) DESC LIMIT 1)) AS province,
+               COALESCE(l.hq_city, (SELECT city FROM jobs j WHERE j.company_id = l.id AND city IS NOT NULL
+                                    GROUP BY 1 ORDER BY count(*) DESC LIMIT 1)) AS city,
+               l.open_roles AS jobs, l.avg_score, l.automatable_value AS value, l.main_family, l.best_pitch AS pitch,
+               l.families, l.last_posted::date AS last_posted,
+               (SELECT array_agg(t ORDER BY n DESC) FROM (
+                    SELECT t, count(*) n FROM jobs j JOIN job_insights i ON i.job_id = j.id, unnest(i.tools) t
+                    WHERE j.company_id = l.id GROUP BY t ORDER BY n DESC LIMIT 6) x) AS tools,
+               (SELECT json_agg(json_build_object('title', title, 'url', url, 'score', automation_score) ORDER BY automatable_value_zar DESC)
+                  FROM (SELECT title, url, automation_score, automatable_value_zar FROM v_jobs_value v
+                        WHERE v.company_id = l.id ORDER BY automatable_value_zar DESC LIMIT 5) y) AS roles
+        FROM v_company_leads l WHERE NOT l.is_recruiter
+        ORDER BY l.automatable_value DESC NULLS LAST LIMIT 400""")
+    for e in employers:
+        e.pop("id", None)
+
+    posters = rows(conn, """
+        SELECT CASE WHEN c.id IS NULL THEN 'Employer not named'
+                    WHEN c.is_recruiter THEN 'Recruitment agency' ELSE 'Direct employer' END AS kind,
+               count(*) AS jobs
+        FROM v_jobs_value v LEFT JOIN companies c ON c.id = v.company_id GROUP BY 1 ORDER BY 2 DESC""")
+
+    def counted(col: str, limit: int = 25) -> list[dict]:
+        return rows(conn, f"""
+            SELECT t AS name, count(*) AS jobs, round(avg(v.automation_score)) AS avg_score
+            FROM v_jobs_value v JOIN job_insights i ON i.job_id = v.id, unnest(i.{col}) t
+            GROUP BY 1 ORDER BY 2 DESC LIMIT {limit}""")
+
+    covered = rows(conn, "SELECT count(*) AS n, count(*) FILTER (WHERE i.text_source = 'full') AS full_text "
+                         "FROM v_jobs_value v JOIN job_insights i ON i.job_id = v.id")[0]
+    tools = {
+        "jobs_analysed": covered["n"], "full_text": covered["full_text"],
+        "tools": counted("tools"), "skills": counted("skills"), "qualifications": counted("qualifications", 10),
+        "languages": counted("languages", 8),
+        "tool_by_family": rows(conn, """
+            SELECT v.role_family AS family, t AS tool, count(*) AS jobs
+            FROM v_jobs_value v JOIN job_insights i ON i.job_id = v.id, unnest(i.tools) t GROUP BY 1, 2"""),
+        "work_mode": rows(conn, """SELECT i.work_mode AS name, count(*) AS jobs FROM v_jobs_value v
+                                   JOIN job_insights i ON i.job_id = v.id GROUP BY 1 ORDER BY 2 DESC"""),
+        "seniority": rows(conn, """SELECT i.seniority AS name, count(*) AS jobs FROM v_jobs_value v
+                                   JOIN job_insights i ON i.job_id = v.id GROUP BY 1 ORDER BY 2 DESC"""),
+        "experience": rows(conn, """SELECT v.role_family AS family, round(avg(i.experience_years), 1) AS avg_years,
+                                           count(i.experience_years) AS jobs
+                                    FROM v_jobs_value v JOIN job_insights i ON i.job_id = v.id
+                                    WHERE i.experience_years IS NOT NULL GROUP BY 1 ORDER BY 2 DESC"""),
+    }
+
+    # Daily history row (one per day, overwritten by later runs the same day).
+    by_family = rows(conn, "SELECT role_family AS family, count(*) AS jobs FROM v_jobs_value GROUP BY 1")
+    conn.execute(
+        """INSERT INTO daily_stats (day, jobs, employers, recruiter_jobs, avg_score, automatable_value, top_tools, by_family)
+           VALUES (current_date, %s, %s, %s, %s, %s, %s, %s)
+           ON CONFLICT (day) DO UPDATE SET jobs = EXCLUDED.jobs, employers = EXCLUDED.employers,
+             recruiter_jobs = EXCLUDED.recruiter_jobs, avg_score = EXCLUDED.avg_score,
+             automatable_value = EXCLUDED.automatable_value, top_tools = EXCLUDED.top_tools, by_family = EXCLUDED.by_family""",
+        (kpis["jobs"], len(employers), next((p["jobs"] for p in posters if p["kind"] == "Recruitment agency"), 0),
+         kpis["avg_score"], kpis["automatable_value"], json.dumps(tools["tools"][:10], default=default),
+         json.dumps(by_family, default=default)),
+    )
+    conn.commit()
+    history = rows(conn, """SELECT day, jobs, employers, recruiter_jobs, avg_score, automatable_value
+                            FROM daily_stats ORDER BY day DESC LIMIT 120""")[::-1]
+    return {"employers": employers, "posters": posters, "insights": tools, "history": history}
+
+
 def main() -> None:
     with connect() as conn:
         meta = rows(conn, """
@@ -163,6 +233,8 @@ def main() -> None:
             SELECT width_bucket(automation_score, 0, 100, 10) AS bucket, count(*) AS jobs
             FROM v_jobs_value GROUP BY 1 ORDER BY 1""")
 
+        extra = employers_and_tools(conn, kpis)
+
     snapshot = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "meta": meta,
@@ -174,6 +246,7 @@ def main() -> None:
         "top_jobs": top_jobs,
         "top_companies": top_companies,
         "score_dist": score_dist,
+        **extra,
     }
     snapshot["commentary"] = commentary(snapshot, use_claude="--claude" in sys.argv)
     OUT.parent.mkdir(parents=True, exist_ok=True)

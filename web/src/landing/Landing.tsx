@@ -354,6 +354,7 @@ export default function Landing() {
           <div className="pill links">
             <a href="#analytics">AI analytics</a>
             <a href={url("/automation-index/")}>Live index</a>
+            <a href={url("/employers/")}>Who's hiring</a>
             <a href="#automation">Automation</a>
             <a className="btn-signal" href="#contact">Book a session</a>
           </div>
@@ -466,7 +467,7 @@ export default function Landing() {
           <div className="big">acolyte<span>.</span></div>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
             <span>© {new Date().getFullYear()} {SITE.legalName || SITE.name}{SITE.regNumber ? ` · Reg. ${SITE.regNumber}` : ""}</span>
-            <span><a href={url("/automation-index/")}>Live index</a> · <a href={url("/privacy/")}>Privacy</a> · Jobs data by <a href="https://www.adzuna.co.za" target="_blank" rel="noreferrer">Adzuna</a></span>
+            <span><a href={url("/automation-index/")}>Live index</a> · <a href={url("/employers/")}>Employers</a> · <a href={url("/tools/")}>Tools &amp; skills</a> · <a href={url("/privacy/")}>Privacy</a> · Jobs data by <a href="https://www.adzuna.co.za" target="_blank" rel="noreferrer">Adzuna</a></span>
           </div>
         </div>
       </footer>

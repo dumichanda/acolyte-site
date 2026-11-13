@@ -1,6 +1,7 @@
 name: Refresh Automation Index
 
-# Runs the data pipeline (Adzuna -> Neon -> classify -> snapshot.json) every morning,
+# Runs the data pipeline every morning: jobs -> Neon -> classify -> companies -> enrich -> tools/skills
+# -> CRM drafts -> snapshot.json,
 # commits the new snapshot, then redeploys the site to GitHub Pages.
 on:
   schedule:
@@ -29,7 +30,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
@@ -41,6 +42,15 @@ jobs:
       ADZUNA_BUDGET_PERIOD: ${{ vars.ADZUNA_BUDGET_PERIOD || 'total' }}
       WEB_SEARCH_TERMS_PER_RUN: ${{ vars.WEB_SEARCH_TERMS_PER_RUN || '5' }}
       JOB_SEARCH_MODEL: ${{ vars.JOB_SEARCH_MODEL || 'claude-opus-5-5' }}
+      # Enrichment + CRM (all optional)
+      BRAVE_API_KEY: ${{ secrets.BRAVE_API_KEY }}            # blank = free DuckDuckGo results page
+      ENRICH_PER_RUN: ${{ vars.ENRICH_PER_RUN || '25' }}      # companies researched per run
+      FULLTEXT_PER_RUN: ${{ vars.FULLTEXT_PER_RUN || '20' }}  # full ad texts looked up per run
+      DRAFTS_PER_RUN: ${{ vars.DRAFTS_PER_RUN || '10' }}      # first-email drafts prepared per run
+      SENDER_NAME: ${{ vars.SENDER_NAME }}
+      SENDER_TITLE: ${{ vars.SENDER_TITLE }}
+      SENDER_EMAIL: ${{ vars.SENDER_EMAIL }}
+      SENDER_PHONE: ${{ vars.SENDER_PHONE }}
     steps:
       - uses: actions/checkout@v4
 
@@ -56,7 +66,7 @@ jobs:
           ok=true
           if [ -z "$DATABASE_URL" ]; then echo "::error::Secret DATABASE_URL is missing or empty. Add your Neon connection string under Settings > Secrets and variables > Actions > Repository secrets."; ok=false; fi
           case "$DATABASE_URL" in ""|postgres://*|postgresql://*) ;; *) echo "::error::DATABASE_URL should start with postgresql:// (copy it from Neon > Connect)."; ok=false;; esac
-          for k in GEMINI_API_KEY ANTHROPIC_API_KEY ADZUNA_APP_ID ADZUNA_APP_KEY; do
+          for k in GEMINI_API_KEY ANTHROPIC_API_KEY ADZUNA_APP_ID ADZUNA_APP_KEY BRAVE_API_KEY; do
             if [ -n "${!k}" ]; then echo "$k: set"; else echo "$k: not set (that source is skipped)"; fi
           done
           if [ -z "$GEMINI_API_KEY$ANTHROPIC_API_KEY$ADZUNA_APP_KEY" ]; then echo "::warning::No job source key is set (GEMINI_API_KEY, ANTHROPIC_API_KEY or ADZUNA keys), so no new jobs can be found."; fi
