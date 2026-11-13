@@ -9,7 +9,7 @@ import * as echarts from "echarts";
 import { url } from "../site";
 import { CATEGORICAL, registerThemes } from "../viz";
 import { chartOption, fmt, type ChartArtifact, type ReportArtifact } from "./chart";
-import { approxWidth, buildDeck, C, chartsDeck, fitSize, H, W, type Prim, type SlideSpec } from "./deck";
+import { approxWidth, buildDeck, C, chartsDeck, fitSize, H, tableLayout, W, type Prim, type SlideSpec } from "./deck";
 
 const PALETTE = CATEGORICAL.light.map((c) => c.replace("#", "").toUpperCase());
 const FONT = "Poppins";   // brand font: embedded in PDFs; PowerPoint shows it where Poppins is installed (free, Google Fonts)
@@ -106,14 +106,12 @@ function nativeChart(s: Slide, c: ChartArtifact, x: number, y: number, w: number
     return;
   }
   if (c.type === "table") {
-    const idx = [xi, ...yi].filter((i, k, a) => i >= 0 && a.indexOf(i) === k);
-    const head = idx.map((i) => ({ text: c.columns[i], options: { bold: true, color: C.white, fill: { color: C.ink } } }));
-    const body = rows.map((r, k) => idx.map((i) => ({
-      text: typeof r[i] === "number" ? fmt(r[i], c.y.includes(c.columns[i]) ? c.value_format : "number") : String(r[i] ?? "—"),
-      options: { align: (typeof r[i] === "number" ? "right" : "left") as "right" | "left", fill: { color: k % 2 ? "FAF8F3" : C.white } },
-    })));
-    s.addTable([head, ...body], { x, y, w, fontFace: FONT, fontSize: 9, color: C.ink, border: { type: "solid", pt: 0.5, color: C.line },
-      autoPage: false, rowH: Math.min(0.3, h / (body.length + 1)), margin: 0.04 });
+    const tl = tableLayout(c, w, h);
+    const head = tl.cols.map((t) => ({ text: t, options: { bold: true, color: C.white, fill: { color: C.ink }, valign: "bottom" as const } }));
+    const body = tl.rows.map((r, k) => r.map((t, j) => ({ text: t,
+      options: { align: (tl.numeric[j] ? "right" : "left") as "right" | "left", fill: { color: k % 2 ? "FAF8F3" : C.white } } })));
+    s.addTable([head, ...body], { x, y, w, colW: tl.widths, rowH: [tl.headH, ...tl.rows.map(() => tl.rowH)], fontFace: FONT, fontSize: tl.pt,
+      color: C.ink, border: { type: "solid", pt: 0.5, color: C.line }, autoPage: false, margin: [0.02, 0.05, 0.02, 0.05] });
     return;
   }
   const labels = rows.map((r) => String(r[xi] ?? "—"));
@@ -218,15 +216,15 @@ export async function reportToPdf(r: ReportArtifact) {
   };
 
   const drawTable = (c: ChartArtifact, x: number, y: number, w: number, h: number) => {
-    const xi = c.columns.indexOf(c.x), idx = [xi, ...c.y.map((v) => c.columns.indexOf(v))].filter((i, k, a) => i >= 0 && a.indexOf(i) === k);
-    const rows = c.rows.slice(0, 16), rh = Math.min(0.3, h / (rows.length + 1)), cw = w / idx.length;
-    doc.setFillColor(...hex(C.ink)); doc.rect(x, y, w, rh, "F");
-    idx.forEach((i, k) => drawText(c.columns[i], x + k * cw + 0.06, y, cw - 0.12, rh, 8.5, C.white, true, "left", "middle"));
-    rows.forEach((r, n) => {
-      const yy = y + (n + 1) * rh;
-      if (n % 2) { doc.setFillColor(250, 248, 243); doc.rect(x, yy, w, rh, "F"); }
-      idx.forEach((i, k) => drawText(typeof r[i] === "number" ? fmt(r[i], c.y.includes(c.columns[i]) ? c.value_format : "number") : String(r[i] ?? "—"),
-        x + k * cw + 0.06, yy, cw - 0.12, rh, 8.5, C.ink, false, typeof r[i] === "number" ? "right" : "left", "middle"));
+    const tl = tableLayout(c, w, h);
+    doc.setFillColor(...hex(C.ink)); doc.rect(x, y, w, tl.headH, "F");
+    let xx = x;
+    tl.cols.forEach((t, k) => { drawText(t, xx + 0.05, y, tl.widths[k] - 0.1, tl.headH, tl.pt, C.white, true, tl.numeric[k] ? "right" : "left", "bottom", 7); xx += tl.widths[k]; });
+    tl.rows.forEach((row, n) => {
+      const yy = y + tl.headH + n * tl.rowH;
+      if (n % 2) { doc.setFillColor(250, 248, 243); doc.rect(x, yy, w, tl.rowH, "F"); }
+      let cx = x;
+      row.forEach((t, k) => { drawText(t, cx + 0.05, yy, tl.widths[k] - 0.1, tl.rowH, tl.pt, C.ink, false, tl.numeric[k] ? "right" : "left", "middle"); cx += tl.widths[k]; });
     });
   };
 

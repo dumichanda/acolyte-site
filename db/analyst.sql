@@ -11,6 +11,7 @@ SELECT v.id                                   AS job_id,
        v.title,
        COALESCE(c.name, v.company)            AS employer,
        CASE WHEN c.id IS NULL THEN 'not named' WHEN c.is_recruiter THEN 'recruitment agency'
+            WHEN COALESCE(c.is_foreign, FALSE) THEN 'overseas employer (remote)'
             ELSE 'direct employer' END        AS poster_type,
        v.province, v.city,
        v.role_family,
@@ -39,7 +40,7 @@ SELECT i.job_id, s AS skill FROM job_insights i, unnest(i.skills) s
 WHERE i.job_id IN (SELECT job_id FROM analyst.jobs);
 
 CREATE VIEW analyst.employers AS
-SELECT l.name AS employer, l.is_recruiter, l.website, l.industry, l.size_band,
+SELECT l.name AS employer, l.is_recruiter, COALESCE(l.is_foreign, FALSE) AS is_foreign, l.country, l.website, l.industry, l.size_band,
        COALESCE(l.hq_province, (SELECT province FROM jobs j WHERE j.company_id = l.id AND province IS NOT NULL
                                 GROUP BY 1 ORDER BY count(*) DESC LIMIT 1)) AS province,
        l.open_roles, l.avg_score, l.automatable_value AS automatable_value_zar, l.main_family, l.last_posted::date AS last_posted

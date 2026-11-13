@@ -170,6 +170,7 @@ class Session:
     messages: list = field(default_factory=list)
     datasets: dict = field(default_factory=dict)
     charts: dict = field(default_factory=dict)
+    report_reviews: int = 0
     turns: int = 0
     updated: float = field(default_factory=time.time)
 
@@ -254,7 +255,115 @@ def make_chart(s: Session, args: dict) -> tuple[str, dict]:
         {"type": "artifact", "artifact": {"kind": "chart", **chart}}
 
 
-def write_report(s: Session, args: dict) -> tuple[str, dict]:
+
+# ------------------------------------------------------------------ report review (automatic checks before a pack is accepted)
+NUM = re.compile(r"(R)?\s?(\d{1,3}(?:[ ,]\d{3})+|\d+(?:\.\d+)?)(?:\s?(bn|m|k)\b)?(%|x\b)?", re.I)
+
+
+def _numbers(text: str) -> list[tuple[str, float, bool]]:
+    """(token, value, is_rand) for checkable figures: rand amounts and counts >= 20; percentages/multiples skipped."""
+    out = []
+    for m in NUM.finditer(text or ""):
+        rand, digits, unit, suffix = m.group(1), m.group(2), (m.group(3) or "").lower(), m.group(4)
+        after, before = text[m.end():m.end() + 12].lower(), text[max(0, m.start() - 6):m.start()].lower()
+        if suffix or re.match(r"\s*(days?|weeks?|months?|years?|hours?|minutes?)\b", after) or re.search(r"(top|q)\s?$", before):
+            continue
+        v = float(re.sub(r"[ ,]", "", digits)) * {"bn": 1e9, "m": 1e6, "k": 1e3}.get(unit, 1)
+        if (not rand and not unit and (v < 20 or 1990 <= v <= 2035)) or v == 0:
+            continue
+        out.append((m.group(0).strip(), v, bool(rand)))
+    return out
+
+
+def _known_values(s: Session) -> list[float]:
+    vals = []
+    for ds in s.datasets.values():
+        for r in ds["rows"]:
+            vals += [float(v) for v in r if isinstance(v, (int, float)) and not isinstance(v, bool)]
+    return vals
+
+
+def _traceable(v: float, known: list[float]) -> bool:
+    for d in known:
+        for k in (d, d * 1e6, d * 1e3):     # also values queried in Rm / Rk
+            if k and abs(v - k) <= max(abs(k) * 0.015, 0.051 * (1e6 if abs(v) >= 1e6 else 1e3 if abs(v) >= 1e3 else 1)):
+                return True
+    return False
+
+
+def review_report(s: Session, a: dict, flagged: list[str]) -> list[str]:
+    issues = []
+    L = lambda t, n: len(str(t or "")) > n  # noqa: E731
+    if L(a.get("title"), 90):
+        issues.append("Pack title is longer than 90 characters; shorten it.")
+    secs = a.get("sections") or []
+    if not 1 <= len(secs) <= 10:
+        issues.append(f"Use 1-10 sections (got {len(secs)}).")
+    kpi_lists = [("cover", a.get("cover_kpis") or [])] + [("summary", (a.get("summary") or {}).get("kpis") or [])] + \
+                [(f"section {i + 1}", sec.get("kpis") or []) for i, sec in enumerate(secs)]
+    for where, ks in kpi_lists:
+        for k in ks:
+            if L(k.get("value"), 9):
+                issues.append(f"KPI value '{k.get('value')}' ({where}) is too long for a card: max 9 characters, e.g. 'R178.9m', '71%'.")
+            if L(k.get("label"), 30) or L(k.get("context"), 48):
+                issues.append(f"KPI '{k.get('label')}' ({where}): keep labels under 30 and context under 48 characters.")
+    for i, sec in enumerate(secs):
+        t = str(sec.get("title") or "")
+        if len(t.split()) > 14 or len(t) > 95:
+            issues.append(f"Section {i + 1} title is too long ({len(t.split())} words); make it a sharp action title of max ~12 words.")
+        for f, n in (("takeaway", 230), ("so_what", 330), ("note", 290)):
+            if L(sec.get(f), n):
+                issues.append(f"Section {i + 1} {f} is longer than {n} characters; tighten it.")
+        if len(sec.get("bullets") or []) > 4 or any(L(b, 150) for b in sec.get("bullets") or []):
+            issues.append(f"Section {i + 1}: max 4 bullets of max 150 characters.")
+        if len(sec.get("chart_ids") or []) > 2:
+            issues.append(f"Section {i + 1} has more than 2 charts; split it.")
+        for cid in sec.get("chart_ids") or []:
+            c = s.charts.get(cid)
+            if c is None:
+                issues.append(f"Section {i + 1} references unknown chart '{cid}'.")
+            elif c["type"] == "table" and (len(c["rows"]) > 12 or len(c["y"]) > 5):
+                issues.append(f"Table chart '{c['title']}' has {len(c['rows'])} rows and {len(c['y'])} value columns; a slide fits "
+                              "max 12 rows and 5 columns. Re-query a shorter top-N and make a new table chart.")
+            elif c["type"] in ("bar", "hbar") and len(c["rows"]) > 20:
+                issues.append(f"Chart '{c['title']}' has {len(c['rows'])} bars; show the top 15 and group the rest.")
+    for x in a.get("qa") or []:
+        if L(x.get("a"), 330):
+            issues.append(f"Q&A answer to '{str(x.get('q'))[:40]}' is too long (max 330 characters).")
+    # Every rand amount / count stated must come from a query result.
+    known = _known_values(s)
+    texts = [a.get("title"), (a.get("summary") or {}).get("title"), (a.get("summary") or {}).get("takeaway"),
+             (a.get("summary") or {}).get("so_what")] + [k.get("value") for _, ks in kpi_lists for k in ks] + \
+            [sec.get(f) for sec in secs for f in ("title", "takeaway", "so_what")] + [x.get("a") for x in a.get("qa") or []]
+    untraced = sorted({tok for t in texts for tok, v, _ in _numbers(str(t or "")) if not _traceable(v, known)})
+    if untraced:
+        issues.append("These figures don't match any query result: " + ", ".join(untraced[:12]) +
+                      ". Query them (or derive from figures you queried) or remove them.")
+    # Recruiters and overseas firms must not be presented as SA direct-employer prospects.
+    blob = json.dumps(a, ensure_ascii=False).lower()
+    bad = [n for n in flagged if len(n) > 3 and n.lower() in blob]
+    if bad:
+        issues.append("These names are recruitment agencies or overseas firms without an SA presence: " + ", ".join(bad[:8]) +
+                      ". Don't present them as direct employers or targets; exclude them or label them accurately.")
+    return issues
+
+
+def flagged_employers(db_url: str) -> list[str]:
+    try:
+        with psycopg.connect(db_url) as conn:
+            return [r[0] for r in conn.execute(
+                "SELECT employer FROM analyst.employers WHERE is_recruiter OR COALESCE(is_foreign, FALSE)").fetchall()]
+    except psycopg.Error:
+        return []
+
+
+def write_report(s: Session, args: dict, db_url: str = "") -> tuple[str, dict | None]:
+    issues = review_report(s, args, flagged_employers(db_url) if db_url else [])
+    if issues and s.report_reviews < 1:   # one automatic correction round, then accept
+        s.report_reviews += 1
+        raise ValueError("Report review found issues. Fix all of them and call write_report again with the complete pack:\n- "
+                         + "\n- ".join(issues))
+    s.report_reviews = 0
     def kpis(xs, n):
         return [{k: str(x.get(k, "")) for k in ("value", "label", "context", "tone")} for x in (xs or [])[:n] if isinstance(x, dict)]
     sections, unknown = [], []
@@ -278,6 +387,8 @@ def write_report(s: Session, args: dict) -> tuple[str, dict]:
               "charts": {c: s.charts[c] for sec in sections for c in sec["chart_ids"]},
               "generated": datetime.now().isoformat(timespec="minutes")}
     note = f" Unknown chart ids ignored: {unknown}." if unknown else ""
+    if issues:
+        note += " Remaining review notes (mention them to the user): " + "; ".join(issues[:4])
     return f"Report {rid} created with {len(sections)} sections.{note} The user can view it and download PowerPoint/PDF.", \
         {"type": "artifact", "artifact": report}
 
@@ -292,7 +403,7 @@ def execute(s: Session, name: str, args, db_url: str) -> tuple[str, dict | None,
         elif name == "make_chart":
             text, ev = make_chart(s, args)
         elif name == "write_report":
-            text, ev = write_report(s, args)
+            text, ev = write_report(s, args, db_url)
         else:
             return f"Error: unknown tool {name}", None, True
         return text, ev, False

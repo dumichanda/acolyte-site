@@ -5,7 +5,7 @@
  * Design language (consulting pack): dark header band with section label, Q-chip + action title + bold takeaway,
  * chart left / KPI cards + "So what" + note boxes right, Q&A grid, conclusions & actions, method & limits.
  */
-import { human, type ChartArtifact, type Kpi, type ReportArtifact } from "./chart";
+import { fmt, human, type ChartArtifact, type Kpi, type ReportArtifact } from "./chart";
 
 export const W = 13.333, H = 7.5, M = 0.45;
 export const C = {
@@ -30,7 +30,8 @@ const clean = (s?: string) => (s || "").replace(/\*\*(.+?)\*\*/g, "$1").replace(
 const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" });
 
 /** Approximate rendered width (inches) of text at a point size, for layout decisions. */
-export const approxWidth = (text: string, pt: number, bold = false) => text.length * pt * (bold ? 0.6 : 0.555) / 72;   // Poppins
+/** Conservative width estimate: covers Poppins and the wider fonts PowerPoint substitutes when Poppins isn't installed. */
+export const approxWidth = (text: string, pt: number, bold = false) => text.length * pt * (bold ? 0.68 : 0.6) / 72;
 
 /** Largest size (<= max, >= min) at which `text` wraps into the box. `measure` gives width in inches. */
 export function fitSize(text: string, w: number, h: number, max: number, min: number,
@@ -87,7 +88,9 @@ function kpiCard(prims: Prim[], k: Kpi, x: number, y: number, w: number, h: numb
   prims.push({ t: "rect", x, y, w, h, fill: dark ? C.darkCard : C.paper, radius: 0.06 });
   prims.push({ t: "text", x: x + 0.14, y: y + 0.1, w: w - 0.28, h: 0.24, text: clean(k.label), size: 8.5, min: 7, color: dark ? C.darkMuted : C.muted });
   const color = dark ? (k.tone === "negative" ? "FF8A70" : k.tone === "positive" ? "7FD8A2" : C.lime) : (TONE[k.tone] || C.olive);
-  prims.push({ t: "text", x: x + 0.14, y: y + 0.32, w: w - 0.28, h: Math.min(0.62, h * 0.48), text: clean(k.value), size: dark ? 28 : 26, min: 14, bold: true, color, valign: "middle" });
+  const v = clean(k.value), vmax = dark ? 28 : 26;
+  const vsize = Math.max(11, Math.min(vmax, Math.floor((w - 0.3) * 72 / (Math.max(v.length, 1) * 0.7))));   // always one line
+  prims.push({ t: "text", x: x + 0.14, y: y + 0.32, w: w - 0.28, h: Math.min(0.62, h * 0.48), text: v, size: vsize, bold: true, color, valign: "middle" });
   if (k.context) prims.push({ t: "text", x: x + 0.14, y: y + 0.32 + Math.min(0.62, h * 0.48), w: w - 0.28, h: h - 0.42 - Math.min(0.62, h * 0.48),
     text: clean(k.context), size: 8, min: 6.5, color: dark ? C.darkMuted : C.muted });
 }
@@ -102,10 +105,49 @@ function box(prims: Prim[], kind: "so_what" | "note" | "plain", title: string, t
 }
 
 function chartBlock(prims: Prim[], c: ChartArtifact, x: number, y: number, w: number, h: number) {
-  prims.push({ t: "text", x, y, w, h: 0.28, text: clean(c.title), size: 10.5, bold: true, color: C.ink });
-  if (c.subtitle) prims.push({ t: "text", x, y: y + 0.27, w, h: 0.22, text: clean(c.subtitle), size: 8, color: C.muted });
-  const top = y + (c.subtitle ? 0.52 : 0.32);
-  prims.push({ t: "chart", x, y: top, w, h: h - (top - y), chart: { ...c, columns: c.columns.map(human), x: human(c.x), y: c.y.map(human) } });
+  const title = clean(c.title), sub = clean(c.subtitle);
+  const th = Math.min(textHeight(title, w, 10.5, true), 0.62) + 0.04;
+  prims.push({ t: "text", x, y, w, h: th, text: title, size: 10.5, min: 8.5, bold: true, color: C.ink });
+  let top = y + th;
+  if (sub) {
+    const sh = Math.min(textHeight(sub, w, 8), 0.4) + 0.02;
+    prims.push({ t: "text", x, y: top, w, h: sh, text: sub, size: 8, min: 7, color: C.muted });
+    top += sh;
+  }
+  top += 0.06;
+  const chart = { ...c, columns: c.columns.map(human), x: human(c.x), y: c.y.map(human) };
+  const ch = y + h - top;
+  if (c.type === "table") {
+    const tl = tableLayout(chart, w, ch - 0.22);
+    if (tl.more) prims.push({ t: "text", x, y: y + h - 0.2, w, h: 0.2, text: `+${tl.more} more rows · full list in the CSV download`, size: 7.5, color: C.muted });
+  }
+  prims.push({ t: "chart", x, y: top, w, h: c.type === "table" ? ch - 0.22 : ch, chart });
+}
+
+export interface TableLayout { cols: string[]; widths: number[]; rows: string[][]; numeric: boolean[]; rowH: number; headH: number; pt: number; more: number }
+
+/** Fit a table into a box: at most 6 columns, widths from content, cells truncated (never wrapped), rows trimmed. */
+export function tableLayout(c: ChartArtifact, w: number, h: number): TableLayout {
+  const pt = 8.5, rowH = 0.26, headH = 0.44;
+  const xi = c.columns.indexOf(c.x);
+  const idx = [xi, ...c.y.map((v) => c.columns.indexOf(v))].filter((i, k, a) => i >= 0 && a.indexOf(i) === k).slice(0, 6);
+  const fitRows = Math.max(1, Math.floor((h - headH) / rowH));
+  const src = c.rows.slice(0, fitRows);
+  const cell = (v: unknown, i: number) => typeof v === "number" ? fmt(v, c.y.includes(c.columns[i]) ? c.value_format : "number") : String(v ?? "—");
+  const raw = src.map((r) => idx.map((i) => cell(r[i], i)));
+  const numeric = idx.map((i) => src.some((r) => typeof r[i] === "number"));
+  const want = idx.map((i, k) => Math.max(
+    Math.max(...c.columns[i].split(/\s+/).map((wd) => approxWidth(wd, pt, true))) + 0.12,
+    Math.min(Math.max(...raw.map((r) => approxWidth(r[k], pt)), 0) + 0.12, numeric[k] ? 1.1 : 2.6)));
+  const total = want.reduce((a, b) => a + b, 0);
+  const widths = want.map((x) => x * w / total);
+  const trunc = (t: string, width: number) => {
+    if (approxWidth(t, pt) <= width - 0.1) return t;
+    let n = Math.max(1, Math.floor((width - 0.1) * 72 / (pt * 0.6)) - 1);
+    return t.slice(0, n).trimEnd() + "…";
+  };
+  return { cols: idx.map((i) => c.columns[i]), widths, rows: raw.map((r) => r.map((t, k) => trunc(t, widths[k]))), numeric,
+           rowH, headH, pt, more: Math.max(0, c.rows.length - src.length) };
 }
 
 // ------------------------------------------------------------------ slides
@@ -277,6 +319,13 @@ export function buildDeck(r: ReportArtifact): SlideSpec[] {
     p.push({ t: "link", x: 0.6, y: 4.6, w: 3.0, h: 0.6, url: "https://dumichanda.github.io/acolyte-site/#contact" });
     p.push({ t: "text", x: 0.6, y: 6.75, w: 9, h: 0.3, text: "dumichanda.github.io/acolyte-site", size: 9, color: C.darkMuted });
     slides.push({ bg: C.ink, prims: p });
+  }
+  // Final guard: nothing on a content slide may run past the footer rule.
+  for (const sl of slides) {
+    if (sl.bg !== C.white) continue;
+    for (const p of sl.prims) {
+      if ("h" in p && p.y < 7.0 && p.y + p.h > 7.02) p.h = Math.max(0.1, 7.02 - p.y);
+    }
   }
   return slides;
 }

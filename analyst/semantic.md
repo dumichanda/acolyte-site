@@ -9,7 +9,7 @@ Adzuna and public job listings, each scored for how much of the role's work AI/a
 | job_id | unique id |
 | title | job title as advertised |
 | employer | company name (recruitment agencies appear under their own name) |
-| poster_type | 'direct employer', 'recruitment agency' or 'not named' |
+| poster_type | 'direct employer', 'recruitment agency', 'overseas employer (remote)' (no SA presence, hiring remote SA staff) or 'not named' |
 | province | SA province (Gauteng, Western Cape, KwaZulu-Natal, …) or NULL |
 | city | city/region as advertised |
 | role_family | one of 15 role types, e.g. 'Creditors & Debtors', 'Customer Service & Call Centre', 'Bookkeeping & Accounts Admin', 'Payroll', 'Collections', 'Claims Administration', 'Data Capture', 'Office & Admin Support', 'Sales Admin & Quoting', 'Logistics & Stock Admin', 'Compliance & FICA', 'Conveyancing & Legal Admin', 'HR & Recruitment Admin', 'Tender Administration', 'Reporting & Data Analysis', 'Other' |
@@ -37,7 +37,7 @@ e.g. 'Reconciliations', 'Month-end', 'VAT / tax', 'Invoicing', 'Collections', 'C
 'Claims processing', 'FICA / KYC', 'Reporting', 'Payroll'.
 
 ## analyst.employers — one row per company that posted ads
-employer, is_recruiter, website, industry, size_band, province, open_roles, avg_score,
+employer, is_recruiter, is_foreign (no South African presence), country, website, industry, size_band, province, open_roles, avg_score,
 automatable_value_zar (sum over its open roles), main_family, last_posted.
 Recruitment agencies (is_recruiter = true) advertise for other employers: exclude them when the question is about
 who is hiring.
@@ -49,5 +49,6 @@ day, jobs, employers, recruiter_jobs, avg_score, automatable_value_zar. Short hi
 - "Open roles" = rows in analyst.jobs (already limited to the last 60 days).
 - "Automatable value" = sum(automatable_value_zar). Quote it in rand: R1.2m, R350k.
 - "High-potential roles" = automation_score >= 60.
-- "Hiring employers" = analyst.employers WHERE NOT is_recruiter.
+- "Hiring employers" / "direct employers" / prospects = analyst.employers WHERE NOT is_recruiter AND NOT is_foreign
+  (in analyst.jobs: poster_type = 'direct employer'). Overseas firms hiring remote SA staff are context, not prospects.
 - Averages of automation_score are simple means over roles.
