@@ -129,7 +129,7 @@ def main() -> None:
         cur = conn.execute(
             """SELECT c.id, c.name, c.website, c.linkedin_url, c.description, c.hq_city, c.lat, c.lon
                FROM v_company_leads c
-               WHERE NOT c.is_recruiter AND c.enrich_tries < 3
+               WHERE NOT c.is_recruiter AND NOT COALESCE(c.is_foreign, FALSE) AND c.enrich_tries < 3
                  AND (c.website IS NULL OR c.lat IS NULL
                       OR NOT EXISTS (SELECT 1 FROM contacts k WHERE k.company_id = c.id))
                ORDER BY c.automatable_value DESC NULLS LAST LIMIT %s""", (args.limit,))

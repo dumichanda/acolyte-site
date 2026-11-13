@@ -28,7 +28,8 @@ function EmployerRow({ e, open, onToggle }: { e: Employer; open: boolean; onTogg
   return (
     <>
       <tr className="rowx" onClick={onToggle}>
-        <td><b>{e.name}</b><div className="muted" style={{ fontSize: 11 }}>{e.industry ?? e.main_family}</div></td>
+        <td><b>{e.name}</b>{e.foreign_firm && <span className="pill" title="Based outside South Africa; hiring remote SA staff" style={{ marginLeft: 6 }}>{e.country || "Foreign"} · remote</span>}
+          <div className="muted" style={{ fontSize: 11 }}>{e.industry ?? e.main_family}</div></td>
         <td>{[e.city, e.province].filter(Boolean).join(", ") || "—"}</td>
         <td className="num">{e.jobs}</td>
         <td className="num"><span className="score" style={{ ...scoreChip(e.avg_score) }}>{e.avg_score}</span></td>

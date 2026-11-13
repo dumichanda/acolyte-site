@@ -93,10 +93,13 @@ def main() -> None:
                        linkedin_url = COALESCE(NULLIF(%(linkedin_url)s, ''), linkedin_url),
                        description = COALESCE(NULLIF(%(description)s, ''), description),
                        confidence = COALESCE(NULLIF(%(confidence)s, ''), confidence),
+                       country = COALESCE(NULLIF(%(country)s, ''), country),
+                       is_foreign = CASE WHEN NULLIF(%(country)s, '') IS NULL THEN is_foreign
+                                         ELSE %(country)s <> 'South Africa' END,
                        source = 'research', enriched_at = COALESCE(enriched_at, now())
                    WHERE id = (SELECT company_id FROM company_aliases WHERE alias_key = %(key)s)""",
                 {**{k: r.get(k, "") for k in ("name_clean", "website", "industry", "size_band", "hq_city", "hq_province",
-                                               "linkedin_url", "description", "confidence")},
+                                               "linkedin_url", "description", "confidence", "country")},
                  "is_recruiter": r["is_recruiter"], "key": key},
             )
 
@@ -108,11 +111,15 @@ def main() -> None:
                 (norm_key(raw), raw),
             )
 
-        # One opportunity per hiring employer with open roles; refresh its value and pitch.
+        # A website on a foreign country domain (e.g. .co.uk) marks the firm as foreign when nothing else is known.
+        conn.execute(r"""UPDATE companies SET is_foreign = TRUE
+                         WHERE is_foreign IS NULL AND website ~ '\.(co\.uk|uk|com\.au|au|us|ca|de|nl|ie|in|ph|co\.nz|ng|ke)$'""")
+
+        # One opportunity per hiring employer with open roles; refresh its value and pitch. Foreign firms excluded.
         opened = conn.execute(
             """INSERT INTO opportunities (company_id, est_value, pitch)
                SELECT id, automatable_value, best_pitch FROM v_company_leads
-               WHERE NOT is_recruiter AND open_roles > 0
+               WHERE NOT is_recruiter AND NOT COALESCE(is_foreign, FALSE) AND open_roles > 0
                ON CONFLICT (company_id) DO UPDATE SET est_value = EXCLUDED.est_value, pitch = EXCLUDED.pitch
                RETURNING (xmax = 0)"""
         ).fetchall()
@@ -122,10 +129,11 @@ def main() -> None:
             """DELETE FROM opportunities o
                WHERE o.stage = 'new'
                  AND NOT EXISTS (SELECT 1 FROM activities a WHERE a.opportunity_id = o.id AND a.kind <> 'email_draft')
-                 AND (EXISTS (SELECT 1 FROM companies c WHERE c.id = o.company_id AND c.is_recruiter)
+                 AND (EXISTS (SELECT 1 FROM companies c WHERE c.id = o.company_id
+                              AND (c.is_recruiter OR COALESCE(c.is_foreign, FALSE)))
                       OR NOT EXISTS (SELECT 1 FROM jobs j WHERE j.company_id = o.company_id))""").rowcount
         if removed:
-            print(f"Removed {removed} opportunities for recruiters or merged companies.")
+            print(f"Removed {removed} opportunities for recruiters, foreign firms or merged companies.")
         conn.commit()
         stats = conn.execute(
             "SELECT count(*), count(*) FILTER (WHERE is_recruiter), count(*) FILTER (WHERE website IS NOT NULL) FROM companies"

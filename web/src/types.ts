@@ -36,7 +36,7 @@ export interface Employer {
   name: string; website: string | null; industry: string | null; size_band: string | null; linkedin_url: string | null;
   description: string | null; lat: number | null; lon: number | null; province: string | null; city: string | null;
   jobs: number; avg_score: number; value: number; main_family: string; pitch: string; families: string[];
-  last_posted: string | null; tools: string[] | null; roles: { title: string; url: string | null; score: number }[] | null;
+  last_posted: string | null; tools: string[] | null; foreign_firm?: boolean; country?: string | null; roles: { title: string; url: string | null; score: number }[] | null;
 }
 export interface Counted { name: string; jobs: number; avg_score?: number }
 export interface Insights {

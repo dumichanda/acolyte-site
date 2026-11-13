@@ -98,6 +98,7 @@ def employers_and_tools(conn, kpis: dict) -> dict:
     """Employer explorer, tools & skills in demand, and daily history. Public data only: no contacts."""
     employers = rows(conn, """
         SELECT l.id, l.name, l.website, l.industry, l.size_band, l.linkedin_url, l.description, l.lat, l.lon,
+               COALESCE(l.is_foreign, FALSE) AS foreign_firm, l.country,
                COALESCE(l.hq_province, (SELECT province FROM jobs j WHERE j.company_id = l.id AND province IS NOT NULL
                                         GROUP BY 1 ORDER BY count(*) DESC LIMIT 1)) AS province,
                COALESCE(l.hq_city, (SELECT city FROM jobs j WHERE j.company_id = l.id AND city IS NOT NULL
