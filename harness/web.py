@@ -38,8 +38,8 @@ def _openrouter_search(ctx, query: str, n: int) -> list[dict]:
     return out[:n]
 
 
-def web_search(ctx, query: str, max_results: int = 8) -> dict:
-    n = max(1, min(int(max_results or 8), 10))
+def web_search(ctx, query: str, max_results: int = 5) -> dict:
+    n = max(1, min(int(max_results or 5), 8))
     results, via = [], ""
     if os.environ.get("BRAVE_API_KEY"):
         results, via = basic_search(query, n), "brave"
@@ -52,6 +52,7 @@ def web_search(ctx, query: str, max_results: int = 8) -> dict:
         results, via = basic_search(query, n), via or "duckduckgo"
     for r in results:
         ctx.setdefault("seen_urls", set()).add(norm(r["url"]))
+        ctx.setdefault("search_hits", {})[norm(r["url"])] = f"{r.get('title', '')} {r.get('snippet', '')}"
     ctx["stats"]["searches"] = ctx["stats"].get("searches", 0) + 1
     return {"query": query, "via": via, "results": results} if results else \
         {"query": query, "via": via, "results": [], "note": "No results. Try a different query."}
@@ -73,9 +74,9 @@ def fetch_page(ctx, url: str) -> dict:
     return {"url": url, "domain": domain(url), "title": title[:200], "text": text[:5000]}
 
 
-SEARCH = Tool("web_search", "Search the web. Returns titles, URLs and snippets. Prefer specific queries.",
+SEARCH = Tool("web_search", "Search the web (costs money: use few, specific queries). Returns titles, URLs and snippets.",
               {"type": "object", "properties": {"query": {"type": "string"}, "max_results": {"type": "integer"}},
-               "required": ["query"], "additionalProperties": False}, web_search, max_calls=15)
+               "required": ["query"], "additionalProperties": False}, web_search, max_calls=8)
 FETCH = Tool("fetch_page", "Open a web page and read its text (first ~5000 characters). Use it to verify facts before saving.",
              {"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"], "additionalProperties": False},
              fetch_page, max_calls=30)

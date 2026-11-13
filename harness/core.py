@@ -160,6 +160,8 @@ class Agent:
                     if len(out) > MAX_TOOL_OUTPUT:
                         out = out[:MAX_TOOL_OUTPUT] + f"\n…[truncated {len(out) - MAX_TOOL_OUTPUT} chars]"
                     self._log_step(conn, rid, step, "tool", c.name, c.args, out, err, cost=extra or None)
+                    arg = next(iter((c.args or {}).values()), "") if isinstance(c.args, dict) else ""
+                    self.on_event(f"    {'✗' if err else '·'} {c.name}({str(arg)[:70]}) -> {out[:110].replace(chr(10), ' ')}")
                     results.append((c.id, out, err))
                 self.provider.add_results(messages, results)
                 if turn.stop == "length":

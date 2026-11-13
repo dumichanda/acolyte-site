@@ -18,10 +18,12 @@ Method for each role:
 1. web_search with focused queries, e.g. '"creditors clerk" job Johannesburg', 'payroll administrator vacancy Durban 2026',
    'site:careers24.com debtors clerk'. Try PNet, Careers24, CareerJunction, Indeed ZA, Executive Placements, Jobmail and
    company career pages.
-2. fetch_page each promising result to read the actual ad. A search-results or category page is NOT an ad; open the
-   individual posting.
-3. save_job only for an individual ad you opened that is in South Africa and looks current (posted in the last ~30 days,
-   or no date shown but still open). Copy title, company, city and salary exactly as the ad shows them.
+2. If a search result is clearly one individual ad (its URL points at a single posting, not a search or category page),
+   you can save it straight from the search result. Use fetch_page only when you need details (company, city, salary)
+   that the snippet lacks; many job boards block page fetches, so don't retry a page that fails.
+3. save_job only for individual ads in South Africa that look current (last ~30 days, or still open). Copy title,
+   company, city and salary exactly as shown.
+Searches cost money: use at most 2 searches per role and get several ads out of each.
 4. known_jobs tells you what is already in the database; don't save duplicates.
 
 Aim for about {{target}} new ads per role, then stop. Be efficient: skip pages that fail to open.
@@ -40,17 +42,23 @@ def known_jobs(ctx, role: str) -> dict:
 def save_job(ctx, url: str, title: str, company: str, role: str, city: str = "", province: str = "",
              posted_date: str = "", salary_text: str = "", summary: str = "") -> dict:
     page = ctx.get("fetched", {}).get(norm(url))
-    if not page:
-        raise ValueError("Open the ad with fetch_page first; only ads you have read can be saved.")
-    text = (page["title"] + " " + page["text"]).lower()
+    hit = ctx.get("search_hits", {}).get(norm(url))
+    if not page and not hit:
+        raise ValueError("Only ads you opened with fetch_page, or that appeared as a search result, can be saved.")
     words = [w for w in re.findall(r"[a-z]{4,}", title.lower()) if w not in {"remote", "hybrid", "contract", "permanent"}]
-    if not words or sum(w in text for w in words) < max(1, round(len(words) * 2 / 3)):
-        raise ValueError("The page you opened does not name this job title. Save the title exactly as the ad shows it.")
+    def names_title(text: str) -> bool:
+        return bool(words) and sum(w in text.lower() for w in words) >= max(1, round(len(words) * 2 / 3))
+    if page and names_title(page["title"] + " " + page["text"]):
+        verified = "page"
+    elif hit and names_title(hit):
+        verified = "search_result"
+    else:
+        raise ValueError("Neither the page nor the search result names this job title. Save the title exactly as the ad shows it.")
     if re.search(r"/(search|jobs)\?|[?&](q|keywords|query)=", url, re.I):
         raise ValueError("That is a search-results page, not an individual ad.")
     job = {"url": url, "title": title, "company": company, "city": city,
            "province": province if province in PROVINCES else "", "posted_date": posted_date,
-           "salary_text": salary_text, "summary": summary[:600], "verified_by": "agent_fetch"}
+           "salary_text": salary_text, "summary": summary[:600], "verified_by": verified}
     n = store(ctx["conn"], [job], role)
     ctx["conn"].commit()
     ctx["stats"]["saved"] = ctx["stats"].get("saved", 0) + n
