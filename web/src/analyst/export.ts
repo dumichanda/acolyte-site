@@ -1,30 +1,19 @@
 /**
- * Branded downloads for Acolyte Analyst artifacts, generated in the browser (no server, nothing uploaded):
- *  - PowerPoint (.pptx) with NATIVE charts (editable in PowerPoint: data, colours, labels), tables and KPI figures
- *  - PDF report (.pdf) with the Acolyte cover band, header/footer and crisp chart images
- * Both libraries are loaded on demand, so the page itself stays light.
+ * Branded downloads for Acolyte Analyst, generated in the browser (no server, nothing uploaded).
+ * deck.ts lays out the slides once; this file draws them twice:
+ *  - PowerPoint (.pptx): NATIVE charts (right-click -> Edit Data), native tables, editable text boxes
+ *  - PDF (.pdf): the same 16:9 pages with Poppins embedded and crisp chart images
+ * Both libraries load on demand, so the page itself stays light.
  */
 import * as echarts from "echarts";
 import { url } from "../site";
 import { CATEGORICAL, registerThemes } from "../viz";
 import { chartOption, fmt, type ChartArtifact, type ReportArtifact } from "./chart";
+import { approxWidth, buildDeck, C, chartsDeck, fitSize, H, W, type Prim, type SlideSpec } from "./deck";
 
-const INK = "0C0C0E", LIME = "C8F135", OLIVE = "5D7A0A", PAPER = "F3EFE6", MUTED = "6B6656", LINE = "E7E2D6", WHITE = "FFFFFF";
 const PALETTE = CATEGORICAL.light.map((c) => c.replace("#", "").toUpperCase());
 const FONT = "Poppins";   // brand font: embedded in PDFs; PowerPoint shows it where Poppins is installed (free, Google Fonts)
-const SITE_URL = "dumichanda.github.io/acolyte-site";
-
-const clean = (s: string) => s.replace(/\*\*(.+?)\*\*/g, "$1").replace(/`([^`]+)`/g, "$1");
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "acolyte";
-const today = () => new Date().toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" });
-
-/** Paragraphs and "- " bullet lines from a section body. */
-function blocks(body: string): { bullet: boolean; text: string }[] {
-  return body.split(/\n+/).map((l) => l.trim()).filter(Boolean).map((l) => {
-    const m = l.match(/^([-*•]|\d+\.)\s+(.*)$/);
-    return { bullet: !!m, text: clean(m ? m[2] : l) };
-  });
-}
 
 const fontCache: Record<string, string> = {};
 /** Poppins TTF as base64 (self-hosted under /fonts, SIL Open Font License). */
@@ -103,187 +92,104 @@ function formatCode(c: ChartArtifact): string {
   return m >= 1e6 ? '#,##0.0,,"m"' : "#,##0";
 }
 
-// ---------------------------------------------------------------- PowerPoint
+// ---------------------------------------------------------------- PowerPoint renderer
 type Pptx = InstanceType<typeof import("pptxgenjs").default>;
 type Slide = ReturnType<Pptx["addSlide"]>;
 
-function defineMasters(pptx: Pptx, logo: string | null) {
-  pptx.defineSlideMaster({
-    title: "ACOLYTE_CONTENT",
-    background: { color: WHITE },
-    objects: [
-      { rect: { x: 0, y: 0, w: 13.333, h: 0.08, fill: { color: LIME } } },
-      ...(logo ? [{ image: { data: logo, x: 0.5, y: 6.93, w: 0.28, h: 0.28 } }] : []),
-      { text: { text: "ACOLYTE", options: { x: 0.85, y: 6.9, w: 2, h: 0.34, fontFace: FONT, fontSize: 10, bold: true, color: INK, charSpacing: 2 } } },
-      { text: { text: "SA Automation Opportunity Index · Acolyte Analyst", options: { x: 2.4, y: 6.9, w: 7, h: 0.34, fontFace: FONT, fontSize: 9, color: MUTED } } },
-      { line: { x: 0.5, y: 6.82, w: 12.33, h: 0, line: { color: LINE, width: 0.75 } } },
-    ],
-    slideNumber: { x: 12.3, y: 6.9, w: 0.6, h: 0.34, fontFace: FONT, fontSize: 9, color: MUTED, align: "right" },
-  });
-}
-
-function slideTitle(s: Slide, title: string, kicker?: string) {
-  s.addShape("rect", { x: 0.5, y: 0.5, w: 0.07, h: 0.62, fill: { color: LIME }, line: { color: LIME } });
-  if (kicker) s.addText(kicker.toUpperCase(), { x: 0.72, y: 0.36, w: 11.5, h: 0.3, fontFace: FONT, fontSize: 10, color: OLIVE, bold: true, charSpacing: 2 });
-  s.addText(title, { x: 0.72, y: kicker ? 0.6 : 0.48, w: 12, h: 0.62, fontFace: FONT, fontSize: 24, bold: true, color: INK, fit: "shrink" });
-}
-
-function addBlocks(s: Slide, items: { bullet: boolean; text: string }[], x: number, y: number, w: number, h: number) {
-  if (!items.length) return;
-  s.addText(items.map((b) => ({
-    text: b.text,
-    options: { bullet: b.bullet ? { code: "25A0" } : false, paraSpaceAfter: 8, breakLine: true, color: INK },
-  })), { x, y, w, h, fontFace: FONT, fontSize: 13, valign: "top", fit: "shrink", lineSpacingMultiple: 1.1 });
-}
-
-/** Native, editable chart (or table / KPI) for one artifact. */
-function addChart(_pptx: Pptx, s: Slide, c: ChartArtifact, x: number, y: number, w: number, h: number) {
+function nativeChart(s: Slide, c: ChartArtifact, x: number, y: number, w: number, h: number) {
   const xi = c.columns.indexOf(c.x);
   const yi = c.y.map((col) => c.columns.indexOf(col)).filter((i) => i >= 0);
-  const rows = c.rows.slice(0, c.type === "table" ? 14 : 30);
-  s.addText(c.title, { x, y, w, h: 0.35, fontFace: FONT, fontSize: 14, bold: true, color: INK });
-  if (c.subtitle) s.addText(c.subtitle, { x, y: y + 0.33, w, h: 0.28, fontFace: FONT, fontSize: 10, color: MUTED });
-  const top = y + 0.7, ch = h - 0.75;
-
+  const rows = c.rows.slice(0, c.type === "table" ? 16 : 30);
   if (c.type === "kpi") {
-    s.addText(fmt(rows[0]?.[yi[0]], c.value_format), { x, y: top + ch / 2 - 0.9, w, h: 1.3, fontFace: FONT, fontSize: 66, bold: true, color: OLIVE, align: "center" });
-    s.addText(c.y[0], { x, y: top + ch / 2 + 0.4, w, h: 0.4, fontFace: FONT, fontSize: 14, color: MUTED, align: "center" });
+    s.addText(fmt(rows[0]?.[yi[0]], c.value_format), { x, y, w, h: h * 0.6, fontFace: FONT, fontSize: 60, bold: true, color: C.olive, align: "center", valign: "bottom" });
+    s.addText(c.y[0], { x, y: y + h * 0.6, w, h: 0.4, fontFace: FONT, fontSize: 13, color: C.muted, align: "center" });
     return;
   }
   if (c.type === "table") {
     const idx = [xi, ...yi].filter((i, k, a) => i >= 0 && a.indexOf(i) === k);
-    const head = idx.map((i) => ({ text: c.columns[i], options: { bold: true, color: WHITE, fill: { color: INK } } }));
+    const head = idx.map((i) => ({ text: c.columns[i], options: { bold: true, color: C.white, fill: { color: C.ink } } }));
     const body = rows.map((r, k) => idx.map((i) => ({
       text: typeof r[i] === "number" ? fmt(r[i], c.y.includes(c.columns[i]) ? c.value_format : "number") : String(r[i] ?? "—"),
-      options: { align: (typeof r[i] === "number" ? "right" : "left") as "right" | "left", fill: { color: k % 2 ? "FAF8F3" : WHITE } },
+      options: { align: (typeof r[i] === "number" ? "right" : "left") as "right" | "left", fill: { color: k % 2 ? "FAF8F3" : C.white } },
     })));
-    s.addTable([head, ...body], { x, y: top, w, fontFace: FONT, fontSize: 10, color: INK, border: { type: "solid", pt: 0.5, color: LINE },
-      autoPage: false, rowH: Math.min(0.32, ch / (body.length + 1)) });
+    s.addTable([head, ...body], { x, y, w, fontFace: FONT, fontSize: 9, color: C.ink, border: { type: "solid", pt: 0.5, color: C.line },
+      autoPage: false, rowH: Math.min(0.3, h / (body.length + 1)), margin: 0.04 });
     return;
   }
-
   const labels = rows.map((r) => String(r[xi] ?? "—"));
   const num = (v: unknown) => (typeof v === "number" ? v : Number(v) || 0);
+  const many = rows.length > 20;
   const common = {
-    x, y: top, w, h: ch, fontFace: FONT,
-    chartColors: yi.length === 1 && c.type !== "pie" ? [OLIVE] : PALETTE,
-    catAxisLabelColor: MUTED, valAxisLabelColor: MUTED, catAxisLabelFontSize: 10, valAxisLabelFontSize: 10,
+    x, y, w, h, fontFace: FONT,
+    chartColors: yi.length === 1 && c.type !== "pie" ? [C.olive] : PALETTE,
+    catAxisLabelColor: C.neutral, valAxisLabelColor: C.muted, catAxisLabelFontSize: 9, valAxisLabelFontSize: 8,
     catAxisLabelFontFace: FONT, valAxisLabelFontFace: FONT,
     valAxisLabelFormatCode: formatCode(c), dataLabelFormatCode: formatCode(c),
-    valGridLine: { color: LINE, size: 0.5 }, catGridLine: { style: "none" as const },
-    catAxisLineShow: true, valAxisLineShow: false,
+    valGridLine: { color: C.line, size: 0.5 }, catGridLine: { style: "none" as const },
+    catAxisLineShow: true, valAxisLineShow: false, catAxisLineColor: C.line,
     showLegend: yi.length > 1 || c.type === "pie", legendPos: c.type === "pie" ? ("r" as const) : ("b" as const),
-    legendFontFace: FONT, legendFontSize: 10, legendColor: INK,
-    showValue: rows.length <= 12 && yi.length === 1, dataLabelColor: INK, dataLabelFontSize: 9,
+    legendFontFace: FONT, legendFontSize: 9, legendColor: C.ink,
+    showValue: !many && c.type !== "line" && c.type !== "area", dataLabelColor: C.ink, dataLabelFontSize: 8, dataLabelFontFace: FONT,
   };
   if (c.type === "scatter") {
-    // scatter: the first series holds the X values
-    s.addChart("scatter", [
-      { name: c.x, values: rows.map((r) => num(r[xi])) },
-      ...yi.map((i, k) => ({ name: c.y[k], values: rows.map((r) => num(r[i])) })),
-    ], { ...common, lineSize: 0, lineDataSymbolSize: 8, showValue: false });
+    s.addChart("scatter", [{ name: c.x, values: rows.map((r) => num(r[xi])) },
+      ...yi.map((i, k) => ({ name: c.y[k], values: rows.map((r) => num(r[i])) }))], { ...common, lineSize: 0, lineDataSymbolSize: 8, showValue: false });
     return;
   }
-  // Horizontal bars draw the first category at the bottom, so reverse them to keep the ranking top-down.
   const ordered = c.type === "hbar" ? [...rows].reverse() : rows;
-  const data = yi.map((i, k) => ({ name: c.y[k], labels: c.type === "hbar" ? [...labels].reverse() : labels,
-    values: ordered.map((r) => num(r[i])) }));
-  if (c.type === "pie") {
-    s.addChart("doughnut", data.slice(0, 1), { ...common, holeSize: 55, showPercent: true, showValue: false, dataLabelColor: WHITE });
-  } else if (c.type === "line" || c.type === "area") {
-    s.addChart(c.type === "area" ? "area" : "line", data, { ...common, lineSize: 2, lineDataSymbol: "none", chartColorsOpacity: c.type === "area" ? 35 : undefined });
-  } else {
-    s.addChart("bar", data, { ...common, barDir: c.type === "hbar" ? "bar" : "col", barGapWidthPct: 60, dataLabelPosition: "outEnd" });
+  const data = yi.map((i, k) => ({ name: c.y[k], labels: c.type === "hbar" ? [...labels].reverse() : labels, values: ordered.map((r) => num(r[i])) }));
+  if (c.type === "pie") s.addChart("doughnut", data.slice(0, 1), { ...common, holeSize: 58, showPercent: true, showValue: false,
+    dataLabelColor: C.white, dataLabelFormatCode: "0%", dataLabelFontSize: 9 });
+  else if (c.type === "line" || c.type === "area")
+    s.addChart(c.type, data, { ...common, lineSize: 2, lineDataSymbol: "circle", lineDataSymbolSize: 5, chartColorsOpacity: c.type === "area" ? 30 : undefined });
+  else s.addChart("bar", data, { ...common, barDir: c.type === "hbar" ? "bar" : "col", barGapWidthPct: 45, dataLabelPosition: "outEnd",
+    valAxisHidden: c.type === "hbar" && !many, valGridLine: c.type === "hbar" && !many ? { style: "none" as const } : common.valGridLine });
+}
+
+function drawPptx(pptx: Pptx, spec: SlideSpec, logo: string | null) {
+  const s = pptx.addSlide();
+  s.background = { color: spec.bg };
+  for (const p of spec.prims) {
+    if (p.t === "rect") {
+      s.addShape(p.radius ? "roundRect" : "rect", { x: p.x, y: p.y, w: p.w, h: p.h, fill: { color: p.fill }, line: { color: p.fill, width: 0 },
+        ...(p.radius ? { rectRadius: p.radius } : {}) });
+    } else if (p.t === "text") {
+      const size = p.min ? fitSize(p.text, p.w, p.h, p.size, p.min, (t, pt) => approxWidth(t, pt, p.bold)) : p.size;
+      s.addText(p.text, { x: p.x, y: p.y, w: p.w, h: p.h, fontFace: FONT, fontSize: size, bold: !!p.bold, color: p.color,
+        align: p.align || "left", valign: p.valign || "top", margin: 0, charSpacing: p.spacing, lineSpacingMultiple: 1.05 });
+    } else if (p.t === "list") {
+      if (!p.items.length) continue;
+      const size = fitSize(p.items.join("\n"), p.w - 0.25, p.h - p.items.length * 0.06, p.size, p.min || 7);
+      s.addText(p.items.map((it) => ({ text: it, options: {
+        bullet: p.marker === "" ? false : p.numbered ? { type: "number" as const } : { code: "25A0" },
+        breakLine: true, paraSpaceAfter: 5 } })),
+      { x: p.x, y: p.y, w: p.w, h: p.h, fontFace: FONT, fontSize: size, color: p.color, valign: "top", margin: 0, lineSpacingMultiple: 1.05 });
+    } else if (p.t === "chart") nativeChart(s, p.chart, p.x, p.y, p.w, p.h);
+    else if (p.t === "logo" && logo) s.addImage({ data: logo, x: p.x, y: p.y, w: p.s, h: p.s });
+    else if (p.t === "link") s.addText(" ", { x: p.x, y: p.y, w: p.w, h: p.h, hyperlink: { url: p.url } });
   }
-  s.addText("Source: SA Automation Opportunity Index (public job ads, last 60 days). Right-click the chart → Edit Data to change it.",
-    { x, y: y + h - 0.02, w, h: 0.25, fontFace: FONT, fontSize: 8, color: MUTED, italic: true });
 }
 
-function titleSlide(pptx: Pptx, logo: string | null, title: string, subtitle: string) {
-  const s = pptx.addSlide();
-  s.background = { color: INK };
-  s.addShape("rect", { x: 0.7, y: 2.35, w: 1.2, h: 0.09, fill: { color: LIME }, line: { color: LIME } });
-  if (logo) s.addImage({ data: logo, x: 0.7, y: 0.6, w: 0.5, h: 0.5 });
-  s.addText("ACOLYTE", { x: 1.3, y: 0.62, w: 4, h: 0.46, fontFace: FONT, fontSize: 16, bold: true, color: WHITE, charSpacing: 3 });
-  s.addText(title, { x: 0.7, y: 2.6, w: 11.5, h: 1.9, fontFace: FONT, fontSize: 40, bold: true, color: WHITE, valign: "top", fit: "shrink" });
-  s.addText(subtitle, { x: 0.7, y: 4.6, w: 11.5, h: 0.5, fontFace: FONT, fontSize: 16, color: "B7B6BD" });
-  s.addText(`${today()} · Prepared with Acolyte Analyst`, { x: 0.7, y: 6.6, w: 9, h: 0.4, fontFace: FONT, fontSize: 11, color: "8D8C93" });
-}
-
-function closingSlide(pptx: Pptx, logo: string | null) {
-  const s = pptx.addSlide();
-  s.background = { color: INK };
-  if (logo) s.addImage({ data: logo, x: 0.7, y: 0.6, w: 0.5, h: 0.5 });
-  s.addText("Want this on your own data?", { x: 0.7, y: 2.4, w: 11.5, h: 1, fontFace: FONT, fontSize: 36, bold: true, color: WHITE });
-  s.addText("Acolyte builds AI analysts, live dashboards and automated reports for South African businesses, running on your own data.",
-    { x: 0.7, y: 3.45, w: 10.5, h: 0.9, fontFace: FONT, fontSize: 16, color: "B7B6BD" });
-  s.addShape("roundRect", { x: 0.7, y: 4.7, w: 3.1, h: 0.62, fill: { color: LIME }, line: { color: LIME }, rectRadius: 0.3 });
-  s.addText("Talk to Acolyte →", { x: 0.7, y: 4.7, w: 3.1, h: 0.62, fontFace: FONT, fontSize: 15, bold: true, color: INK, align: "center",
-    hyperlink: { url: `https://${SITE_URL}/#contact` } });
-  s.addText(SITE_URL, { x: 0.7, y: 6.6, w: 9, h: 0.4, fontFace: FONT, fontSize: 11, color: "8D8C93" });
-}
-
-async function newDeck() {
+async function toPptx(r: ReportArtifact) {
   const { default: PptxGenJS } = await import("pptxgenjs");
   const pptx = new PptxGenJS();
-  pptx.layout = "LAYOUT_WIDE";
-  pptx.author = "Acolyte Analyst";
-  pptx.company = "Acolyte";
+  pptx.defineLayout({ name: "ACOLYTE_16x9", width: W, height: H });
+  pptx.layout = "ACOLYTE_16x9";
+  pptx.author = "Acolyte Analyst"; pptx.company = "Acolyte"; pptx.title = r.title;
+  pptx.theme = { headFontFace: FONT, bodyFontFace: FONT };
   const logo = await logoPng();
-  defineMasters(pptx, logo);
-  return { pptx, logo };
-}
-
-export async function reportToPptx(r: ReportArtifact) {
-  const { pptx, logo } = await newDeck();
-  pptx.title = r.title;
-  titleSlide(pptx, logo, r.title, "SA Automation Opportunity Index · live job-market analysis");
-  const sum = pptx.addSlide({ masterName: "ACOLYTE_CONTENT" });
-  slideTitle(sum, "Executive summary", "Summary");
-  sum.addShape("rect", { x: 0.72, y: 1.6, w: 0.06, h: 3.4, fill: { color: LIME }, line: { color: LIME } });
-  sum.addText(clean(r.summary), { x: 1.0, y: 1.5, w: 11.3, h: 3.6, fontFace: FONT, fontSize: 22, color: INK, valign: "top", fit: "shrink", lineSpacingMultiple: 1.15 });
-  for (const sec of r.sections) {
-    const charts = sec.chart_ids.map((id) => r.charts[id]).filter(Boolean);
-    const items = blocks(sec.body);
-    if (!charts.length) {
-      const s = pptx.addSlide({ masterName: "ACOLYTE_CONTENT" });
-      slideTitle(s, sec.heading);
-      addBlocks(s, items, 0.72, 1.45, 11.8, 5.2);
-    }
-    charts.forEach((c, k) => {
-      const s = pptx.addSlide({ masterName: "ACOLYTE_CONTENT" });
-      slideTitle(s, sec.heading + (k ? " (continued)" : ""));
-      if (k === 0 && items.length) {
-        addBlocks(s, items, 0.72, 1.45, 4.1, 5.2);
-        addChart(pptx, s, c, 5.1, 1.4, 7.75, 5.25);
-      } else {
-        addChart(pptx, s, c, 0.72, 1.4, 12.1, 5.25);
-      }
-    });
-  }
-  closingSlide(pptx, logo);
+  for (const spec of buildDeck(r)) drawPptx(pptx, spec, logo);
   await pptx.writeFile({ fileName: `${slug(r.title)}.pptx` });
 }
 
-export async function chartsToPptx(charts: ChartArtifact[], title = "Acolyte Analyst charts") {
-  const { pptx, logo } = await newDeck();
-  pptx.title = title;
-  titleSlide(pptx, logo, charts.length === 1 ? charts[0].title : title, "SA Automation Opportunity Index · live job-market analysis");
-  for (const c of charts) {
-    const s = pptx.addSlide({ masterName: "ACOLYTE_CONTENT" });
-    slideTitle(s, c.title, "Chart");
-    addChart(pptx, s, { ...c, title: c.subtitle || "", subtitle: "" }, 0.72, 1.3, 12.1, 5.35);
-  }
-  closingSlide(pptx, logo);
-  await pptx.writeFile({ fileName: `${slug(charts.length === 1 ? charts[0].title : title)}.pptx` });
-}
+export const reportToPptx = (r: ReportArtifact) => toPptx(r);
+export const chartsToPptx = (charts: ChartArtifact[], title = "Acolyte Analyst charts") =>
+  toPptx(chartsDeck(charts, charts.length === 1 ? charts[0].title : title));
 
-// ---------------------------------------------------------------- PDF
+// ---------------------------------------------------------------- PDF renderer (same slides, 16:9 pages)
 export async function reportToPdf(r: ReportArtifact) {
   const { jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ unit: "mm", format: "a4", compress: true });
-  const W = 210, H = 297, M = 16, CW = W - 2 * M;
-  const logo = await logoPng();
+  const doc = new jsPDF({ orientation: "landscape", unit: "in", format: [W, H], compress: true });
   await loadWebPoppins();
   let PF = "helvetica";
   const [reg, bold] = await Promise.all([fontB64("Poppins-Regular.ttf"), fontB64("Poppins-Bold.ttf")]);
@@ -292,94 +198,76 @@ export async function reportToPdf(r: ReportArtifact) {
     doc.addFileToVFS("Poppins-Bold.ttf", bold); doc.addFont("Poppins-Bold.ttf", "Poppins", "bold");
     PF = "Poppins";
   }
-  const rgb = (hex: string): [number, number, number] => [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
-  let y = 0, page = 1;
+  const logo = await logoPng();
+  const hex = (h: string): [number, number, number] => [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  const measure = (b: boolean) => (t: string, pt: number) => { doc.setFont(PF, b ? "bold" : "normal"); doc.setFontSize(pt); return doc.getTextWidth(t); };
 
-  const footer = () => {
-    doc.setDrawColor(...rgb(LINE)); doc.setLineWidth(0.3); doc.line(M, H - 14, W - M, H - 14);
-    if (logo) doc.addImage(logo, "PNG", M, H - 11.5, 4.5, 4.5);
-    doc.setFont(PF, "bold"); doc.setFontSize(8); doc.setTextColor(...rgb(INK)); doc.text("ACOLYTE", M + 6, H - 8.2);
-    doc.setFont(PF, "normal"); doc.setTextColor(...rgb(MUTED));
-    doc.text(`SA Automation Opportunity Index · ${SITE_URL}`, M + 22, H - 8.2);
-    doc.text(String(page), W - M, H - 8.2, { align: "right" });
-  };
-  const newPage = () => {
-    footer(); doc.addPage(); page++;
-    doc.setFillColor(...rgb(LIME)); doc.rect(0, 0, W, 1.6, "F");
-    doc.setFont(PF, "normal"); doc.setFontSize(8); doc.setTextColor(...rgb(MUTED));
-    doc.text(r.title, M, 9);
-    y = 16;
-  };
-  const need = (h: number) => { if (y + h > H - 20) newPage(); };
-  const para = (text: string, size: number, opts: { bold?: boolean; color?: string; indent?: number; gap?: number } = {}) => {
-    doc.setFont(PF, opts.bold ? "bold" : "normal"); doc.setFontSize(size); doc.setTextColor(...rgb(opts.color ?? INK));
-    const lines: string[] = doc.splitTextToSize(text, CW - (opts.indent ?? 0));
-    const lh = size * 0.46;
-    for (const ln of lines) { need(lh); doc.text(ln, M + (opts.indent ?? 0), y); y += lh; }
-    y += opts.gap ?? 2;
-  };
-
-  // Cover band
-  doc.setFillColor(...rgb(INK)); doc.rect(0, 0, W, 62, "F");
-  doc.setFillColor(...rgb(LIME)); doc.rect(M, 34, 18, 1.2, "F");
-  if (logo) doc.addImage(logo, "PNG", M, 12, 8, 8);
-  doc.setFont(PF, "bold"); doc.setFontSize(11); doc.setTextColor(255, 255, 255); doc.text("ACOLYTE", M + 11, 17.6);
-  doc.setFontSize(20);
-  const titleLines: string[] = doc.splitTextToSize(r.title, CW);
-  doc.text(titleLines.slice(0, 2), M, 44);
-  doc.setFont(PF, "normal"); doc.setFontSize(9); doc.setTextColor(183, 182, 189);
-  doc.text(`${today()} · Prepared with Acolyte Analyst`, M, 57);
-  y = 74;
-
-  // Executive summary box
-  doc.setFont(PF, "normal"); doc.setFontSize(11.5);
-  const sumLines: string[] = doc.splitTextToSize(clean(r.summary), CW - 10);
-  const boxH = sumLines.length * 5.6 + 8;
-  doc.setFillColor(...rgb(PAPER)); doc.rect(M, y - 5, CW, boxH, "F");
-  doc.setFillColor(...rgb(OLIVE)); doc.rect(M, y - 5, 1.4, boxH, "F");
-  doc.setTextColor(...rgb(INK)); doc.text(sumLines, M + 6, y + 1, { lineHeightFactor: 1.35 });
-  y += boxH + 6;
-
-  for (const sec of r.sections) {
-    need(16);
-    para(sec.heading, 14, { bold: true, gap: 3 });
-    for (const b of blocks(sec.body)) {
-      if (b.bullet) {
-        need(5); doc.setFillColor(...rgb(OLIVE)); doc.rect(M + 1, y - 2.4, 1.6, 1.6, "F");
-        para(b.text, 10, { indent: 5, gap: 1.2 });
-      } else para(b.text, 10, { gap: 2.5 });
+  const drawText = (text: string, x: number, y: number, w: number, h: number, size: number, color: string, b = false,
+                    align: "left" | "center" | "right" = "left", valign = "top", min?: number) => {
+    const pt = min ? fitSize(text, w, h, size, min, measure(b)) : size;
+    doc.setFont(PF, b ? "bold" : "normal"); doc.setFontSize(pt); doc.setTextColor(...hex(color));
+    const lines: string[] = text.split("\n").flatMap((para) => doc.splitTextToSize(para, w));
+    const lh = pt * 1.22 / 72, total = lines.length * lh;
+    let yy = valign === "middle" ? y + (h - total) / 2 : valign === "bottom" ? y + h - total : y;
+    for (const ln of lines) {
+      if (yy + lh > y + h + 0.05) break;
+      const xx = align === "center" ? x + w / 2 : align === "right" ? x + w : x;
+      doc.text(ln, xx, yy + pt * 0.92 / 72, { align });
+      yy += lh;
     }
-    for (const id of sec.chart_ids) {
-      const c = r.charts[id];
-      if (!c) continue;
-      const img = chartImage(c);
-      const ch = img ? (CW * 480) / 880 : 0;
-      need(18 + (img ? ch : 20));
-      y += 3;
-      para(c.title, 11, { bold: true, gap: 1 });
-      if (c.subtitle) para(c.subtitle, 8.5, { color: MUTED, gap: 1.5 });
-      if (img) { doc.addImage(img, "JPEG", M, y, CW, ch, undefined, "FAST"); y += ch + 3; }
-      else {
-        const xi = c.columns.indexOf(c.x), idx = [xi, ...c.y.map((v) => c.columns.indexOf(v))].filter((i, k, a) => i >= 0 && a.indexOf(i) === k);
-        if (c.type === "kpi") para(fmt(c.rows[0]?.[idx[1] ?? idx[0]], c.value_format), 28, { bold: true, color: OLIVE });
-        else {
-          const colW = CW / idx.length;
-          doc.setFillColor(...rgb(INK)); doc.rect(M, y - 4, CW, 6, "F");
-          doc.setFont(PF, "bold"); doc.setFontSize(8.5); doc.setTextColor(255, 255, 255);
-          idx.forEach((i, k) => doc.text(String(c.columns[i]).slice(0, 28), M + k * colW + 1.5, y));
-          y += 6; doc.setFont(PF, "normal"); doc.setTextColor(...rgb(INK));
-          c.rows.slice(0, 20).forEach((row) => {
-            need(5.5);
-            idx.forEach((i, k) => doc.text((typeof row[i] === "number" ? fmt(row[i], c.y.includes(c.columns[i]) ? c.value_format : "number") : String(row[i] ?? "—")).slice(0, 34), M + k * colW + 1.5, y));
-            doc.setDrawColor(...rgb(LINE)); doc.line(M, y + 1.6, W - M, y + 1.6); y += 5.5;
-          });
-          y += 3;
+  };
+
+  const drawTable = (c: ChartArtifact, x: number, y: number, w: number, h: number) => {
+    const xi = c.columns.indexOf(c.x), idx = [xi, ...c.y.map((v) => c.columns.indexOf(v))].filter((i, k, a) => i >= 0 && a.indexOf(i) === k);
+    const rows = c.rows.slice(0, 16), rh = Math.min(0.3, h / (rows.length + 1)), cw = w / idx.length;
+    doc.setFillColor(...hex(C.ink)); doc.rect(x, y, w, rh, "F");
+    idx.forEach((i, k) => drawText(c.columns[i], x + k * cw + 0.06, y, cw - 0.12, rh, 8.5, C.white, true, "left", "middle"));
+    rows.forEach((r, n) => {
+      const yy = y + (n + 1) * rh;
+      if (n % 2) { doc.setFillColor(250, 248, 243); doc.rect(x, yy, w, rh, "F"); }
+      idx.forEach((i, k) => drawText(typeof r[i] === "number" ? fmt(r[i], c.y.includes(c.columns[i]) ? c.value_format : "number") : String(r[i] ?? "—"),
+        x + k * cw + 0.06, yy, cw - 0.12, rh, 8.5, C.ink, false, typeof r[i] === "number" ? "right" : "left", "middle"));
+    });
+  };
+
+  buildDeck(r).forEach((spec, n) => {
+    if (n) doc.addPage([W, H], "landscape");
+    doc.setFillColor(...hex(spec.bg)); doc.rect(0, 0, W, H, "F");
+    for (const p of spec.prims as Prim[]) {
+      if (p.t === "rect") {
+        doc.setFillColor(...hex(p.fill));
+        if (p.radius) doc.roundedRect(p.x, p.y, p.w, p.h, p.radius, p.radius, "F"); else doc.rect(p.x, p.y, p.w, p.h, "F");
+      } else if (p.t === "text") {
+        if (p.spacing) doc.setCharSpace(p.spacing / 100);
+        drawText(p.text, p.x, p.y, p.w, p.h, p.size, p.color, p.bold, p.align, p.valign, p.min);
+        if (p.spacing) doc.setCharSpace(0);
+      } else if (p.t === "list") {
+        if (!p.items.length) continue;
+        const pt = fitSize(p.items.join("\n"), p.w - 0.25, p.h - p.items.length * 0.06, p.size, p.min || 7, measure(false));
+        doc.setFont(PF, "normal"); doc.setFontSize(pt);
+        const lh = pt * 1.22 / 72; let yy = p.y;
+        p.items.forEach((it, i) => {
+          const indent = p.marker === "" ? 0 : 0.22;
+          const lines: string[] = doc.splitTextToSize(it, p.w - indent);
+          if (yy + lh > p.y + p.h) return;
+          if (p.numbered) drawText(`${i + 1}.`, p.x, yy, 0.22, lh, pt, p.color === C.white ? C.lime : C.olive, true);
+          else if (p.marker !== "") { doc.setFillColor(...hex(p.color === C.white ? C.lime : C.olive)); doc.rect(p.x + 0.02, yy + lh * 0.38, 0.07, 0.07, "F"); }
+          doc.setFont(PF, "normal"); doc.setFontSize(pt); doc.setTextColor(...hex(p.color));
+          for (const ln of lines) { if (yy + lh > p.y + p.h + 0.05) break; doc.text(ln, p.x + indent, yy + pt * 0.92 / 72); yy += lh; }
+          yy += pt * 0.45 / 72;
+        });
+      } else if (p.t === "chart") {
+        if (p.chart.type === "table") drawTable(p.chart, p.x, p.y, p.w, p.h);
+        else if (p.chart.type === "kpi") {
+          const yi = p.chart.columns.indexOf(p.chart.y[0]);
+          drawText(fmt(p.chart.rows[0]?.[yi], p.chart.value_format), p.x, p.y, p.w, p.h * 0.6, 54, C.olive, true, "center", "bottom");
+        } else {
+          const img = chartImage(p.chart, Math.round(p.w * 100), Math.round(p.h * 100));
+          if (img) doc.addImage(img, "JPEG", p.x, p.y, p.w, p.h, undefined, "FAST");
         }
-      }
-      para("Source: SA Automation Opportunity Index (public job ads, last 60 days).", 7.5, { color: MUTED, gap: 5 });
+      } else if (p.t === "logo" && logo) doc.addImage(logo, "PNG", p.x, p.y, p.s, p.s);
+      else if (p.t === "link") doc.link(p.x, p.y, p.w, p.h, { url: p.url });
     }
-    y += 2;
-  }
-  footer();
+  });
   doc.save(`${slug(r.title)}.pdf`);
 }

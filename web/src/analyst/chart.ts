@@ -4,10 +4,27 @@ export interface ChartArtifact {
   kind: "chart"; id: string; dataset_id: string; type: string; x: string; y: string[];
   title: string; subtitle: string; value_format: string; columns: string[]; rows: unknown[][]; sql: string;
 }
+export interface Kpi { value: string; label: string; context: string; tone: "brand" | "positive" | "negative" | "neutral" | string }
+export interface Section {
+  heading: string; body: string; chart_ids: string[];
+  question?: string; title?: string; takeaway?: string; kpis?: Kpi[]; so_what?: string; note?: string; bullets?: string[];
+}
 export interface ReportArtifact {
   kind: "report"; id: string; title: string; summary: string; generated: string;
-  sections: { heading: string; body: string; chart_ids: string[] }[];
+  sections: Section[];
   charts: Record<string, ChartArtifact>;
+  scope?: string; cover_kpis?: Kpi[]; questions?: string[];
+  exec?: { title: string; takeaway: string; kpis: Kpi[]; so_what: string; catch: string };
+  qa?: { q: string; a: string }[];
+  conclusions?: { findings?: string[]; risks?: string[]; actions?: string[] };
+  method?: { steps?: string[]; trust?: string[]; limits?: string[] };
+}
+
+/** Readable label for a SQL column name: "pct_high_potential" -> "% high potential". */
+export function human(col: string): string {
+  if (/[A-Z ]/.test(col) && !col.includes("_")) return col;
+  const s = col.replace(/^pct_/, "% ").replace(/_pct$/, " %").replace(/_zar$/, " (R)").replace(/_/g, " ").replace(/\bavg\b/i, "avg").trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 export type Artifact = ChartArtifact | ReportArtifact;
 

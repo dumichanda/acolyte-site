@@ -102,25 +102,50 @@ function ChartView({ c, height = 340, print = false }: { c: ChartArtifact; heigh
   );
 }
 
+function KpiCards({ items }: { items?: { value: string; label: string; context: string; tone: string }[] }) {
+  if (!items?.length) return null;
+  return <div className="kcards">{items.map((k, i) => (
+    <div key={i} className={"kcard t-" + k.tone}><span>{k.label}</span><b>{k.value}</b><em>{k.context}</em></div>))}</div>;
+}
+
 function ReportView({ r, actions = true }: { r: ReportArtifact; actions?: boolean }) {
+  const ex = r.exec;
   return (
     <div className="report-art">
       <div className="art-head">
-        <div><span className="tag">Report</span><h2>{r.title}</h2><div className="muted small">Acolyte Analyst · {new Date(r.generated).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</div></div>
+        <div><span className="tag">Report pack</span><h2>{r.title}</h2>
+          <div className="muted small">{r.scope ? r.scope + " · " : ""}Acolyte Analyst · {new Date(r.generated).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</div></div>
         {actions && <div className="art-actions">
           <ExportBtn label="PowerPoint" primary run={async () => (await exporter()).reportToPptx(r)} />
           <ExportBtn label="PDF" run={async () => (await exporter()).reportToPdf(r)} />
         </div>}
       </div>
-      <p className="lead">{r.summary}</p>
+      {ex?.takeaway ? (<>
+        <h3 className="rtitle">{ex.title}</h3>
+        <p className="lead">{ex.takeaway}</p>
+        <KpiCards items={ex.kpis} />
+        <div className="boxes">
+          {ex.so_what && <div className="box so"><b>So what</b><p>{ex.so_what}</p></div>}
+          {ex.catch && <div className="box note"><b>The catch</b><p>{ex.catch}</p></div>}
+        </div>
+      </>) : <p className="lead">{r.summary}</p>}
       {r.sections.map((s, i) => (
         <section key={i}>
-          <h3>{s.heading}</h3>
-          <Md text={s.body} />
+          {s.question && <div className="qtag"><span>Q{i + 1}</span>{s.question}</div>}
+          <h3>{s.title || s.heading}</h3>
+          {s.takeaway && <p className="take">{s.takeaway}</p>}
+          <KpiCards items={s.kpis} />
           {s.chart_ids.map((id) => r.charts[id] && <ChartView key={id} c={r.charts[id]} height={280} print={!actions} />)}
+          <div className="boxes">
+            {s.so_what && <div className="box so"><b>So what</b><p>{s.so_what}</p></div>}
+            {s.note && <div className="box note"><b>How to read it</b><p>{s.note}</p></div>}
+          </div>
+          {s.bullets?.length ? <ul>{s.bullets.map((b, k) => <li key={k}>{b}</li>)}</ul> : !s.takeaway && <Md text={s.body} />}
         </section>
       ))}
-      <div className="muted small foot">Source: SA Automation Opportunity Index (public job ads, refreshed daily). Figures computed from live data at the time of the report.</div>
+      {r.qa?.length ? <section><h3>Executive Q&A</h3><div className="qa">{r.qa.map((x, i) => <div key={i}><b>{x.q}</b><p>{x.a}</p></div>)}</div></section> : null}
+      {r.conclusions?.actions?.length ? <section><h3>Recommended actions</h3><ol>{r.conclusions.actions.map((a, i) => <li key={i}>{a}</li>)}</ol></section> : null}
+      <div className="muted small foot">Source: SA Automation Opportunity Index (public job ads, refreshed daily). Download the pack for the full method and limits.</div>
     </div>
   );
 }
