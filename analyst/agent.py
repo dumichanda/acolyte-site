@@ -96,7 +96,8 @@ TOOLS = [
         "description": "Build a consulting-grade report pack (exported as a branded PowerPoint and PDF) from findings and the "
                        "chart ids you created. Every figure must come from your queries. Use empty strings/arrays for parts "
                        "that don't apply.",
-        "strict": True,
+        "strict": False,   # the full pack schema is too large for strict mode; write_report() validates input itself
+        
         "eager_input_streaming": True,
         "input_schema": {
             "type": "object",
@@ -355,7 +356,13 @@ def _answer(client, s: Session, question: str, db_url: str, budget: Budget) -> I
         except anthropic.RateLimitError:
             yield {"type": "error", "text": "The analyst is busy right now. Please try again in a minute."}
             return
+        except anthropic.BadRequestError as e:
+            msg = getattr(e, "message", None) or str(e)
+            print(f"Anthropic 400: {msg}", flush=True)
+            yield {"type": "error", "text": f"The AI request was rejected: {msg[:300]}"}
+            return
         except (anthropic.APIConnectionError, anthropic.APIStatusError) as e:
+            print(f"Anthropic error: {e.__class__.__name__}: {e}", flush=True)
             yield {"type": "error", "text": f"The AI service is unavailable ({e.__class__.__name__})."}
             return
 
