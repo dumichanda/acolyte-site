@@ -8,6 +8,16 @@ import { SITE, url } from "../site";
 import { readTheme } from "../charts";
 import { chartOption, download, fmt, toCSV, type Artifact, type ChartArtifact, type ReportArtifact } from "./chart";
 
+const exporter = () => import("./export");
+
+/** Runs an export with a busy label on the button. */
+function ExportBtn({ label, run, primary }: { label: string; run: () => Promise<void>; primary?: boolean }) {
+  const [busy, setBusy] = useState(false);
+  return <button className={"btn sm" + (primary ? " primary" : "")} disabled={busy}
+    onClick={async () => { setBusy(true); try { await run(); } catch (e) { alert("Export failed: " + (e as Error).message); } finally { setBusy(false); } }}>
+    {busy ? "Preparing…" : label}</button>;
+}
+
 const API = (() => {
   const q = new URLSearchParams(location.search).get("api");
   try { if (q) localStorage.setItem("analystApi", q); return q || localStorage.getItem("analystApi") || SITE.analystApi; }
@@ -83,6 +93,7 @@ function ChartView({ c, height = 340, print = false }: { c: ChartArtifact; heigh
         {!print && <div className="art-actions">
           {c.type !== "table" && c.type !== "kpi" && <button className="btn sm" onClick={png}>PNG</button>}
           <button className="btn sm" onClick={csv}>CSV</button>
+          <ExportBtn label="PPT" run={async () => (await exporter()).chartsToPptx([c])} />
         </div>}
       </div>
       {body}
@@ -91,19 +102,22 @@ function ChartView({ c, height = 340, print = false }: { c: ChartArtifact; heigh
   );
 }
 
-function ReportView({ r, onPrint }: { r: ReportArtifact; onPrint?: () => void }) {
+function ReportView({ r, actions = true }: { r: ReportArtifact; actions?: boolean }) {
   return (
     <div className="report-art">
       <div className="art-head">
         <div><span className="tag">Report</span><h2>{r.title}</h2><div className="muted small">Acolyte Analyst · {new Date(r.generated).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</div></div>
-        {onPrint && <div className="art-actions"><button className="btn primary sm" onClick={onPrint}>Download PDF</button></div>}
+        {actions && <div className="art-actions">
+          <ExportBtn label="PowerPoint" primary run={async () => (await exporter()).reportToPptx(r)} />
+          <ExportBtn label="PDF" run={async () => (await exporter()).reportToPdf(r)} />
+        </div>}
       </div>
       <p className="lead">{r.summary}</p>
       {r.sections.map((s, i) => (
         <section key={i}>
           <h3>{s.heading}</h3>
           <Md text={s.body} />
-          {s.chart_ids.map((id) => r.charts[id] && <ChartView key={id} c={r.charts[id]} height={280} print={!onPrint} />)}
+          {s.chart_ids.map((id) => r.charts[id] && <ChartView key={id} c={r.charts[id]} height={280} print={!actions} />)}
         </section>
       ))}
       <div className="muted small foot">Source: SA Automation Opportunity Index (public job ads, refreshed daily). Figures computed from live data at the time of the report.</div>
@@ -135,7 +149,6 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [health, setHealth] = useState<"checking" | "ok" | "down" | "unconfigured">(API ? "checking" : "unconfigured");
   const [speak, setSpeak] = useState(false);
-  const [printing, setPrinting] = useState<ReportArtifact | null>(null);
   const session = useRef<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -147,11 +160,6 @@ function App() {
     ping();
   }, []);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [items]);
-  useEffect(() => {
-    if (!printing) return;
-    const t = setTimeout(() => { window.print(); setPrinting(null); }, 600);
-    return () => clearTimeout(t);
-  }, [printing]);
 
   const patchLast = (f: (a: Extract<Item, { kind: "assistant" }>) => void) =>
     setItems((xs) => { const ys = [...xs]; const last = { ...(ys[ys.length - 1] as any) }; f(last); ys[ys.length - 1] = last; return ys; });
@@ -276,6 +284,12 @@ function App() {
         </section>
 
         <section className="canvas">
+          {order.filter((id) => artifacts[id].kind === "chart").length > 1 && (
+            <div className="export-all">
+              <ExportBtn label="All charts → PowerPoint" run={async () => (await exporter()).chartsToPptx(
+                order.map((id) => artifacts[id]).filter((a): a is ChartArtifact => a.kind === "chart").reverse())} />
+            </div>
+          )}
           {order.length > 1 && (
             <div className="tabs">{order.map((id) => (
               <button key={id} className={"tab" + (id === active ? " on" : "")} onClick={() => setActive(id)}>
@@ -289,10 +303,9 @@ function App() {
             </div>
           )}
           {current?.kind === "chart" && <div className="card"><ChartView c={current} /></div>}
-          {current?.kind === "report" && <div className="card"><ReportView r={current} onPrint={() => setPrinting(current)} /></div>}
+          {current?.kind === "report" && <div className="card"><ReportView r={current} /></div>}
         </section>
       </div>
-      {printing && <div className="print-only"><ReportView r={printing} /></div>}
     </div>
   );
 }
