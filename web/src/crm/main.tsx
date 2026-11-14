@@ -1,364 +1,254 @@
-import { Fragment, StrictMode, useCallback, useEffect, useMemo, useState } from "react";
+import { StrictMode, useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../index.css";
 import "./crm.css";
 import PlatformNav from "../PlatformNav";
-import { rands } from "../types";
+import { API } from "../auth";
 
-// The CRM talks to crm/server.py running on the user's own computer; nothing private is on the public site.
-const API = (() => {
-  try { const o = localStorage.getItem("crmApi"); if (o) return o; } catch { /* storage blocked */ }
-  return location.port === "8787" ? "" : "http://127.0.0.1:8787";
-})();
+/**
+ * Acolyte's own sales CRM. Prospects for each industry analyst are ranked from our datasets
+ * (agencies from property listings, retailers and online stores from prices, employers and recruiters from job ads).
+ * Everything goes through the analyst API with the owner's admin key; nothing private is on the public site.
+ */
+const KEY_STORE = "acolyteAdminKey";
+type Analyst = "property" | "retail" | "marketplace" | "jobs";
+const ANALYSTS: { key: Analyst; label: string; who: string }[] = [
+  { key: "property", label: "Property Analyst", who: "estate agencies" },
+  { key: "retail", label: "Retail Pricing Analyst", who: "retailers" },
+  { key: "marketplace", label: "Marketplace Analyst", who: "online stores" },
+  { key: "jobs", label: "Talent Analyst", who: "employers and recruiters" },
+];
+const STAGES = ["prospect", "researching", "contacted", "meeting", "proposal", "won", "lost"] as const;
+type Stage = typeof STAGES[number];
+const STAGE_LABEL: Record<Stage, string> = { prospect: "To approach", researching: "Researching", contacted: "Contacted",
+  meeting: "Meeting", proposal: "Proposal", won: "Won", lost: "Lost" };
 
-async function api<T = any>(path: string, body?: unknown): Promise<T> {
-  const r = await fetch(API + path, body === undefined ? {} : {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-  });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data.error || r.statusText);
-  return data as T;
+interface Prospect {
+  id: number; analyst: Analyst; name: string; segment: string | null; score: number; rank: number | null;
+  reasons: string[]; metrics: Record<string, unknown>; pitch: string | null; stage: Stage; pinned: boolean;
+  website: string | null; contact_name: string | null; contact_role: string | null; contact_email: string | null;
+  next_step: string | null; next_date: string | null; value_zar: number | null; notes: string | null;
+  scored_at: string | null; updated_at: string; suppressed?: boolean;
 }
+interface Activity { id: number; at: string; kind: string; text: string }
+interface BoardData { ranked: Prospect[]; board: Prospect[]; totals: { stage: Stage; n: number; value_zar: number }[];
+  counts: { analyst: Analyst; n: number; scored_at: string }[] }
 
-const STAGE_LABEL: Record<string, string> = {
-  new: "New", researching: "Researching", contacted: "Contacted", replied: "Replied", meeting: "Meeting",
-  proposal: "Proposal", won: "Won", lost: "Lost", not_a_fit: "Not a fit",
-};
-const BOARD = ["new", "researching", "contacted", "replied", "meeting", "proposal", "won"];
-const CONSENT_LABEL: Record<string, string> = {
-  unknown: "Not asked yet", requested: "Permission asked", granted: "Happy to hear more", declined: "Declined", opted_out: "Opted out",
-};
-
-interface Opp {
-  id: number; stage: string; est_value: number | null; pitch: string | null; next_action: string | null; next_action_at: string | null;
-  company_id: number; name: string; website: string | null; industry: string | null; hq_city: string | null; hq_province: string | null;
-  open_roles: number | null; avg_score: number | null; main_family: string | null; contacts: number; emails: number; drafts: number; last_touch: string | null;
-}
-interface Contact { id: number; name: string | null; role: string | null; email: string | null; phone: string | null; linkedin_url: string | null; is_generic: boolean; source: string | null; consent_status: string; suppressed: boolean; notes: string | null }
-interface Activity { id: number; kind: string; subject: string | null; body: string | null; contact_id: number | null; meta: any; created_at: string }
-interface Detail extends Opp {
-  size_band: string | null; linkedin_url: string | null; description: string | null; automatable_value: number | null;
-  contacts_list?: never; contacts: any; activities: Activity[];
-  roles: { title: string; url: string | null; city: string | null; posted: string | null; score: number; value: number; family: string; tools: string[] | null; skills: string[] | null }[];
-}
-
-const today = () => new Date().toISOString().slice(0, 10);
+const R = (n: number | null | undefined) => "R" + Math.round(Number(n || 0)).toLocaleString("en-ZA");
 const when = (d: string) => new Date(d).toLocaleString("en-ZA", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const ALABEL = Object.fromEntries(ANALYSTS.map((a) => [a.key, a.label])) as Record<Analyst, string>;
 
-function Setup({ error, retry }: { error: string; retry: () => void }) {
+function useAdmin(key: string, onBadKey: () => void) {
+  return useCallback(async <T = any,>(path: string, method = "GET", body?: unknown): Promise<T> => {
+    const r = await fetch(API + path, { method, headers: { Authorization: `Bearer ${key}`, ...(body !== undefined ? { "Content-Type": "application/json" } : {}) },
+      body: body !== undefined ? JSON.stringify(body) : undefined });
+    const d = await r.json().catch(() => ({}));
+    if (r.status === 401) { onBadKey(); throw new Error("That admin key isn't right."); }
+    if (!r.ok) throw new Error(d.detail || r.statusText);
+    return d as T;
+  }, [key, onBadKey]);
+}
+
+function KeyGate({ onKey, error }: { onKey: (k: string) => void; error: string }) {
+  const [k, setK] = useState("");
   return (
-    <div className="card setup">
+    <form className="card crm-gate" onSubmit={(e) => { e.preventDefault(); if (k.trim()) onKey(k.trim()); }}>
       <span className="tag">Private</span>
-      <h2 style={{ fontSize: 22, margin: "10px 0 6px" }}>Connect your CRM</h2>
-      <p className="muted">The CRM holds contact details, so it is never published on the website. It runs from a small server on your own computer that connects to your Neon database. This page then reads and writes through it.</p>
-      <ol>
-        <li>Install Python 3.12+ and Git, then get the code:
-          <pre>git clone https://github.com/dumichanda/acolyte-site.git{"\n"}cd acolyte-site{"\n"}pip install -r requirements.txt</pre></li>
-        <li>Create a file called <code>.env</code> in that folder with your Neon connection string (the same value as the <code>DATABASE_URL</code> GitHub secret):
-          <pre>DATABASE_URL=postgresql://…neon.tech/neondb?sslmode=require</pre></li>
-        <li>Start the CRM server and leave it running:
-          <pre>python crm/server.py</pre></li>
-        <li><button className="btn primary" onClick={retry}>Connect</button></li>
-      </ol>
-      <p className="muted" style={{ fontSize: 12 }}>Tried {API || location.origin}: {error}. Use Chrome or Edge. Some browsers block a public page from talking to your own computer.</p>
-    </div>
+      <h2>Sign in to the sales CRM</h2>
+      <p className="muted">Use the same admin key as the admin page. The CRM lives in a private schema in the database; the public site only shows this sign-in.</p>
+      <div className="row"><input id="crm-key" type="password" value={k} onChange={(e) => setK(e.target.value)} placeholder="Admin key" autoComplete="current-password" />
+        <button className="btn primary">Open CRM</button></div>
+      {error && <div className="banner">{error}</div>}
+    </form>
   );
 }
 
-function Card({ o, onOpen }: { o: Opp; onOpen: () => void }) {
-  const due = o.next_action_at && o.next_action_at <= today() && !["won", "lost", "not_a_fit"].includes(o.stage);
-  return (
-    <button className={"ocard" + (due ? " due" : "")} onClick={onOpen}>
-      <div className="oname">{o.name}</div>
-      <div className="ometa">{o.main_family ?? "—"} · {o.open_roles ?? 0} roles</div>
-      <div className="orow">
-        <b>{o.est_value ? rands(o.est_value) : "—"}</b>
-        <span>
-          {o.drafts > 0 && <span className="pill lime" title="Draft email ready">draft</span>}
-          {o.emails === 0 && <span className="pill" title="No email address yet">no email</span>}
-        </span>
-      </div>
-      {o.next_action && <div className="onext">{due ? "Due: " : ""}{o.next_action}</div>}
-    </button>
-  );
+function Score({ v }: { v: number }) {
+  return <span className="score" title={`Fit score ${Math.round(v)} / 100`}><i style={{ width: `${Math.max(4, Math.min(100, v))}%` }} /><b>{Math.round(v)}</b></span>;
 }
 
-function DraftBox({ d, contacts, oppId, onDone }: { d: Activity; contacts: Contact[]; oppId: number; onDone: (x: Detail) => void }) {
-  const usable = contacts.filter((c) => c.email && !c.suppressed && !["declined", "opted_out"].includes(c.consent_status));
-  const [subject, setSubject] = useState(d.subject ?? "");
-  const [body, setBody] = useState(d.body ?? "");
-  const [to, setTo] = useState<number | "">(d.contact_id ?? usable[0]?.id ?? "");
-  const [msg, setMsg] = useState("");
-  const email = contacts.find((c) => c.id === to)?.email ?? "";
-  const save = () => api(`/api/activity/${d.id}`, { subject, body }).then(() => setMsg("Saved"));
-  const sent = async () => {
-    try { onDone(await api(`/api/opportunity/${oppId}/sent`, { contact_id: to, subject, body, draft_id: d.id })); }
-    catch (e) { setMsg(String((e as Error).message)); }
-  };
+function Detail({ id, call, onClose, onChanged }: { id: number; call: ReturnType<typeof useAdmin>; onClose: () => void; onChanged: () => void }) {
+  const [p, setP] = useState<Prospect | null>(null);
+  const [acts, setActs] = useState<Activity[]>([]);
+  const [form, setForm] = useState<Partial<Prospect>>({});
+  const [note, setNote] = useState(""), [draft, setDraft] = useState(""), [busy, setBusy] = useState(""), [err, setErr] = useState(""), [saved, setSaved] = useState("");
+  const load = useCallback(async () => {
+    const d = await call<{ prospect: Prospect; activities: Activity[] }>(`/admin/sales/${id}`);
+    setP(d.prospect); setActs(d.activities); setForm({});
+  }, [call, id]);
+  useEffect(() => { load().catch((e) => setErr(e.message)); }, [load]);
+  const run = async (k: string, f: () => Promise<void>) => { setBusy(k); setErr(""); setSaved(""); try { await f(); } catch (e) { setErr((e as Error).message); } finally { setBusy(""); } };
+  if (!p) return <aside className="drawer"><button className="link close" onClick={onClose}>Close</button><p className="muted">{err || "Loading…"}</p></aside>;
+  const v = (k: keyof Prospect) => (form[k] ?? p[k] ?? "") as string;
+  const set = (k: keyof Prospect) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const save = (patch: Partial<Prospect>) => run("save", async () => {
+    await call(`/admin/sales/${p.id}`, "PATCH", patch); await load(); onChanged(); setSaved("Saved");
+  });
+  const metrics = Object.entries(p.metrics || {}).filter(([k, x]) => x !== null && x !== "" && k !== "name");
   return (
-    <div className="draft">
-      <div className="field"><label>To</label>
-        <select value={to} onChange={(e) => setTo(Number(e.target.value) || "")}>
-          <option value="">Choose a contact…</option>
-          {usable.map((c) => <option key={c.id} value={c.id}>{c.name ? `${c.name} – ` : ""}{c.email}</option>)}
-        </select>
+    <aside className="drawer" aria-label={`Prospect ${p.name}`}>
+      <div className="drawer-head">
+        <div><span className="tag">{ALABEL[p.analyst]}</span><h2>{p.name}</h2>
+          <div className="muted small">{p.segment}{p.rank ? ` · ranked #${p.rank}` : " · not in today's data"} · fit {Math.round(p.score)}/100</div></div>
+        <button className="link close" onClick={onClose} aria-label="Close">Close</button>
       </div>
-      <div className="field"><label>Subject</label><input value={subject} onChange={(e) => setSubject(e.target.value)} /></div>
-      <div className="field"><label>Message</label><textarea rows={12} value={body} onChange={(e) => setBody(e.target.value)} /></div>
-      <div className="actions">
-        <a className={"btn" + (email ? "" : " disabled")} href={email ? `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}` : undefined}>Open in my email app</a>
-        <button className="btn" onClick={() => navigator.clipboard.writeText(body).then(() => setMsg("Copied"))}>Copy text</button>
-        <button className="btn" onClick={save}>Save draft</button>
-        <button className="btn primary" disabled={!to} onClick={sent}>I've sent it</button>
-        {msg && <span className="muted">{msg}</span>}
+      {p.suppressed && <div className="banner">This business or address asked not to be contacted. Drafting is blocked.</div>}
+      <section><h3>Why approach them</h3><ul className="reasons">{p.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
+        {p.pitch && <p className="pitch"><b>Lead with:</b> {p.pitch}</p>}</section>
+      <section className="grid2">
+        <label>Stage<select id="d-stage" value={v("stage")} onChange={(e) => save({ stage: e.target.value as Stage })}>
+          {STAGES.map((s) => <option key={s} value={s}>{STAGE_LABEL[s]}</option>)}</select></label>
+        <label>Expected value / month<input id="d-value" type="number" min="0" step="1000" value={v("value_zar")} onChange={set("value_zar")} /></label>
+        <label>Website<input id="d-web" value={v("website")} onChange={set("website")} placeholder="https://…" /></label>
+        <label>Next step<input id="d-next" value={v("next_step")} onChange={set("next_step")} placeholder="e.g. Call the principal" /></label>
+        <label>Next date<input id="d-date" type="date" value={(v("next_date") || "").slice(0, 10)} onChange={set("next_date")} /></label>
+        <label>Contact name<input id="d-cname" value={v("contact_name")} onChange={set("contact_name")} /></label>
+        <label>Contact role<input id="d-crole" value={v("contact_role")} onChange={set("contact_role")} placeholder="e.g. Principal, Head of Pricing" /></label>
+        <label>Business email<input id="d-cemail" type="email" value={v("contact_email")} onChange={set("contact_email")} /></label>
+        <label className="wide">Notes<textarea id="d-notes" rows={3} value={v("notes")} onChange={set("notes")} /></label>
+      </section>
+      <div className="row">
+        <button className="btn primary" disabled={!!busy || !Object.keys(form).length} onClick={() => save({ ...form, value_zar: form.value_zar !== undefined ? Number(form.value_zar) : undefined })}>{busy === "save" ? "Saving…" : "Save"}</button>
+        {!p.pinned && <button className="btn" disabled={!!busy} onClick={() => save({ pinned: true })}>Add to board</button>}
+        {saved && <span className="muted small">{saved}</span>}
       </div>
-      <p className="muted small">Send it from your own mailbox, then click <b>I've sent it</b>. That logs it, marks the contact as "permission asked" and sets a one-time follow-up in 7 days. POPIA allows one request for permission. Don't keep emailing someone who hasn't replied.</p>
-    </div>
-  );
-}
-
-function Panel({ id, close, changed }: { id: number; close: () => void; changed: () => void }) {
-  const [d, setD] = useState<Detail | null>(null);
-  const [err, setErr] = useState("");
-  const [note, setNote] = useState("");
-  const [reply, setReply] = useState({ contact_id: 0, outcome: "granted", body: "" });
-  const [nc, setNc] = useState({ name: "", role: "", email: "", phone: "", linkedin_url: "", source: "" });
-  const load = useCallback(() => api<Detail>(`/api/opportunity/${id}`).then(setD).catch((e) => setErr(e.message)), [id]);
-  useEffect(() => { load(); }, [load]);
-  const apply = (x: Detail) => { setD(x); changed(); };
-  const run = (p: Promise<any>) => p.then(() => { load(); changed(); }).catch((e) => setErr(e.message));
-  if (!d) return <aside className="panel"><button className="x" onClick={close}>✕</button>{err || "Loading…"}</aside>;
-  const contacts: Contact[] = d.contacts;
-  const draft = d.activities.find((a) => a.kind === "email_draft");
-  const history = d.activities.filter((a) => a.kind !== "email_draft");
-
-  return (
-    <aside className="panel">
-      <button className="x" onClick={close} aria-label="Close">✕</button>
-      <h2>{d.name}</h2>
-      <div className="muted">
-        {[d.industry, d.size_band && `${d.size_band} staff`, [d.hq_city, d.hq_province].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
-      </div>
-      <div style={{ margin: "6px 0 12px" }}>
-        {d.website && <a href={`https://${d.website}`} target="_blank" rel="noreferrer">{d.website}</a>}
-        {d.linkedin_url && <> · <a href={d.linkedin_url} target="_blank" rel="noreferrer">LinkedIn</a></>}
-      </div>
+      <section>
+        <h3>First email</h3>
+        <p className="muted small">Drafted from the reasons above; nothing is sent. Copy it into your own email, then log it below.</p>
+        <div className="row"><button className="btn" disabled={!!busy || p.suppressed} onClick={() => run("draft", async () => {
+          const d = await call<{ draft: string; activities: Activity[] }>(`/admin/sales/${p.id}/draft`, "POST"); setDraft(d.draft); setActs(d.activities);
+        })}>{busy === "draft" ? "Drafting…" : "Draft with AI"}</button>
+          {draft && <button className="btn" onClick={() => navigator.clipboard?.writeText(draft).then(() => setSaved("Copied"), () => setSaved("Select the text to copy"))}>Copy</button>}</div>
+        {draft && <pre className="draft">{draft}</pre>}
+      </section>
+      <section>
+        <h3>Activity</h3>
+        <form className="row" onSubmit={(e) => { e.preventDefault(); if (!note.trim()) return; run("note", async () => {
+          const d = await call<{ activities: Activity[] }>(`/admin/sales/${p.id}/activities`, "POST", { kind: "note", text: note }); setActs(d.activities); setNote("");
+        }); }}>
+          <input id="d-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Log a call, email or note" />
+          <button className="btn" disabled={!!busy || !note.trim()}>Add</button>
+        </form>
+        <ol className="acts">{acts.map((a) => <li key={a.id}><span className="muted small">{when(a.at)} · {a.kind.replace("_", " ")}</span>
+          {a.kind === "email_draft" ? <details><summary>Email draft</summary><pre className="draft">{a.text}</pre></details> : <p>{a.text}</p>}</li>)}</ol>
+      </section>
+      {metrics.length > 0 && <section><h3>Data behind the score</h3><dl className="metrics">{metrics.map(([k, x]) => <div key={k}><dt>{k.replace(/_/g, " ")}</dt><dd>{String(x)}</dd></div>)}</dl></section>}
+      <section className="danger">
+        <button className="link" disabled={!!busy} onClick={() => run("sup", async () => {
+          await call("/admin/sales/suppress", "POST", { value: p.contact_email || p.name }); await save({ stage: "lost" });
+        })}>Do not contact (opted out)</button>
+      </section>
       {err && <div className="banner">{err}</div>}
-
-      <div className="pgrid">
-        <div className="field"><label>Stage</label>
-          <select value={d.stage} onChange={(e) => api<Detail>(`/api/opportunity/${id}`, { stage: e.target.value }).then(apply)}>
-            {Object.entries(STAGE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select></div>
-        <div className="field"><label>Next action</label>
-          <input key={`na-${d.next_action ?? ""}`} defaultValue={d.next_action ?? ""} onBlur={(e) => api<Detail>(`/api/opportunity/${id}`, { next_action: e.target.value }).then(apply)} /></div>
-        <div className="field"><label>Due</label>
-          <input key={`nd-${d.next_action_at ?? ""}`} type="date" defaultValue={d.next_action_at ?? ""} onChange={(e) => api<Detail>(`/api/opportunity/${id}`, { next_action_at: e.target.value }).then(apply)} /></div>
-      </div>
-
-      <div className="kv">
-        <div><span>Automatable work / yr</span><b>{d.automatable_value ? rands(d.automatable_value) : "—"}</b></div>
-        <div><span>Open roles</span><b>{d.open_roles ?? 0}</b></div>
-        <div><span>Avg score</span><b>{d.avg_score ?? "—"}</b></div>
-      </div>
-      {d.pitch && <p><b>Pitch:</b> {d.pitch}</p>}
-      {d.description && <p className="muted">{d.description}</p>}
-
-      {draft && <section><h3>First email (draft)</h3><DraftBox key={draft.id} d={draft} contacts={contacts} oppId={id} onDone={apply} /></section>}
-
-      <section>
-        <h3>Contacts</h3>
-        {contacts.length === 0 && <p className="muted">No contacts yet. Add the company's published inbox, or a person who agreed to be contacted.</p>}
-        {contacts.map((c) => (
-          <div className="contact" key={c.id}>
-            <div>
-              <b>{c.name || c.role || "General inbox"}</b>{c.name && c.role && <span className="muted"> · {c.role}</span>}
-              <div className="muted small">{[c.email, c.phone].filter(Boolean).join(" · ")}{c.source && <> · <a href={c.source} target="_blank" rel="noreferrer">source</a></>}</div>
-            </div>
-            <select className={"consent " + c.consent_status} value={c.consent_status}
-              onChange={(e) => run(api(`/api/contact/${c.id}`, { consent_status: e.target.value }))}>
-              {Object.entries(CONSENT_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-          </div>
-        ))}
-        <details className="add">
-          <summary>Add contact</summary>
-          <div className="pgrid">
-            {(["name", "role", "email", "phone", "linkedin_url", "source"] as const).map((k) => (
-              <div className="field" key={k}><label>{k === "linkedin_url" ? "LinkedIn URL" : k === "source" ? "Where you found it" : k[0].toUpperCase() + k.slice(1)}</label>
-                <input value={nc[k]} onChange={(e) => setNc({ ...nc, [k]: e.target.value })} /></div>
-            ))}
-          </div>
-          <button className="btn" onClick={() => run(api("/api/contact", { ...nc, company_id: d.company_id })).then(() => setNc({ name: "", role: "", email: "", phone: "", linkedin_url: "", source: "" }))}>Save contact</button>
-        </details>
-      </section>
-
-      <section>
-        <h3>Log a reply</h3>
-        <div className="pgrid">
-          <div className="field"><label>From</label>
-            <select value={reply.contact_id} onChange={(e) => setReply({ ...reply, contact_id: Number(e.target.value) })}>
-              <option value={0}>Choose…</option>{contacts.map((c) => <option key={c.id} value={c.id}>{c.name || c.email || c.phone}</option>)}
-            </select></div>
-          <div className="field"><label>Outcome</label>
-            <select value={reply.outcome} onChange={(e) => setReply({ ...reply, outcome: e.target.value })}>
-              <option value="granted">Interested / happy to hear more</option><option value="other">Question or other</option>
-              <option value="declined">Not interested</option><option value="opted_out">Asked not to be contacted</option>
-            </select></div>
-        </div>
-        <div className="field"><textarea rows={3} placeholder="Paste or summarise their reply" value={reply.body} onChange={(e) => setReply({ ...reply, body: e.target.value })} /></div>
-        <button className="btn" disabled={!reply.contact_id} onClick={() => api<Detail>(`/api/opportunity/${id}/reply`, reply).then((x) => { apply(x); setReply({ contact_id: 0, outcome: "granted", body: "" }); }).catch((e) => setErr(e.message))}>Log reply</button>
-        <p className="muted small">"Not interested" and "asked not to be contacted" add the address to the do-not-contact list automatically.</p>
-      </section>
-
-      <section>
-        <h3>Notes & history</h3>
-        <div className="field"><textarea rows={2} placeholder="Add a note, call summary or meeting notes" value={note} onChange={(e) => setNote(e.target.value)} /></div>
-        <button className="btn" disabled={!note.trim()} onClick={() => run(api(`/api/opportunity/${id}/activity`, { kind: "note", body: note })).then(() => setNote(""))}>Add note</button>
-        <ul className="timeline">
-          {history.map((a) => (
-            <li key={a.id} className={a.kind}>
-              <span className="when">{when(a.created_at)}</span>
-              <b>{{ email_sent: "Email sent", reply: "Reply", note: "Note", stage: "Stage", call: "Call", meeting: "Meeting" }[a.kind] ?? a.kind}</b>
-              {a.subject && <> · {a.subject}</>}
-              {a.body && <div className="body">{a.body}</div>}
-            </li>
-          ))}
-          {!history.length && <li className="muted">Nothing yet.</li>}
-        </ul>
-      </section>
-
-      <section>
-        <h3>Their open roles</h3>
-        <table><tbody>
-          {d.roles.map((r, i) => (
-            <tr key={i}>
-              <td>{r.url ? <a href={r.url} target="_blank" rel="noreferrer">{r.title}</a> : r.title}
-                <div className="muted small">{r.family}{r.tools?.length ? ` · ${r.tools.join(", ")}` : ""}</div></td>
-              <td className="num">{r.score}</td><td className="num">{rands(r.value)}</td>
-            </tr>
-          ))}
-        </tbody></table>
-      </section>
     </aside>
   );
 }
 
-
-interface Run { id: number; agent: string; model: string; status: string; steps: number; tool_calls: number; cost_usd: number; summary: string | null; error: string | null; started_at: string }
-interface Step { n: number; kind: string; name: string | null; input: any; output: string | null; is_error: boolean; cost_usd: number | null }
-
-function AgentRuns() {
-  const [runs, setRuns] = useState<Run[] | null>(null);
-  const [open, setOpen] = useState<number | null>(null);
-  const [steps, setSteps] = useState<Step[]>([]);
-  useEffect(() => { api("/api/agents").then((x) => setRuns(x.runs)).catch(() => setRuns([])); }, []);
-  useEffect(() => { if (open !== null) api(`/api/agents/${open}`).then((x) => setSteps(x.steps)); }, [open]);
-  if (!runs) return <div className="muted">Loading…</div>;
-  if (!runs.length) return <div className="card empty">No agent runs yet. They appear after the daily refresh once an OpenRouter or Anthropic key is set.</div>;
-  return (
-    <div className="card">
-      <p className="desc">Every agent run is logged: each model turn and each tool call (search, page opened, save), with its cost. Click a run to see what the agent did.</p>
-      <table>
-        <thead><tr><th>When</th><th>Agent</th><th>Model</th><th>Status</th><th className="num">Tool calls</th><th className="num">Cost</th><th>Summary</th></tr></thead>
-        <tbody>
-          {runs.map((r) => (
-            <Fragment key={r.id}>
-              <tr className="rowx" onClick={() => setOpen(open === r.id ? null : r.id)}>
-                <td className="small">{when(r.started_at)}</td><td>{r.agent.replace("_", " ")}</td><td className="small muted">{r.model}</td>
-                <td><span className={"pill" + (r.status === "done" ? " lime" : "")}>{r.status}</span></td>
-                <td className="num">{r.tool_calls}</td><td className="num">${Number(r.cost_usd).toFixed(3)}</td>
-                <td className="small">{(r.error ? `Error: ${r.error}. ` : "") + (r.summary ?? "").slice(0, 140)}</td>
-              </tr>
-              {open === r.id && (
-                <tr className="detail"><td colSpan={7}>
-                  <ol className="steps-log">
-                    {steps.map((st, i) => (
-                      <li key={i} className={st.kind + (st.is_error ? " err" : "")}>
-                        <b>{st.kind === "model" ? "Model" : st.name}</b>
-                        {st.input && <code>{JSON.stringify(st.input).slice(0, 220)}</code>}
-                        {st.output && <div className="out">{st.output.slice(0, 400)}</div>}
-                      </li>))}
-                  </ol>
-                </td></tr>
-              )}
-            </Fragment>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 function App() {
-  const [data, setData] = useState<{ stages: string[]; opportunities: Opp[]; stats: any } | null>(null);
+  const [key, setKey] = useState(() => { try { return localStorage.getItem(KEY_STORE) || ""; } catch { return ""; } });
   const [err, setErr] = useState("");
+  const badKey = useCallback(() => { setKey(""); try { localStorage.removeItem(KEY_STORE); } catch { /* */ } }, []);
+  const call = useAdmin(key, badKey);
+  const [analyst, setAnalyst] = useState<Analyst>(() => (["property", "retail", "marketplace", "jobs"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "property") as Analyst);
+  const [view, setView] = useState<"ranked" | "board">("ranked");
+  const [data, setData] = useState<BoardData | null>(null);
   const [open, setOpen] = useState<number | null>(null);
-  const [q, setQ] = useState("");
-  const [only, setOnly] = useState<"" | "drafts" | "due" | "noemail">("");
-  const [view, setView] = useState<"pipeline" | "agents">("pipeline");
-  const load = useCallback(() => api("/api/pipeline").then((x) => { setData(x); setErr(""); }).catch((e) => setErr(e.message || "not reachable")), []);
-  useEffect(() => { load(); }, [load]);
+  const [busy, setBusy] = useState(""), [q, setQ] = useState(""), [boardAll, setBoardAll] = useState(true);
+  const [dragId, setDragId] = useState<number | null>(null);
 
-  const opps = useMemo(() => (data?.opportunities ?? [])
-    .filter((o) => !q || `${o.name} ${o.industry ?? ""} ${o.main_family ?? ""}`.toLowerCase().includes(q.toLowerCase()))
-    .filter((o) => only !== "drafts" || o.drafts > 0)
-    .filter((o) => only !== "due" || (o.next_action_at && o.next_action_at <= today()))
-    .filter((o) => only !== "noemail" || o.emails === 0), [data, q, only]);
-  const closed = opps.filter((o) => o.stage === "lost" || o.stage === "not_a_fit");
+  const load = useCallback(async () => {
+    if (!key) return;
+    setErr("");
+    try { setData(await call<BoardData>(`/admin/sales?analyst=${analyst}`)); }
+    catch (e) { setErr(`${(e as Error).message}. The free analyst server can take a minute to wake up; try again.`); }
+  }, [key, analyst, call]);
+  useEffect(() => { load(); location.hash = analyst; }, [load, analyst]);
+
+  const move = async (id: number, stage: Stage) => {
+    setData((d) => d && { ...d, board: d.board.map((p) => (p.id === id ? { ...p, stage } : p)) });
+    try { await call(`/admin/sales/${id}`, "PATCH", { stage }); } catch (e) { setErr((e as Error).message); }
+    load();
+  };
+  const pin = async (id: number) => { try { await call(`/admin/sales/${id}`, "PATCH", { pinned: true }); load(); } catch (e) { setErr((e as Error).message); } };
+  const rescore = async () => {
+    setBusy("score"); setErr("");
+    try { const r = await call<Record<string, unknown>>(`/admin/sales/score?analyst=${analyst}`, "POST");
+      const v = r[analyst]; if (typeof v === "string") setErr(`Ranking failed: ${v}`); await load(); }
+    catch (e) { setErr((e as Error).message); } finally { setBusy(""); }
+  };
+
+  const ranked = useMemo(() => (data?.ranked || []).filter((p) => !q || p.name.toLowerCase().includes(q.toLowerCase())), [data, q]);
+  const board = useMemo(() => (data?.board || []).filter((p) => boardAll || p.analyst === analyst), [data, boardAll, analyst]);
+  const count = (a: Analyst) => data?.counts.find((c) => c.analyst === a)?.n;
+  const scoredAt = data?.counts.find((c) => c.analyst === analyst)?.scored_at;
+  const open$ = (data?.totals || []).filter((t) => !["won", "lost"].includes(t.stage));
+  const pipeline = open$.reduce((a, t) => a + Number(t.value_zar), 0), won = data?.totals.find((t) => t.stage === "won");
 
   return (
     <div className="wrap crm">
       <PlatformNav active="/crm/" />
-      <header className="top">
-        <div>
-          <h1>Sales pipeline</h1>
-          <p className="sub">Every hiring employer becomes an opportunity. Research it, send one permission-based email, track the reply.</p>
+      {!key ? <KeyGate error={err} onKey={(k) => { setKey(k); try { localStorage.setItem(KEY_STORE, k); } catch { /* */ } }} /> : (<>
+        <header className="crm-head">
+          <div><h1>Sales pipeline</h1>
+            <p className="muted">Who to sell each analyst to, ranked from our own data every morning, and where every deal stands.</p></div>
+          <div className="crm-kpis">
+            <div><b>{open$.reduce((a, t) => a + t.n, 0)}</b><span>open deals</span></div>
+            <div><b>{R(pipeline)}</b><span>pipeline / month</span></div>
+            <div><b>{won?.n || 0}</b><span>won ({R(won?.value_zar)} / month)</span></div>
+          </div>
+        </header>
+        <nav className="crm-tabs" role="tablist" aria-label="Analyst">
+          {ANALYSTS.map((a) => <button key={a.key} role="tab" aria-selected={analyst === a.key} onClick={() => setAnalyst(a.key)}>
+            {a.label}{count(a.key) !== undefined && <em>{count(a.key)}</em>}</button>)}
+        </nav>
+        <div className="crm-bar">
+          <div className="seg" role="group" aria-label="View">
+            <button aria-pressed={view === "ranked"} onClick={() => setView("ranked")}>Ranked prospects</button>
+            <button aria-pressed={view === "board"} onClick={() => setView("board")}>Board</button>
+          </div>
+          {view === "ranked" ? <input id="crm-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${ANALYSTS.find((a) => a.key === analyst)?.who}`} />
+            : <label className="small"><input type="checkbox" checked={boardAll} onChange={(e) => setBoardAll(e.target.checked)} /> All analysts</label>}
+          <span className="muted small">{scoredAt ? `Ranked ${when(scoredAt)}` : "Not ranked yet"}</span>
+          <button className="btn sm" onClick={rescore} disabled={!!busy}>{busy ? "Ranking…" : "Re-rank from today's data"}</button>
         </div>
-        {data && <div className="actions">
-          <button className={"btn" + (view === "pipeline" ? " primary" : "")} onClick={() => setView("pipeline")}>Pipeline</button>
-          <button className={"btn" + (view === "agents" ? " primary" : "")} onClick={() => setView("agents")}>Agent runs</button>
-          <button className="btn" onClick={load}>Refresh</button>
-        </div>}
-      </header>
-      {!data && !err && <div className="muted">Connecting…</div>}
-      {!data && err && <Setup error={err} retry={load} />}
-      {data && view === "agents" && <AgentRuns />}
-      {data && view === "pipeline" && (
-        <>
-          <section className="kpis">
-            <div className="kpi"><div className="label">Opportunities</div><div className="value">{data.stats.opportunities}</div><div className="hint">hiring employers</div></div>
-            <div className="kpi"><div className="label">Emails sent</div><div className="value">{data.stats.sent}</div><div className="hint">{data.stats.replies} replies</div></div>
-            <div className="kpi"><div className="label">Meetings / proposals</div><div className="value">{data.stats.meetings}</div><div className="hint">in progress</div></div>
-            <div className="kpi"><div className="label">Won</div><div className="value">{data.stats.won}</div><div className="hint">clients</div></div>
-            <div className="kpi"><div className="label">Due today</div><div className="value">{data.stats.due}</div><div className="hint">follow-ups and next actions</div></div>
-          </section>
-          <div className="toolbar">
-            <input placeholder="Search companies…" value={q} onChange={(e) => setQ(e.target.value)} />
-            {([["", "All"], ["drafts", "Draft ready"], ["due", "Due"], ["noemail", "Needs a contact"]] as const).map(([k, l]) => (
-              <button key={k} className={"btn" + (only === k ? " primary" : "")} onClick={() => setOnly(k)}>{l}</button>
-            ))}
-          </div>
-          <div className="board">
-            {BOARD.map((st) => {
-              const col = opps.filter((o) => o.stage === st);
-              return (
-                <div className="col" key={st}>
-                  <div className="colh">{STAGE_LABEL[st]} <span>{col.length}</span></div>
-                  {col.slice(0, 60).map((o) => <Card key={o.id} o={o} onOpen={() => setOpen(o.id)} />)}
-                  {col.length > 60 && <div className="muted small">+{col.length - 60} more (use search)</div>}
-                </div>
-              );
-            })}
-          </div>
-          {closed.length > 0 && (
-            <details className="closed"><summary>Closed ({closed.length})</summary>
-              {closed.map((o) => <Card key={o.id} o={o} onOpen={() => setOpen(o.id)} />)}
-            </details>
-          )}
-        </>
-      )}
-      {open !== null && <><div className="scrim" onClick={() => setOpen(null)} /><Panel id={open} close={() => setOpen(null)} changed={load} /></>}
+        {err && <div className="banner">{err}</div>}
+        {!data && !err && <p className="muted">Loading…</p>}
+
+        {data && view === "ranked" && (ranked.length ? (
+          <ol className="ranked">{ranked.map((p) => (
+            <li key={p.id} className={p.pinned ? "on-board" : ""}>
+              <span className="rk">{p.rank ? `#${p.rank}` : "—"}</span>
+              <div className="who"><button className="link name" onClick={() => setOpen(p.id)}>{p.name}</button>
+                <span className="pchip">{p.segment}</span>{p.pinned && <span className="pchip stage">{STAGE_LABEL[p.stage]}</span>}
+                <p>{p.reasons[0]}</p>{p.reasons[1] && <p className="muted">{p.reasons[1]}</p>}</div>
+              <Score v={p.score} />
+              <div className="acts-col">{p.pinned ? <button className="btn sm" onClick={() => setOpen(p.id)}>Open</button>
+                : <button className="btn sm primary" onClick={() => pin(p.id)}>Add to board</button>}</div>
+            </li>))}</ol>
+        ) : <div className="card empty"><h3>No ranked prospects yet</h3>
+          <p className="muted">Click <b>Re-rank from today's data</b>. After that the list refreshes every morning with the data.</p></div>)}
+
+        {data && view === "board" && (
+          <div className="board">{STAGES.map((s) => {
+            const cards = board.filter((p) => p.stage === s);
+            return (
+              <section key={s} className={"col" + (dragId ? " droppable" : "")} aria-label={STAGE_LABEL[s]}
+                onDragOver={(e) => e.preventDefault()} onDrop={() => { if (dragId) move(dragId, s); setDragId(null); }}>
+                <h3>{STAGE_LABEL[s]} <em>{cards.length}</em></h3>
+                {cards.map((p) => (
+                  <article key={p.id} className="deal" draggable onDragStart={() => setDragId(p.id)} onDragEnd={() => setDragId(null)}>
+                    <button className="link name" onClick={() => setOpen(p.id)}>{p.name}</button>
+                    <div className="muted small">{ALABEL[p.analyst]} · {R(p.value_zar)}/m</div>
+                    {p.next_step && <div className="small next">{p.next_step}{p.next_date ? ` · ${p.next_date.slice(0, 10)}` : ""}</div>}
+                    <select aria-label={`Move ${p.name}`} value={p.stage} onChange={(e) => move(p.id, e.target.value as Stage)}>
+                      {STAGES.map((x) => <option key={x} value={x}>{STAGE_LABEL[x]}</option>)}</select>
+                  </article>))}
+                {!cards.length && <p className="muted small hint">{s === "prospect" ? "Add prospects from the ranked list." : "Drag a card here."}</p>}
+              </section>);
+          })}</div>
+        )}
+        <p className="muted small foot">Prospects are businesses found in public market data. Add a contact person only from a business source, keep notes factual, and mark anyone who opts out as "Do not contact".</p>
+        {open !== null && <><div className="scrim" onClick={() => setOpen(null)} /><Detail id={open} call={call} onClose={() => setOpen(null)} onChanged={load} /></>}
+      </>)}
     </div>
   );
 }

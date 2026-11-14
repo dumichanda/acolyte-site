@@ -127,6 +127,9 @@ jobs:
           # re-sync clients' connected Google Sheets
           curl -fsS --max-time 300 -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
             https://acolyte-site.onrender.com/admin/data/sync || true
+          # re-rank the sales CRM's prospects from today's data
+          curl -fsS --max-time 300 -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
+            https://acolyte-site.onrender.com/admin/sales/score || true
 
       - name: Commit new snapshot
         run: |

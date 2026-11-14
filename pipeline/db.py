@@ -60,6 +60,9 @@ def setup_analyst_role(conn: psycopg.Connection) -> None:
     conn.execute("GRANT USAGE ON SEQUENCE admin.reports_id_seq TO analyst_admin")
     # Client data uploads: analyst_admin creates a private schema + read-only login role per client account.
     conn.execute("GRANT SELECT, INSERT, UPDATE ON admin.alerts, admin.credit TO analyst_admin")
+    conn.execute("GRANT USAGE ON SCHEMA sales TO analyst_admin")
+    conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA sales TO analyst_admin")
+    conn.execute("GRANT USAGE ON ALL SEQUENCES IN SCHEMA sales TO analyst_admin")
     conn.execute("GRANT USAGE ON SEQUENCE admin.alerts_id_seq, admin.credit_id_seq TO analyst_admin")
     conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON admin.client_tables TO analyst_admin")
     conn.execute("GRANT USAGE ON SEQUENCE admin.client_tables_id_seq TO analyst_admin")
@@ -102,7 +105,7 @@ def init_db() -> None:
         conn.execute((ROOT / "db" / "admin.sql").read_text())
         conn.execute((ROOT / "db" / "property.sql").read_text())
         conn.execute((ROOT / "db" / "retail.sql").read_text())
-        for extra in ("talent.sql", "signals.sql", "geo.sql"):
+        for extra in ("talent.sql", "signals.sql", "geo.sql", "sales.sql"):
             conn.execute((ROOT / "db" / extra).read_text())
         setup_analyst_role(conn)
         with conn.cursor() as cur:

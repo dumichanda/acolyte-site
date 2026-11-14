@@ -30,7 +30,7 @@ from pydantic import BaseModel, Field
 
 from . import accounts as acc
 from . import clientdata as cd
-from .agent import MODEL, TIERS, Budget, Session, answer, query, route
+from .agent import MODEL, TIERS, Budget, Session, answer, cost_of, query, route
 from .industries import BRIEFS, INDUSTRIES, MONTHLY, monthly_prompt
 
 REPORT_RX = re.compile(r"report|pack|deck|presentation|power ?point|\bppt|\bpdf", re.I)
@@ -687,6 +687,122 @@ class AckIn(BaseModel):
 def admin_alerts_ack(body: AckIn, req: Request):
     require_admin(req)
     acc.mark_notified(ADMIN_DB_URL, body.ids)
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------- Acolyte's own sales CRM (admin only)
+from . import prospects as sales
+
+
+def _sales(fn):
+    try:
+        return fn()
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/admin/sales")
+def sales_board(req: Request, analyst: str = "property"):
+    require_admin(req)
+    if analyst not in sales.ANALYSTS:
+        raise HTTPException(400, "Unknown analyst.")
+    return sales.board(ADMIN_DB_URL, analyst)
+
+
+@app.post("/admin/sales/score")
+def sales_score(req: Request, analyst: str | None = None):
+    """Re-rank prospects from the latest data (daily after the refresh, or on demand)."""
+    require_admin(req)
+    out = {}
+    for a in ([analyst] if analyst else sales.ANALYSTS):
+        try:
+            out[a] = sales.score(DB_URL, ADMIN_DB_URL, a)
+        except Exception as e:
+            out[a] = f"failed: {e.__class__.__name__}: {str(e)[:200]}"
+    return out
+
+
+class ProspectPatch(BaseModel):
+    stage: str | None = Field(default=None, pattern="^(prospect|researching|contacted|meeting|proposal|won|lost)$")
+    pinned: bool | None = None
+    website: str | None = Field(default=None, max_length=300)
+    contact_name: str | None = Field(default=None, max_length=120)
+    contact_role: str | None = Field(default=None, max_length=120)
+    contact_email: str | None = Field(default=None, max_length=200)
+    next_step: str | None = Field(default=None, max_length=300)
+    next_date: str | None = Field(default=None, pattern=r"^(\d{4}-\d{2}-\d{2})?$")
+    value_zar: float | None = Field(default=None, ge=0, le=10_000_000)
+    notes: str | None = Field(default=None, max_length=5000)
+
+
+@app.patch("/admin/sales/{pid}")
+def sales_update(pid: int, body: ProspectPatch, req: Request):
+    require_admin(req)
+    patch = body.model_dump(exclude_unset=True)
+    if patch.get("next_date") == "":
+        patch["next_date"] = None
+    return _sales(lambda: sales.update(ADMIN_DB_URL, pid, patch))
+
+
+@app.get("/admin/sales/{pid}")
+def sales_get(pid: int, req: Request):
+    require_admin(req)
+    p = sales.get(ADMIN_DB_URL, pid)
+    if not p:
+        raise HTTPException(404, "Prospect not found.")
+    return {"prospect": p, "activities": sales.activities(ADMIN_DB_URL, pid)}
+
+
+class ActivityIn(BaseModel):
+    kind: str = Field(default="note", pattern="^(note|call|meeting|email)$")
+    text: str = Field(min_length=1, max_length=5000)
+
+
+@app.post("/admin/sales/{pid}/activities")
+def sales_activity(pid: int, body: ActivityIn, req: Request):
+    require_admin(req)
+    sales.add_activity(ADMIN_DB_URL, pid, body.kind, body.text)
+    return {"activities": sales.activities(ADMIN_DB_URL, pid)}
+
+
+@app.post("/admin/sales/{pid}/draft")
+def sales_draft(pid: int, req: Request):
+    """Draft a first email from the prospect's data-backed reasons. Never sends anything."""
+    require_admin(req)
+    p = sales.get(ADMIN_DB_URL, pid)
+    if not p:
+        raise HTTPException(404, "Prospect not found.")
+    if p["suppressed"]:
+        raise HTTPException(409, "This business or address asked not to be contacted.")
+    t0 = time.time()
+    model = TIERS["standard"]["model"]
+    try:
+        msg = client().messages.create(model=model, max_tokens=1200, messages=[{"role": "user", "content": sales.draft_prompt(p)}])
+    except Exception as e:
+        acc.add_alert(ADMIN_DB_URL, "ai_error", f"[sales draft] {e.__class__.__name__}: {str(e)[:400]}")
+        raise HTTPException(503, "The AI service is unavailable right now. Try again shortly.")
+    text = "".join(b.text for b in msg.content if b.type == "text").strip()
+    usd, t = cost_of(msg.model or model, msg.usage)
+    log_usage({"account_id": None, "visitor": "sales-draft", "session_id": f"sales-{pid}", "country": None,
+               "question": f"[sales draft] {p['name']}", "mode": "standard", "tier": "standard", "models": [msg.model or model],
+               "status": "done", "error": None, "queries": "[]", "charts": 0, "report": False, "cost_usd": usd,
+               "input": t["input"], "cache_read": t["cache_read"], "cache_write": t["cache_write"], "output": t["output"],
+               "duration_ms": int((time.time() - t0) * 1000)})
+    sales.add_activity(ADMIN_DB_URL, pid, "email_draft", text)
+    return {"draft": text, "activities": sales.activities(ADMIN_DB_URL, pid)}
+
+
+class SuppressIn(BaseModel):
+    value: str = Field(min_length=2, max_length=200)
+    reason: str = Field(default="asked not to be contacted", max_length=200)
+
+
+@app.post("/admin/sales/suppress")
+def sales_suppress(body: SuppressIn, req: Request):
+    require_admin(req)
+    sales.suppress(ADMIN_DB_URL, body.value, body.reason)
     return {"ok": True}
 
 
