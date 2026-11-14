@@ -211,15 +211,15 @@ export function buildStory(r: ReportArtifact, images: StoryImage[]): SlideSpec[]
     p.push({ t: "text", x: tx, y: 0.5, w: tw, h: 0.3, text: `${i + 1} of ${sections.length}${s.question ? ` · ${clean(s.question)}` : ""}`, size: 10, min: 8, color: dark ? C.lime : C.olive, bold: true });
     p.push({ t: "text", x: tx, y: 0.95, w: tw, h: 1.5, text: clean(s.title || s.heading), size: 28, min: 17, bold: true, color: ink, valign: "top" });
     const big = bigNumber(s);
+    const ex = (s.explainers || [])[0], tight = !!ex?.term;
     let y = 2.6;
     if (big) {
       p.push({ t: "text", x: tx, y, w: tw, h: 1.25, text: big.value, size: 66, min: 30, bold: true, color: dark ? C.lime : C.olive, valign: "middle" });
       if (big.label) p.push({ t: "text", x: tx, y: y + 1.25, w: tw, h: 0.4, text: big.label, size: 11, min: 8, color: sub });
-      y += 1.85;
+      y += tight ? 1.6 : 1.85;
     }
-    if (s.takeaway) { p.push({ t: "text", x: tx, y, w: tw, h: 1.1, text: clean(s.takeaway), size: 15, min: 10, color: ink, valign: "top" }); y += 1.2; }
-    const ex = (s.explainers || [])[0];
-    if (ex?.term && y < 5.2) {   // the jargon buster, documentary-style
+    if (s.takeaway) { const th = tight ? 0.8 : 1.1; p.push({ t: "text", x: tx, y, w: tw, h: th, text: clean(s.takeaway), size: 15, min: 10, color: ink, valign: "top" }); y += th + 0.1; }
+    if (ex?.term && y < 5.9) {   // the jargon buster, documentary-style
       p.push({ t: "rect", x: tx, y: y + 0.05, w: 0.06, h: 0.75, fill: dark ? C.lime : C.olive });
       p.push({ t: "text", x: tx + 0.2, y, w: tw - 0.2, h: 0.85, text: `${clean(ex.term)}: ${clean(ex.means)} ${clean(ex.why)}`, size: 11.5, min: 8, color: sub, valign: "middle" });
       y += 1.0;
@@ -269,6 +269,26 @@ export function buildStory(r: ReportArtifact, images: StoryImage[]): SlideSpec[]
     }
   }
 
+  // 5b. What others are saying: outside sources from the analyst's web research (verified server-side).
+  const quotes = (r.sources || []).filter((x) => x.quote).slice(0, 3);
+  if (quotes.length) {
+    const p: Prim[] = [];
+    p.push({ t: "text", x: M, y: 0.45, w: 9, h: 0.4, text: "WHAT OTHERS ARE SAYING", size: 12, bold: true, color: C.lime, spacing: 2 });
+    p.push({ t: "text", x: M, y: 0.9, w: W - 2 * M, h: 0.8, text: "It is not just our numbers", size: 30, min: 20, bold: true, color: "FFFFFF" });
+    const cw = (W - 2 * M - 0.35 * (quotes.length - 1)) / quotes.length;
+    quotes.forEach((q, i) => {
+      const x = M + i * (cw + 0.35);
+      p.push({ t: "rect", x, y: 1.95, w: cw, h: 4.75, fill: C.darkCard, radius: 0.2, shadow: true });
+      p.push({ t: "rect", x: x + 0.3, y: 2.35, w: 0.9, h: 0.09, fill: C.lime });
+      p.push({ t: "text", x: x + 0.3, y: 2.85, w: cw - 0.6, h: 2.0, text: clean(q.quote), size: 17, min: 10, bold: true, color: "FFFFFF", valign: "top" });
+      p.push({ t: "text", x: x + 0.3, y: 4.95, w: cw - 0.6, h: 0.35, text: `${clean(q.publisher || q.title)}${q.date ? ", " + clean(q.date) : ""}`, size: 10, bold: true, color: C.lime });
+      if (q.point) p.push({ t: "text", x: x + 0.3, y: 5.35, w: cw - 0.6, h: 1.1, text: clean(q.point), size: 10.5, min: 8, color: "C9C8C2" });
+      p.push({ t: "link", x, y: 1.95, w: cw, h: 4.75, url: q.url });
+    });
+    footer(p, foot, slides.length + 1, true);
+    slides.push({ bg: C.ink, prims: p });
+  }
+
   // 6. What to do now.
   const actions = (r.conclusions?.actions || []).map(clean).slice(0, 3);
   if (actions.length) {
@@ -297,7 +317,7 @@ export function buildStory(r: ReportArtifact, images: StoryImage[]): SlideSpec[]
     p.push({ t: "text", x: 1.5, y: 3.7, w: W - 3, h: 0.9, text: "Ask your own AI analyst. It reads the same live South African data behind this story, and your own numbers next to it.", size: 16, min: 11, color: "C9C8C2", align: "center" });
     p.push({ t: "rect", x: W / 2 - 1.9, y: 4.9, w: 3.8, h: 0.6, fill: C.lime, radius: 0.3 });
     p.push({ t: "text", x: W / 2 - 1.9, y: 4.9, w: 3.8, h: 0.6, text: "Ask the analyst →", size: 14, bold: true, color: C.ink, align: "center", valign: "middle" });
-    p.push({ t: "text", x: 1, y: 6.7, w: W - 2, h: 0.4, text: `Source: ${src.data}. ${src.caveat[0].toUpperCase()}${src.caveat.slice(1)}. Pictures are illustrations.`, size: 8.5, color: "A9A8B0", align: "center" });
+    p.push({ t: "text", x: 1, y: 6.7, w: W - 2, h: 0.4, text: `Source: ${src.data}. ${src.caveat[0].toUpperCase()}${src.caveat.slice(1)}. Pictures are illustrations.${quotes.length ? " Quotes link to their original sources." : ""}`, size: 8.5, color: "A9A8B0", align: "center" });
     slides.push({ bg: C.ink, prims: p });
   }
   return slides;

@@ -94,6 +94,12 @@ function Reader({ f, onBack }: { f: ReportFile; onBack: () => void }) {
         <ol>{r.conclusions.actions.map((x, i) => <li key={i}>{x}</li>)}</ol>
         {r.conclusions.risks?.length ? <><h3>Watch-outs</h3><ul>{r.conclusions.risks.map((x, i) => <li key={i}>{x}</li>)}</ul></> : null}
       </section> : null}
+{r.sources?.length ? <section className="rp-section"><h2>What others are saying</h2>
+        <p className="muted small">Outside sources found by the analyst's web research, quoted to back up or challenge a finding. Our data remains the evidence.</p>
+        {r.sources.map((x, i) => <blockquote key={i} className="src-quote"><p>“{x.quote}”</p>
+          <footer>{x.publisher || x.title}{x.date ? `, ${x.date}` : ""} · <a href={x.url} target="_blank" rel="noopener noreferrer">{x.title || "source"}</a></footer>
+          {x.point && <p className="muted small">{x.point}</p>}</blockquote>)}
+      </section> : null}
       {r.method?.steps?.length ? <section className="rp-section"><h2>How this was built</h2>
         <ul>{r.method.steps.map((x, i) => <li key={i}>{x}</li>)}</ul>
         {r.method.limits?.length ? <><h3>Limits</h3><ul>{r.method.limits.map((x, i) => <li key={i}>{x}</li>)}</ul></> : null}

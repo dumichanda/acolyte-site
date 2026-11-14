@@ -54,7 +54,12 @@ def cost_of(model: str, usage) -> tuple[float, dict]:
     t = {"input": g("input_tokens"), "cache_read": g("cache_read_input_tokens"),
          "cache_write": g("cache_creation_input_tokens"), "output": g("output_tokens")}
     usd = (t["input"] * pin + t["cache_write"] * pin * 1.25 + t["cache_read"] * pin * cr + t["output"] * pout) / 1e6
+    searches = getattr(getattr(usage, "server_tool_use", None), "web_search_requests", 0) or 0
+    usd += searches * WEB_SEARCH_USD
     return usd, t
+WEB_SEARCH_USD = 0.01     # Anthropic web search: $10 per 1,000 searches (plus the tokens of the pages read)
+WEB_RX = re.compile(r"\b(research|news|headline|article|source|sources|online|internet|the web|according to|quote|"
+                    r"what'?s (going on|happening)|why is|why are|context|explain)\b", re.I)
 MAX_STEPS = 10            # model calls per question
 MAX_ROWS = 500            # rows kept per dataset
 ROWS_TO_MODEL = 60        # rows shown to the model per query
@@ -89,6 +94,13 @@ How to work:
     price: at 10.8% it beats the 10.5% you would pay on a bond, so the rent covers the cost of borrowing").
     Keep the technical number and the method; add the explanation, never replace the analysis with it.
   * In report packs, give each section 1-2 "explainers" (term, what it means in plain words, why it matters here).
+- Web research (only when the web_search tool is available): use it to add outside context the data cannot give,
+  e.g. a SARB rate decision, a new mall or N2 upgrade, load-shedding, a retailer's results, a new labour law, a
+  Black Friday trend. Prefer primary and reputable South African sources (SARB, Stats SA, company results, major
+  newsrooms, industry bodies). Run 2-5 searches, then quote short passages (under 25 words, exactly as written) that
+  support or challenge a finding, and say which finding each one supports. Our data stays the evidence; the web adds
+  the "why". Never cite a page you did not get from web_search, and never invent a quote, date or publisher.
+  In report packs, put them in "sources" (title, publisher, url, date, quote, point).
 - Annotate charts like an analyst would: mark anomalies and records (point), events, targets, averages or the bond rate
   (line), and periods such as promotions or month-ends, or a normal range (band). Keep it to the 1-3 call-outs that carry
   the story, and mention them in your answer.
@@ -251,8 +263,16 @@ TOOLS = [
                     "trust": {"type": "array", "items": {"type": "string"}, "description": "what is solid"},
                     "limits": {"type": "array", "items": {"type": "string"}, "description": "what is not comparable / estimated"}},
                     "required": ["steps", "trust", "limits"], "additionalProperties": False},
+                "sources": {"type": "array", "description": "0-6 outside sources from web_search that support or challenge a finding (empty if web search was not available)",
+                            "items": {"type": "object", "properties": {
+                                "title": {"type": "string"}, "publisher": {"type": "string"},
+                                "url": {"type": "string", "description": "Exactly as returned by web_search"},
+                                "date": {"type": "string", "description": "Publication date if shown, else empty"},
+                                "quote": {"type": "string", "description": "Verbatim passage, under 25 words"},
+                                "point": {"type": "string", "description": "Which finding it supports or challenges, in one sentence"}},
+                                "required": ["title", "publisher", "url", "date", "quote", "point"], "additionalProperties": False}},
             },
-            "required": ["title", "scope", "cover_kpis", "questions", "summary", "sections", "qa", "conclusions", "method"],
+            "required": ["title", "scope", "cover_kpis", "questions", "summary", "sections", "qa", "conclusions", "method", "sources"],
             "additionalProperties": False,
         },
     },
@@ -296,6 +316,8 @@ class Session:
     industry: str = "all"
     client_guide: str = ""          # the client's own uploaded tables (private), appended to the system prompt
     view_context: str = ""          # the dashboard view the question is about (filters + the data on screen)
+    web: bool | None = None         # web research: None = decide per question, True/False = forced
+    web_urls: set = field(default_factory=set)         # pages web_search returned (sources must come from these)
     ui_items: list = field(default_factory=list)       # what the chat panel shows (saved with the conversation)
     ui_artifacts: dict = field(default_factory=dict)
     turns: int = 0
@@ -581,6 +603,7 @@ def write_report(s: Session, args: dict, db_url: str = "") -> tuple[str, dict | 
               "summary": summ["takeaway"], "exec": summ, "sections": sections,
               "qa": [{"q": str(x.get("q", "")), "a": str(x.get("a", ""))} for x in (args.get("qa") or [])[:6] if isinstance(x, dict)],
               "conclusions": args.get("conclusions") or {}, "method": args.get("method") or {},
+              "sources": verified_sources(s, args.get("sources")),
               "charts": {c: s.charts[c] for sec in sections for c in sec["chart_ids"]},
               "generated": datetime.now().isoformat(timespec="minutes")}
     note = f" Unknown chart ids ignored: {unknown}." if unknown else ""
@@ -588,6 +611,27 @@ def write_report(s: Session, args: dict, db_url: str = "") -> tuple[str, dict | 
         note += " Remaining review notes (mention them to the user): " + "; ".join(issues[:4])
     return f"Report {rid} created with {len(sections)} sections.{note} The user can view it and download PowerPoint/PDF.", \
         {"type": "artifact", "artifact": report}
+
+
+def verified_sources(s: Session, items) -> list[dict]:
+    """Outside sources, kept only when web_search really returned that page this session (no invented citations)."""
+    if isinstance(items, str):
+        try:
+            items = json.loads(items)
+        except ValueError:
+            items = []
+    out = []
+    for x in (items or [])[:6]:
+        if not isinstance(x, dict):
+            continue
+        url = str(x.get("url", "")).strip()
+        if url not in s.web_urls:
+            print(f"[sources] dropped unverified url {url[:120]!r}", flush=True)
+            continue
+        quote = " ".join(str(x.get("quote", "")).split()[:40])
+        out.append({"title": str(x.get("title", ""))[:200], "publisher": str(x.get("publisher", ""))[:80], "url": url[:500],
+                    "date": str(x.get("date", ""))[:40], "quote": quote, "point": str(x.get("point", ""))[:300]})
+    return out
 
 
 def execute(s: Session, name: str, args, db_url: str) -> tuple[str, dict | None, bool]:
@@ -637,6 +681,9 @@ def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode
     s.updated = time.time()
     s.messages.append({"role": "user", "content": question})
     tier = route(question, mode)
+    web = s.web if s.web is not None else bool(WEB_RX.search(question)) and not s.view_context
+    if web and tier == "fast":   # web search needs Sonnet or Opus
+        tier = "standard"
     budget.count(tier)
     used = {"usd": 0.0, "input": 0, "cache_read": 0, "cache_write": 0, "output": 0, "models": []}
     json_retries, tool_errors = 0, 0
@@ -661,7 +708,8 @@ def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode
                            + ([{"type": "text", "text": s.client_guide}] if s.client_guide else [])
                            + ([{"type": "text", "text": VIEW_INTRO + s.view_context}] if s.view_context else []),
                     cache_control={"type": "ephemeral"},
-                    tools=TOOLS,
+                    tools=TOOLS + ([{"type": "web_search_20260209", "name": "web_search", "max_uses": 5,
+                                     "user_location": {"type": "approximate", "country": "ZA"}}] if web else []),
                     messages=s.messages,
                     output_config={"effort": cfg["effort"]},
                     **extra,
@@ -700,6 +748,11 @@ def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode
                 used["models"].append(served)
             budget.add_cost(usd, tier)
             s.messages.append({"role": "assistant", "content": response.content})
+            for b in response.content:   # remember what the web search found, and show the searches
+                if b.type == "server_tool_use" and getattr(b, "name", "") == "web_search":
+                    yield {"type": "status", "text": f"Searching the web: {(b.input or {}).get('query', '')}"[:160]}
+                elif b.type == "web_search_tool_result" and isinstance(b.content, list):
+                    s.web_urls.update(r.url for r in b.content if getattr(r, "url", None))
 
             if response.stop_reason == "refusal":
                 yield {"type": "error", "text": "The analyst can't help with that request."}
@@ -708,6 +761,13 @@ def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode
                 continue
             tool_uses = [b for b in response.content if b.type == "tool_use"]
             if not tool_uses:
+                cited = {}
+                for b in response.content:   # web citations in the answer -> a short source list under it
+                    for c in (getattr(b, "citations", None) or []) if b.type == "text" else []:
+                        if getattr(c, "url", None):
+                            cited.setdefault(c.url, getattr(c, "title", None) or c.url)
+                if cited:
+                    yield {"type": "text", "text": "\n\nSources: " + "; ".join(f"{t} ({u})" for u, t in list(cited.items())[:5])}
                 yield usage_event(True)
                 yield {"type": "done"}
                 return

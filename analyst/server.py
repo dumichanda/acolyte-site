@@ -431,7 +431,7 @@ def sast_now() -> datetime:
 def write_pack(industry: str, prompt: str, sid: str, label: str) -> tuple[dict | None, str, float, str | None]:
     """Run a prompt as a deep report pack for an industry analyst. Returns (report, text, cost, error). Never raises."""
     t0, report, text, cost, err = time.time(), None, "", 0.0, None
-    s = Session(id=sid, industry=industry)
+    s = Session(id=sid, industry=industry, web=label == "monthly-report")   # monthly packs research the web; daily briefs do not
     rec_queries = []
     try:
         for ev in answer(client(), s, prompt, DB_URL, Budget(float(os.environ.get("BRIEF_MAX_USD", "3"))), "deep", "deep",

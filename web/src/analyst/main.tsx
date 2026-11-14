@@ -372,6 +372,12 @@ function ReportView({ r, actions = true }: { r: ReportArtifact; actions?: boolea
       ))}
       {r.qa?.length ? <section><h3>Executive Q&A</h3><div className="qa">{r.qa.map((x, i) => <div key={i}><b>{x.q}</b><p>{x.a}</p></div>)}</div></section> : null}
       {r.conclusions?.actions?.length ? <section><h3>Recommended actions</h3><ol>{r.conclusions.actions.map((a, i) => <li key={i}>{a}</li>)}</ol></section> : null}
+{r.sources?.length ? <section><h3>What others are saying</h3>
+        <p className="muted small">Outside sources found by the analyst's web research, quoted to back up or challenge a finding. Our data remains the evidence.</p>
+        {r.sources.map((x, i) => <blockquote key={i} className="src-quote"><p>“{x.quote}”</p>
+          <footer>{x.publisher || x.title}{x.date ? `, ${x.date}` : ""} · <a href={x.url} target="_blank" rel="noopener noreferrer">{x.title || "source"}</a></footer>
+          {x.point && <p className="muted small">{x.point}</p>}</blockquote>)}
+      </section> : null}
       <div className="muted small foot">Source: Acolyte, {dataSourceLabel(r)} (refreshed daily). Download the pack for the full method and limits.</div>
     </div>
   );

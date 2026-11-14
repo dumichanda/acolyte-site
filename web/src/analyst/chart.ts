@@ -24,7 +24,10 @@ export interface ReportArtifact {
   qa?: { q: string; a: string }[];
   conclusions?: { findings?: string[]; risks?: string[]; actions?: string[] };
   method?: { steps?: string[]; trust?: string[]; limits?: string[] };
+  sources?: Source[];
 }
+/** An outside source found by web search (checked server-side: the page really came back from the search). */
+export interface Source { title: string; publisher: string; url: string; date: string; quote: string; point: string }
 
 /** Readable label for a SQL column name: "pct_high_potential" -> "% high potential". */
 export function human(col: string): string {
