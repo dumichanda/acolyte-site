@@ -571,6 +571,14 @@ def report_run(industry: str, req: Request, month: str | None = None, force: boo
     if not (DB_URL and os.environ.get("ANTHROPIC_API_KEY")):
         raise HTTPException(503, "The analyst is not configured.")
     period, mtd = _period(month)
+    try:
+        return _report_start(industry, period, mtd, force)
+    except Exception as e:   # admin-only endpoint: show the cause
+        print(f"[report] run failed: {e.__class__.__name__}: {e}", flush=True)
+        raise HTTPException(500, f"{e.__class__.__name__}: {str(e)[:300]}")
+
+
+def _report_start(industry: str, period, mtd: bool, force: bool) -> dict:
     key = f"{industry}:{period}"
     th = _report_threads.get(key)
     started = False
@@ -587,7 +595,10 @@ def report_run(industry: str, req: Request, month: str | None = None, force: boo
 def report_admin_status(industry: str, req: Request, month: str | None = None):
     require_admin(req)
     period, _ = _period(month)
-    return {"period": str(period), "status": acc.report_status(ADMIN_DB_URL, industry, period)}
+    try:
+        return {"period": str(period), "status": acc.report_status(ADMIN_DB_URL, industry, period)}
+    except Exception as e:
+        raise HTTPException(500, f"{e.__class__.__name__}: {str(e)[:300]}")
 
 
 @app.get("/reports")
