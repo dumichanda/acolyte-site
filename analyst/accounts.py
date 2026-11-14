@@ -435,10 +435,16 @@ def claim_report(db: str, industry: str, period, month_to_date: bool, force: boo
 
 def finish_report(db: str, industry: str, period, report: dict | None, summary: str, cost: float, error: str | None) -> None:
     with psycopg.connect(db) as conn:
-        conn.execute("""UPDATE admin.reports SET status = %s, report = %s, title = %s, summary = %s, cost_usd = %s,
-                        error = %s, finished_at = now() WHERE industry = %s AND period = %s""",
-                     ("ready" if report else "failed", json.dumps(report, default=str) if report else None,
-                      (report or {}).get("title"), (summary or "")[:4000], cost, (error or "")[:500] or None, industry, period))
+        # A failed rewrite keeps the last good report (still published) and records the error next to it.
+        conn.execute("""UPDATE admin.reports SET
+                          status = CASE WHEN %(rep)s::jsonb IS NOT NULL OR report IS NOT NULL THEN 'ready' ELSE 'failed' END,
+                          report = COALESCE(%(rep)s::jsonb, report), title = COALESCE(%(title)s, title),
+                          summary = CASE WHEN %(rep)s::jsonb IS NOT NULL THEN %(summary)s ELSE summary END,
+                          cost_usd = COALESCE(cost_usd, 0) + %(cost)s, error = %(error)s, finished_at = now()
+                        WHERE industry = %(ind)s AND period = %(period)s""",
+                     {"rep": json.dumps(report, default=str) if report else None, "title": (report or {}).get("title"),
+                      "summary": (summary or "")[:4000], "cost": cost or 0, "error": None if report else ((error or "failed")[:500]),
+                      "ind": industry, "period": period})
 
 
 def report_status(db: str, industry: str, period, with_error: bool = False):

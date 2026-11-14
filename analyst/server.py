@@ -60,7 +60,7 @@ def client():
     global _client
     if _client is None:
         import anthropic
-        _client = anthropic.Anthropic()
+        _client = anthropic.Anthropic(max_retries=5)  # long report runs ride out brief overloads
     return _client
 
 
@@ -506,7 +506,8 @@ def _reset_interrupted_briefs() -> None:
     try:
         import psycopg
         with psycopg.connect(ADMIN_DB_URL, connect_timeout=10) as conn:
-            conn.execute("""UPDATE admin.reports SET status = 'failed', error = 'Interrupted by a server restart',
+            conn.execute("""UPDATE admin.reports SET status = CASE WHEN report IS NULL THEN 'failed' ELSE 'ready' END,
+                            error = 'Interrupted by a server restart',
                             started_at = now() - interval '1 hour', finished_at = now() WHERE status = 'running'""")
             n = conn.execute("""UPDATE admin.briefs SET status = 'failed', error = 'Interrupted by a server restart',
                                 started_at = now() - interval '1 hour', finished_at = now() WHERE status = 'running'""").rowcount

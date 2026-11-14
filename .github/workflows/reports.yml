@@ -75,14 +75,22 @@ jobs:
             code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$API/health"); echo "health: $code"; [ "$code" = "200" ] && break; sleep 15
           done
           # One report at a time: the server writes each as a long deep-model run and has limited memory.
+          # A free Render instance can restart mid-report (redeploy, memory, AI hiccup): retry each report up to 3 times.
           for ind in property retail marketplace jobs; do
-            echo "$ind start: $(curl -sS --max-time 90 -w ' [HTTP %{http_code}]' -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/reports/$ind/run?month=$MONTH&force=$FORCE")"
-            for i in $(seq 1 60); do
-              st=$(curl -sS --max-time 60 -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/reports/$ind?month=$MONTH" | python3 -c "import json,sys;print(json.load(sys.stdin).get('status'))" 2>/dev/null || echo unknown)
-              [ "$st" = "running" ] || [ "$st" = "unknown" ] || break
-              sleep 20
+            F=$FORCE
+            for attempt in 1 2 3; do
+              for i in $(seq 1 8); do code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$API/health"); [ "$code" = "200" ] && break; sleep 15; done
+              echo "$ind start (attempt $attempt): $(curl -sS --max-time 90 -w ' [HTTP %{http_code}]' -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/reports/$ind/run?month=$MONTH&force=$F")"
+              for i in $(seq 1 60); do
+                st=$(curl -sS --max-time 60 -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/reports/$ind?month=$MONTH" | python3 -c "import json,sys;print(json.load(sys.stdin).get('status'))" 2>/dev/null || echo unknown)
+                [ "$st" = "running" ] || [ "$st" = "unknown" ] || break
+                sleep 20
+              done
+              res=$(curl -sS --max-time 60 -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/reports/$ind?month=$MONTH")
+              echo "$ind done: ${res:0:400}"
+              echo "$res" | grep -q '"status": *"ready"' && echo "$res" | grep -q '"error": *null' && break
+              F=true; sleep 30
             done
-            echo "$ind done: $(curl -sS --max-time 60 -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/reports/$ind?month=$MONTH")"
           done
 
       - name: Publish to the site

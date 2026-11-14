@@ -9,6 +9,7 @@ import * as echarts from "echarts";
 import { url } from "../site";
 import { CATEGORICAL, registerThemes } from "../viz";
 import { chartOption, fmt, type ChartArtifact, type ReportArtifact } from "./chart";
+import { buildStory, loadStoryImages } from "./story";
 import { approxWidth, brand, buildDeck, C, chartsDeck, DARK_BG, fitSize, H, setDeckBrand, shade, tableLayout, themed, W, type Brand, type DeckTheme, type Prim, type SlideSpec, type Variant } from "./deck";
 
 const PALETTE = CATEGORICAL.light.map((c) => c.replace("#", "").toUpperCase());
@@ -186,7 +187,15 @@ function drawPptx(pptx: Pptx, spec: SlideSpec, logo: string | null) {
   }
 }
 
-async function toPptx(r: ReportArtifact, variant: Variant = "standard", theme: DeckTheme = "light") {
+export type PackVariant = Variant | "story";
+/** Slides for a pack: the formal deck in the chosen theme, or the image-led Story (its own look). */
+async function slidesFor(r: ReportArtifact, variant: PackVariant, theme: DeckTheme): Promise<SlideSpec[]> {
+  return variant === "story" ? buildStory(r, await loadStoryImages()) : themed(buildDeck(r, variant), theme);
+}
+const fileName = (r: ReportArtifact, variant: PackVariant, theme: DeckTheme, ext: string) =>
+  `${slug(r.title)}${variant === "standard" ? "" : "-" + variant}${theme === "light" || variant === "story" ? "" : "-" + theme}.${ext}`;
+
+async function toPptx(r: ReportArtifact, variant: PackVariant = "standard", theme: DeckTheme = "light") {
   const { default: PptxGenJS } = await import("pptxgenjs");
   const pptx = new PptxGenJS();
   pptx.defineLayout({ name: "ACOLYTE_16x9", width: W, height: H });
@@ -194,17 +203,18 @@ async function toPptx(r: ReportArtifact, variant: Variant = "standard", theme: D
   pptx.author = "Acolyte Analyst"; pptx.company = "Acolyte"; pptx.title = r.title;
   pptx.theme = { headFontFace: FONT, bodyFontFace: FONT };
   const logo = await logoPng();
-  for (const spec of themed(buildDeck(r, variant), theme)) drawPptx(pptx, spec, logo);
-  await pptx.writeFile({ fileName: `${slug(r.title)}${variant === "executive" ? "-executive" : ""}${theme === "light" ? "" : "-" + theme}.pptx` });
+  for (const spec of await slidesFor(r, variant, theme)) drawPptx(pptx, spec, logo);
+  await pptx.writeFile({ fileName: fileName(r, variant, theme, "pptx") });
   slideTheme("FFFFFF");
 }
 
-export const reportToPptx = (r: ReportArtifact, variant: Variant = "standard", theme: DeckTheme = "light") => toPptx(r, variant, theme);
+export const reportToPptx = (r: ReportArtifact, variant: PackVariant = "standard", theme: DeckTheme = "light") => toPptx(r, variant, theme);
 export const chartsToPptx = (charts: ChartArtifact[], title = "Acolyte Analyst charts") =>
   toPptx(chartsDeck(charts, charts.length === 1 ? charts[0].title : title));
 
 // ---------------------------------------------------------------- PDF renderer (same slides, 16:9 pages)
-export async function reportToPdf(r: ReportArtifact, variant: Variant = "standard", theme: DeckTheme = "light") {
+export async function reportToPdf(r: ReportArtifact, variant: PackVariant = "standard", theme: DeckTheme = "light") {
+  const slides = await slidesFor(r, variant, theme);
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "landscape", unit: "in", format: [W, H], compress: true });
   await loadWebPoppins();
@@ -247,7 +257,7 @@ export async function reportToPdf(r: ReportArtifact, variant: Variant = "standar
     });
   };
 
-  themed(buildDeck(r, variant), theme).forEach((spec, n) => {
+  slides.forEach((spec, n) => {
     slideTheme(spec.bg);
     if (n) doc.addPage([W, H], "landscape");
     doc.setFillColor(...hex(spec.bg)); doc.rect(0, 0, W, H, "F");
@@ -308,7 +318,7 @@ export async function reportToPdf(r: ReportArtifact, variant: Variant = "standar
       } else if (p.t === "link") doc.link(p.x, p.y, p.w, p.h, { url: p.url });
     }
   });
-  doc.save(`${slug(r.title)}${variant === "executive" ? "-executive" : ""}${theme === "light" ? "" : "-" + theme}.pdf`);
+  doc.save(fileName(r, variant, theme, "pdf"));
   slideTheme("FFFFFF");
 }
 

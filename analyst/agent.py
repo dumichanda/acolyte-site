@@ -654,7 +654,8 @@ def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode
                 return
             except (anthropic.APIConnectionError, anthropic.APIStatusError) as e:
                 print(f"Anthropic error: {e.__class__.__name__}: {e}", flush=True)
-                yield {"type": "error", "text": f"The AI service is unavailable ({e.__class__.__name__})."}
+                code = getattr(e, "status_code", "")
+                yield {"type": "error", "text": f"The AI service is unavailable ({e.__class__.__name__}{f' {code}' if code else ''}: {str(e)[:160]})."}
                 return
 
             served = response.model or cfg["model"]

@@ -338,6 +338,9 @@ function ReportView({ r, actions = true }: { r: ReportArtifact; actions?: boolea
           <div className="dl"><span>Executive · {Math.min(2, r.sections.length) + 3} slides</span>
             <ExportBtn label="PowerPoint" primary run={async () => (await exporter()).reportToPptx(r, "executive", deckTheme)} />
             <ExportBtn label="PDF" run={async () => (await exporter()).reportToPdf(r, "executive", deckTheme)} /></div>
+          <div className="dl"><span>Story · picture-led</span>
+            <ExportBtn label="PowerPoint" run={async () => (await exporter()).reportToPptx(r, "story", deckTheme)} />
+            <ExportBtn label="PDF" run={async () => (await exporter()).reportToPdf(r, "story", deckTheme)} /></div>
           <div className="dl"><span>Full pack · {fullSlides(r)} slides</span>
             <ExportBtn label="PowerPoint" run={async () => (await exporter()).reportToPptx(r, "standard", deckTheme)} />
             <ExportBtn label="PDF" run={async () => (await exporter()).reportToPdf(r, "standard", deckTheme)} /></div>
