@@ -1,4 +1,98 @@
 {
- "generated": null,
- "reports": []
+ "generated": "2026-11-14T22:33:17.235656+00:00",
+ "reports": [
+  {
+   "id": 4,
+   "industry": "jobs",
+   "analyst": "Talent Analyst",
+   "period": "2026-11-01",
+   "month_to_date": true,
+   "title": "SA admin & finance-support hiring: November 2026 monthly pack (month to date, to 14 Nov)",
+   "takeaway": "At 14 Nov we tracked 3,706 open ads: 55% in Gauteng and the Western Cape, 45% placed by recruitment agencies, and R419m a year of automatable work, led by Creditors & Debtors (R70m).",
+   "kpis": [
+    {
+     "tone": "brand",
+     "label": "Open roles",
+     "value": "3,706",
+     "context": "+70% vs 13 Nov, mostly wider coverage"
+    },
+    {
+     "tone": "neutral",
+     "label": "Gauteng + Western Cape",
+     "value": "55%",
+     "context": "1,191 + 842 of 3,706 ads"
+    },
+    {
+     "tone": "neutral",
+     "label": "Via recruitment agencies",
+     "value": "45%",
+     "context": "level with 45% from direct employers"
+    }
+   ],
+   "sections": 7,
+   "published": "2026-11-14T22:33:14.190116+00:00"
+  },
+  {
+   "id": 3,
+   "industry": "marketplace",
+   "analyst": "Marketplace Analyst",
+   "period": "2026-11-01",
+   "month_to_date": true,
+   "title": "Amazon.co.za & Takealot monthly pack \u2014 November 2026 (month to date)",
+   "takeaway": "On the 14 Nov baseline, Amazon.co.za beat the cheapest store on 3 of 5 items (median index 94), Takealot on 1 of 5 (150); Black Friday search rose from 0 in June to 20 by 8 Nov, with the 27 Nov peak ahead.",
+   "kpis": [
+    {
+     "tone": "neutral",
+     "label": "Collection start",
+     "value": "14 Nov",
+     "context": "1 price day in November = baseline"
+    },
+    {
+     "tone": "neutral",
+     "label": "Marketplace clean prices",
+     "value": "18 of 88",
+     "context": "20% of comparable prices on 14 Nov"
+    },
+    {
+     "tone": "positive",
+     "label": "Amazon median index",
+     "value": "94",
+     "context": "5 items; cheapest store = 100"
+    }
+   ],
+   "sections": 6,
+   "published": "2026-11-14T22:27:43.060239+00:00"
+  },
+  {
+   "id": 2,
+   "industry": "retail",
+   "analyst": "Retail Pricing Analyst",
+   "period": "2026-11-01",
+   "month_to_date": true,
+   "title": "SA FMCG online shelf prices \u2014 November 2026 (month to date)",
+   "takeaway": "On the 14 Nov 2026 baseline, Woolworths indexed 86 against the item median across 9 shared items, grocery chains were the cheapest channel at 96 and online marketplaces the dearest at 110. The same item cost a median 38% more at the dearest retailer than at the cheapest. Black Friday searches reached 20 in the week of 8 Nov, against 100 in the peak week last year.",
+   "kpis": [
+    {
+     "tone": "neutral",
+     "label": "Comparable prices",
+     "value": "88",
+     "context": "37 items \u00d7 9 retailers, 14 Nov 2026 only"
+    },
+    {
+     "tone": "positive",
+     "label": "Woolworths index",
+     "value": "86",
+     "context": "cheapest of 9; cheapest on 5 of 9 items"
+    },
+    {
+     "tone": "negative",
+     "label": "Makro index",
+     "value": "126",
+     "context": "dearest; inflated by bulk packs"
+    }
+   ],
+   "sections": 6,
+   "published": "2026-11-14T22:21:52.938887+00:00"
+  }
+ ]
 }
