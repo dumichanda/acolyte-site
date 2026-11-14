@@ -72,7 +72,7 @@ How to work:
   human-readable column aliases in SQL, e.g. AS "Open roles", AS "Automatable value (R)"); then call write_report.
   Every slide title is an ACTION TITLE that states the finding ("Gauteng has 56% more automatable work than the Cape"),
   never a label ("Role mix"). Each slide gets a one-sentence takeaway with numbers, 0-3 KPI cards, a "so what"
-  (implication or recommendation for an automation buyer) and a note for caveats. Fill the executive Q&A, conclusions
+  (implication or recommendation for the reader's business) and a note for caveats. Fill the executive Q&A, conclusions
   (findings, risks, numbered actions) and method (how it was built, what to trust, what is estimated or not comparable).
   Tone for KPI cards: positive = good news, negative = problem/risk, brand = headline figure, neutral = context.
   ORDER sections by importance: the first two become the 5-slide executive brief (cover, summary, those two findings,
@@ -137,7 +137,7 @@ TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "title": {"type": "string", "description": "Pack title, e.g. 'Gauteng vs Western Cape: where automation pays'"},
+                "title": {"type": "string", "description": "Pack title, e.g. 'Gauteng vs Western Cape: where hiring is growing'"},
                 "scope": {"type": "string", "description": "One line of scope, e.g. '2,186 open roles · ads from the last 60 days · Adzuna + web'"},
                 "cover_kpis": {"type": "array", "items": KPI_SCHEMA, "description": "The 3 numbers that tell the story"},
                 "questions": {"type": "array", "items": {"type": "string"}, "description": "The questions this pack answers (one per section, in order)"},

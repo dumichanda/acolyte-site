@@ -1,7 +1,10 @@
 # Data you can query (PostgreSQL, schema `analyst`)
 
-The SA Automation Opportunity Index: South African job ads (last 60 days), refreshed daily from
-Adzuna and public job listings, each scored for how much of the role's work AI/automation could do.
+Acolyte's SA jobs dataset: South African job ads (last 60 days), refreshed daily from Adzuna and public
+job listings. It supports several use cases: job market analysis (roles, sectors, regions, salaries, trends),
+employers and hiring signals, skills and tools demand, and the Automation Opportunity Index, where each ad is
+scored for how much of the role's work AI/automation could do. Answer the question asked; only bring in
+automation scores when the question is about automation.
 
 ## analyst.jobs — one row per open job ad
 | column | meaning |

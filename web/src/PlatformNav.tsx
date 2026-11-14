@@ -3,7 +3,8 @@ import { url } from "./site";
 const LINKS = [
   { href: "/analyst/", label: "Ask AI" },
   { href: "/dashboards/", label: "Dashboards" },
-  { href: "/automation-index/", label: "Index" },
+  { href: "/#use-cases", label: "Use cases" },
+  { href: "/automation-index/", label: "Automation index" },
   { href: "/employers/", label: "Employers" },
   { href: "/tools/", label: "Tools & skills" },
   { href: "/crm/", label: "CRM", private: true },

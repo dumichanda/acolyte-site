@@ -1,4 +1,35 @@
-# Acolyte — website + SA Automation Opportunity Index
+# Acolyte: AI analytics on South African market data
+
+Acolyte collects South African market data every day, loads it into one platform, and builds **use cases** on top of it:
+dashboards, an AI analyst you can ask in plain English, and branded report packs. Every use case shares the same
+pipeline, database, Acolyte Analyst, accounts, dashboards and exports, so a new dataset or use case plugs in without a rebuild.
+
+## Datasets
+
+| Dataset | Status | What it holds |
+|---|---|---|
+| SA jobs | Live, refreshed daily | Job ads from Adzuna and verified web listings, employers (profiled by agents), skills and tools from ad text, role scores |
+| SA retail products | Next | Top products and prices across groceries, tech and other categories from major SA retailers |
+
+## Use cases
+
+| Use case | Dataset | Status | Where |
+|---|---|---|---|
+| SA Job Market Analysis | Jobs | Live | `/analyst/` (ask), dashboards |
+| Automation Opportunity Index | Jobs | Proof of concept | `/automation-index/` |
+| Who's Hiring | Jobs | Live | `/employers/` |
+| Skills & Tools Demand | Jobs | Live | `/tools/` |
+| Hiring Signals for Sales | Jobs | Next | private CRM today |
+| Regional Hiring Pulse | Jobs | Next | |
+| SA Basket Index | Retail | Planned | |
+| Retailer Price Comparison | Retail | Planned | |
+| Promotions & Shelf Tracker | Retail | Planned | |
+
+**Adding a use case:** (1) add or reuse a data source in `pipeline/`, (2) add views to `db/analyst.sql` and describe them in
+`analyst/semantic.md` so Acolyte Analyst can query them, (3) add a page or dashboard in `web/` and a card in the landing
+page's `USE_CASES` list (`web/src/landing/Landing.tsx`).
+
+## Pages
 
 | URL | Page |
 |---|---|

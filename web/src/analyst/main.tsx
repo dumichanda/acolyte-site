@@ -69,11 +69,11 @@ function PinButton({ c }: { c: ChartArtifact }) {
 }
 
 const STARTERS = [
+  "Which roles are SA employers hiring for most this month?",
+  "Compare Gauteng and Western Cape: roles, salaries and hiring trend",
+  "Which skills and software do finance job ads ask for most?",
   "Which role types have the most automatable work, and where?",
-  "Which software do finance admin job ads ask for most?",
-  "Who are the top 10 direct employers by automatable value?",
-  "Compare Gauteng and Western Cape: roles, scores and salaries",
-  "Make me a one-page report on collections and call-centre roles",
+  "Make me a report pack on the SA job market",
 ];
 
 interface Dataset { id: string; title: string; sql: string; columns: string[]; rows: unknown[][]; row_count: number }
@@ -209,7 +209,7 @@ function ReportView({ r, actions = true }: { r: ReportArtifact; actions?: boolea
       ))}
       {r.qa?.length ? <section><h3>Executive Q&A</h3><div className="qa">{r.qa.map((x, i) => <div key={i}><b>{x.q}</b><p>{x.a}</p></div>)}</div></section> : null}
       {r.conclusions?.actions?.length ? <section><h3>Recommended actions</h3><ol>{r.conclusions.actions.map((a, i) => <li key={i}>{a}</li>)}</ol></section> : null}
-      <div className="muted small foot">Source: SA Automation Opportunity Index (public job ads, refreshed daily). Download the pack for the full method and limits.</div>
+      <div className="muted small foot">Source: Acolyte SA jobs dataset (public job ads, refreshed daily). Download the pack for the full method and limits.</div>
     </div>
   );
 }

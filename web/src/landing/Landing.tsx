@@ -63,34 +63,34 @@ interface QA { q: string; text: ReactNode; bars: { label: string; value: number;
 
 function buildQAs(s: Snapshot): QA[] {
   const fams = s.by_family.filter((f) => f.family !== "Other");
+  const byJobs = [...fams].sort((a, b) => b.jobs - a.jobs).slice(0, 4);
   const byScore = [...fams].sort((a, b) => b.avg_score - a.avg_score).slice(0, 4);
   const provs = s.by_province.filter((p) => p.province !== "Unknown").slice(0, 4);
   const share = Math.round((100 * (provs[0]?.jobs ?? 0)) / Math.max(1, s.kpis.jobs));
-  const byValue = [...fams].sort((a, b) => b.value - a.value).slice(0, 4);
-  const focus = [...fams].sort((a, b) => b.value * b.avg_score - a.value * a.avg_score)[0];
-  return [
+  const skills = (s.insights?.skills ?? []).slice(0, 4);
+  const qas: QA[] = [
     {
-      q: "Which jobs could AI take the most work off right now?",
-      text: <>Top of the list is <b>{byScore[0].family}</b>: about <b>{byScore[0].avg_score}%</b> of the work in those roles is automatable.</>,
-      bars: byScore.map((f) => ({ label: f.family, value: f.avg_score, shown: `${f.avg_score}/100` })),
+      q: "Which roles are South African employers hiring for most?",
+      text: <><b>{byJobs[0].family}</b> leads with <b>{byJobs[0].jobs.toLocaleString("en-ZA")}</b> open roles out of the {s.kpis.jobs.toLocaleString("en-ZA")} we track.</>,
+      bars: byJobs.map((f) => ({ label: f.family, value: f.jobs, shown: `${f.jobs} roles` })),
     },
     {
       q: "Where in South Africa is hiring busiest?",
       text: <><b>{provs[0].province}</b> has <b>{share}%</b> of the {s.kpis.jobs.toLocaleString("en-ZA")} open roles we track.</>,
       bars: provs.map((p) => ({ label: p.province, value: p.jobs, shown: `${p.jobs} roles` })),
     },
-    {
-      q: "How much is the automatable work worth?",
-      text: <>Roughly <b>{rands(s.kpis.automatable_value)} a year</b> in salary cost, across {s.kpis.companies} employers.</>,
-      bars: byValue.map((f) => ({ label: f.family, value: f.value, shown: rands(f.value) })),
-    },
-    {
-      q: "Where should we focus first?",
-      text: <><b>{focus.family}</b>: high automation potential ({focus.avg_score}/100) and {rands(focus.value)} a year at stake.</>,
-      bars: [...fams].sort((a, b) => b.value * b.avg_score - a.value * a.avg_score).slice(0, 3)
-        .map((f) => ({ label: f.family, value: f.value * f.avg_score, shown: `${f.avg_score}/100` })),
-    },
   ];
+  if (skills.length) qas.push({
+    q: "Which skills do employers ask for most?",
+    text: <><b>{skills[0].name}</b> appears in <b>{skills[0].jobs}</b> ads, ahead of {skills[1]?.name ?? "the rest"}.</>,
+    bars: skills.map((k) => ({ label: k.name, value: k.jobs, shown: `${k.jobs} ads` })),
+  });
+  qas.push({
+    q: "Which jobs could AI take the most work off?",
+    text: <>From our Automation Index proof of concept: <b>{byScore[0].family}</b>, where about <b>{byScore[0].avg_score}%</b> of the work is automatable.</>,
+    bars: byScore.map((f) => ({ label: f.family, value: f.avg_score, shown: `${f.avg_score}/100` })),
+  });
+  return qas;
 }
 
 function AskConsole({ s }: { s: Snapshot | null }) {
@@ -155,7 +155,7 @@ function AskConsole({ s }: { s: Snapshot | null }) {
         ))}
       </div>
       <div className="src mono">
-        Answers computed live from the SA Automation Opportunity Index{s ? ` · updated ${new Date(s.generated_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}` : ""}{s?.meta.has_demo ? " · sample data" : ""}
+        Answers computed live from Acolyte's SA jobs dataset{s ? ` · updated ${new Date(s.generated_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}` : ""}{s?.meta.has_demo ? " · sample data" : ""}
       </div>
     </div>
   );
@@ -192,7 +192,7 @@ function Bento({ s }: { s: Snapshot | null }) {
         <h3>Dashboards that build <em>themselves</em>.</h3>
         <p>We connect your sales, finance, stock and CRM data, clean it every night, and keep one live dashboard everyone trusts. No more copying numbers into Excel.</p>
         <div className="viz dash">
-          <div className="k">{s ? rands(s.kpis.automatable_value) : "R—"}<small>tracked live in our own index, refreshed every morning</small></div>
+          <div className="k">{s ? rands(s.kpis.automatable_value) : "R—"}<small>of automatable work tracked in our own Automation Index proof of concept, refreshed every morning</small></div>
           <Spark s={s} />
         </div>
       </article>
@@ -255,6 +255,34 @@ function Bento({ s }: { s: Snapshot | null }) {
   );
 }
 
+/* ---------------- Datasets and use cases ---------------- */
+
+const DATASETS = [
+  { name: "SA jobs", live: true, text: "" },
+  { name: "SA retail products", live: false, text: "Top products and prices across groceries, tech and more, from major SA retailers" },
+];
+
+const USE_CASES: { title: string; status: "Live" | "Proof of concept" | "Next" | "Retail data"; text: string; who: string; href?: string }[] = [
+  { title: "SA Job Market Analysis", status: "Live", href: "/analyst/",
+    text: "Which roles, sectors and cities are hiring, and how demand is moving week to week.", who: "HR leaders · recruiters · investors · media" },
+  { title: "Automation Opportunity Index", status: "Proof of concept", href: "/automation-index/",
+    text: "How much of each advertised role AI could take on, and what that work is worth in rand a year.", who: "COOs · finance and operations leads" },
+  { title: "Who's Hiring", status: "Live", href: "/employers/",
+    text: "Every direct employer behind the ads, with profile, open roles, tools and location.", who: "Sales teams · partnerships · recruiters" },
+  { title: "Skills & Tools Demand", status: "Live", href: "/tools/",
+    text: "The software, skills and qualifications employers ask for, by role and seniority.", who: "Universities · training providers · SETAs" },
+  { title: "Hiring Signals for Sales", status: "Next",
+    text: "Companies whose hiring points to a buying need, delivered as a weekly prospect list.", who: "Software vendors · consultancies · banks" },
+  { title: "Regional Hiring Pulse", status: "Next",
+    text: "Hiring momentum by province and metro, as an early read on local economic activity.", who: "Investors · property · municipalities" },
+  { title: "SA Basket Index", status: "Retail data",
+    text: "Monthly food inflation from real shelf prices, compared with Stats SA's CPI.", who: "Economists · banks · media · NGOs" },
+  { title: "Retailer Price Comparison", status: "Retail data",
+    text: "Who is cheapest for the same basket, by category and region, tracked daily.", who: "Retailers · consumers · FMCG brands" },
+  { title: "Promotions & Shelf Tracker", status: "Retail data",
+    text: "Promotion frequency, price position, and house brands against name brands.", who: "FMCG brands · agencies" },
+];
+
 /* ---------------- Automation services (secondary) ---------------- */
 
 const AUTOMATIONS = [
@@ -298,7 +326,7 @@ function Calculator() {
 /* ---------------- Contact ---------------- */
 
 type Status = "idle" | "sending" | "sent" | "error";
-const INTERESTS = ["Automated dashboards & reports", "Chat with your data", "Sentiment analysis", "Competitor intelligence", "Process automation", "Not sure yet"];
+const INTERESTS = ["SA market data (jobs, retail)", "Automated dashboards & reports", "Chat with your data", "Sentiment analysis", "Competitor intelligence", "Process automation", "Not sure yet"];
 
 function ContactForm() {
   const [status, setStatus] = useState<Status>("idle");
@@ -341,7 +369,7 @@ function ContactForm() {
 
 /* ---------------- Page ---------------- */
 
-const MARQUEE = ["Automated dashboards", "Sentiment analysis", "Competitor intelligence", "Chat with your data", "AI-written reports", "WhatsApp alerts", "Process automation"];
+const MARQUEE = ["SA job market", "Retail prices", "Automated dashboards", "Sentiment analysis", "Competitor intelligence", "Chat with your data", "AI-written reports", "WhatsApp alerts", "Process automation"];
 
 export default function Landing() {
   const s = useSnapshot();
@@ -353,8 +381,8 @@ export default function Landing() {
           <a className="logo" href={url("/")}><img src={url("/favicon.svg")} alt="" />acolyte</a>
           <div className="pill links">
             <a href="#analytics">AI analytics</a>
-            <a href={url("/automation-index/")}>Live index</a>
-            <a href={url("/employers/")}>Who's hiring</a>
+            <a href="#use-cases">Use cases</a>
+            <a href={url("/analyst/")}>Ask AI</a>
             <a href="#automation">Automation</a>
             <a className="btn-signal" href="#contact">Book a session</a>
           </div>
@@ -365,11 +393,11 @@ export default function Landing() {
         <div className="glow" />
         <div className="inner">
           <div>
-            <span className="eyebrow reveal">AI analytics · South Africa</span>
+            <span className="eyebrow reveal">AI analytics · South African market data</span>
             <h1 className="reveal d1">Your data,<br /><em>talking back.</em></h1>
             <p className="lede reveal d2">
-              Acolyte builds AI analytics for South African businesses: dashboards that update themselves, sentiment and
-              competitor tracking, and an AI analyst your team can simply ask.
+              Acolyte turns South African market data into answers. Live datasets on jobs today and retail prices next,
+              an AI analyst your team can simply ask, and dashboards and report packs that build themselves. On our data or yours.
             </p>
             <div className="actions reveal d3">
               <a className="btn-signal" href="#contact">Book a free data session <span className="arr">→</span></a>
@@ -396,25 +424,48 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="proof">
+      <section className="proof" id="use-cases">
         <div className="inner">
           <div className="row">
             <div>
-              <span className="eyebrow reveal">Proof, not promises</span>
-              <h2 className="reveal d1">We run our own <em>live</em> AI analytics.</h2>
-              <p className="lede reveal d2">The SA Automation Opportunity Index collects job postings across South Africa every morning, has AI score each role, and publishes the dashboard and PDF report automatically. Built and run the way we'd build yours.</p>
+              <span className="eyebrow reveal">Use cases on live SA data</span>
+              <h2 className="reveal d1">One platform, <em>many</em> use cases.</h2>
+              <p className="lede reveal d2">We collect South African market data every morning, clean it and load it into one platform. Each use case is a view on that data, with its own dashboards, questions for the AI analyst and report packs. New datasets and use cases plug in without rebuilding anything.</p>
             </div>
-            <a className="btn-signal reveal" href={url("/automation-index/")}>Open the live index <span className="arr">→</span></a>
+            <a className="btn-signal reveal" href={url("/analyst/")}>Ask the data <span className="arr">→</span></a>
+          </div>
+          <div className="datasets reveal">
+            {DATASETS.map((d) => (
+              <div key={d.name} className={`ds ${d.live ? "live" : ""}`}>
+                <span className="st mono">{d.live ? "Live dataset" : "Coming next"}</span>
+                <b>{d.name}</b>
+                <span>{d.live && s ? `${s.kpis.jobs.toLocaleString("en-ZA")} job ads · ${s.kpis.companies.toLocaleString("en-ZA")} employers · refreshed daily` : d.text}</span>
+              </div>
+            ))}
           </div>
           {s && (
             <div className="grid reveal">
               <div className="stat"><div className="v"><CountUp to={s.kpis.jobs} /></div><div className="l">open roles tracked</div></div>
-              <div className="stat"><div className="v"><CountUp to={s.kpis.automatable_value} format={rands} /></div><div className="l">automatable work / year</div></div>
-              <div className="stat"><div className="v"><CountUp to={s.kpis.avg_score} />%</div><div className="l">average automation score</div></div>
-              <div className="stat"><div className="v"><CountUp to={s.kpis.companies} /></div><div className="l">employers analysed</div></div>
+              <div className="stat"><div className="v"><CountUp to={s.kpis.jobs_7d} /></div><div className="l">ads posted in the last 7 days</div></div>
+              <div className="stat"><div className="v"><CountUp to={s.kpis.companies} /></div><div className="l">employers profiled</div></div>
+              <div className="stat"><div className="v"><CountUp to={USE_CASES.filter((u) => u.href).length} /></div><div className="l">use cases live today</div></div>
             </div>
           )}
-          <a className="shot reveal" href={url("/automation-index/")}><img src={url("/img/index-preview.png")} alt="The SA Automation Opportunity Index dashboard" loading="lazy" /></a>
+          <div className="uses">
+            {USE_CASES.map((u, k) => {
+              const body = <>
+                <span className={`st mono ${u.status.toLowerCase().replace(/[^a-z]+/g, "-")}`}>{u.status}</span>
+                <h3>{u.title}</h3>
+                <p>{u.text}</p>
+                <span className="who mono">{u.who}</span>
+                {u.href && <span className="go">Open <span className="arr">→</span></span>}
+              </>;
+              return u.href
+                ? <a key={u.title} className={`use reveal d${k % 3}`} href={url(u.href)}>{body}</a>
+                : <div key={u.title} className={`use reveal d${k % 3}`}>{body}</div>;
+            })}
+          </div>
+          <p className="more reveal">Have a dataset, or a question no use case answers yet? <a href="#contact">Tell us</a> and we'll build it on the same platform.</p>
           {s?.meta.has_demo && <div className="note">Currently showing sample data while live collection starts.</div>}
         </div>
       </section>
@@ -467,7 +518,7 @@ export default function Landing() {
           <div className="big">acolyte<span>.</span></div>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
             <span>© {new Date().getFullYear()} {SITE.legalName || SITE.name}{SITE.regNumber ? ` · Reg. ${SITE.regNumber}` : ""}</span>
-            <span><a href={url("/automation-index/")}>Live index</a> · <a href={url("/employers/")}>Employers</a> · <a href={url("/tools/")}>Tools &amp; skills</a> · <a href={url("/privacy/")}>Privacy</a> · Jobs data by <a href="https://www.adzuna.co.za" target="_blank" rel="noreferrer">Adzuna</a></span>
+            <span><a href="#use-cases">Use cases</a> · <a href={url("/analyst/")}>Ask AI</a> · <a href={url("/automation-index/")}>Automation index</a> · <a href={url("/employers/")}>Employers</a> · <a href={url("/tools/")}>Tools &amp; skills</a> · <a href={url("/privacy/")}>Privacy</a> · Jobs data by <a href="https://www.adzuna.co.za" target="_blank" rel="noreferrer">Adzuna</a></span>
           </div>
         </div>
       </footer>
