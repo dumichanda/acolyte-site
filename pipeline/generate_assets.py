@@ -69,9 +69,34 @@ def generate(model: str, prompt: str) -> tuple[bytes, float | None]:
     return base64.b64decode(url.split(",", 1)[1]), (d.get("usage") or {}).get("cost")
 
 
+def letterboxed(raw: bytes) -> bool:
+    """True when the image has black bars top and bottom (some models pad 16:9 requests)."""
+    from PIL import Image
+    im = Image.open(io.BytesIO(raw)).convert("L")
+    w, h = im.size
+    band = max(4, h // 20)
+    dark = lambda box: max(im.crop(box).getextrema()) < 24  # noqa: E731
+    return dark((0, 0, w, band)) and dark((0, h - band, w, h))
+
+
+def unbox(im):
+    """Trim uniform dark bars, then centre-crop back to 16:9."""
+    g = im.convert("L")
+    w, h = g.size
+    rows = [max(g.crop((0, y, w, y + 1)).getextrema()) for y in range(h)]
+    top = next((y for y, v in enumerate(rows) if v >= 24), 0)
+    bot = next((h - y for y, v in enumerate(reversed(rows)) if v >= 24), h)
+    im = im.crop((0, top, w, bot))
+    w, h = im.size
+    tw = min(w, round(h * 16 / 9))
+    return im.crop(((w - tw) // 2, 0, (w - tw) // 2 + tw, h))
+
+
 def to_jpeg(raw: bytes, width: int = 1600) -> bytes:
     from PIL import Image
     im = Image.open(io.BytesIO(raw)).convert("RGB")
+    if letterboxed(raw):
+        im = unbox(im)
     if im.width > width:
         im = im.resize((width, round(im.height * width / im.width)))
     buf = io.BytesIO()
@@ -103,6 +128,11 @@ def main() -> None:
     for r in todo:
         try:
             raw, cost = generate(model, r["prompt"])
+            if letterboxed(raw):   # one retry asking for a full-bleed frame
+                raw2, cost2 = generate(model, r["prompt"] + ". Full-bleed 16:9 image filling the whole frame edge to edge, no borders, no black bars.")
+                cost = (cost or 0) + (cost2 or 0)
+                if not letterboxed(raw2):
+                    raw = raw2
         except Exception as e:
             print(f"  {r['file']}: FAILED {e}")
             continue
