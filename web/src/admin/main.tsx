@@ -301,7 +301,7 @@ function CreditCard({ adminKey }: { adminKey: string }) {
       <h2>AI credit and alerts</h2>
       <p className="desc">After you top up in the Anthropic Console, enter the balance it shows. The estimate below subtracts everything the analyst has spent since. When it reaches your alert level, or the credit runs out, a GitHub issue is opened within the hour and GitHub emails you.</p>
       {c ? <div className="kpis">
-        <Kpi label="Estimated credit left" value={`$${c.left_usd.toFixed(2)}`} hint={`alert at $${c.alert_usd}`} tone={c.low ? "neg" : undefined} />
+        <Kpi label="Estimated credit left" value={`$${c.left_usd.toFixed(2)}`} hint={`alert at $${c.alert_usd}`} tone={c.low ? "warn" : undefined} />
         <Kpi label="Balance entered" value={`$${c.balance_usd.toFixed(2)}`} hint={new Date(c.since).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })} />
         <Kpi label="Spent since" value={`$${c.spent_usd.toFixed(2)}`} />
       </div> : <p className="muted">No balance entered yet.</p>}
