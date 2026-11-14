@@ -1,0 +1,226 @@
+<title>Acolyte Decision Register</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Fraunces:opsz,wght@9..144,600&display=swap">
+<style>
+/* Layout: a working ledger. Summary strip, then three tabbed registers (decisions, effort, team) as dense, scannable tables. */
+:root {
+  --paper: #F3F4EF; --sheet: #FFFFFF; --ink: #1B2219; --muted: #5E665A; --rule: #DADDD3;
+  --accent: #3F6212; --accent-soft: #E6EDD8; --warn: #A45A12; --warn-soft: #F6E8D6; --gone: #7A7F78; --gone-soft: #ECEDEA;
+  --info: #2B5C8A; --info-soft: #E1EAF3;
+  --display: "Fraunces", Georgia, serif; --body: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #121511; --sheet: #1A1E18; --ink: #E7EAE2; --muted: #A2A99C; --rule: #2E342B;
+  --accent: #A9D46B; --accent-soft: #26311C; --warn: #E8A866; --warn-soft: #382A1B; --gone: #9AA096; --gone-soft: #262925;
+  --info: #8DB8E2; --info-soft: #1C2A38; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #121511; --sheet: #1A1E18; --ink: #E7EAE2; --muted: #A2A99C; --rule: #2E342B;
+  --accent: #A9D46B; --accent-soft: #26311C; --warn: #E8A866; --warn-soft: #382A1B; --gone: #9AA096; --gone-soft: #262925;
+  --info: #8DB8E2; --info-soft: #1C2A38; color-scheme: dark }
+body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 60px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px; }
+header { display: grid; gap: 8px; }
+.eyebrow { font: 500 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 600 clamp(28px, 4.4vw, 42px)/1.1 var(--display); margin: 0; text-wrap: balance; }
+.lede { margin: 0; max-width: 70ch; color: var(--muted); }
+.strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); overflow: hidden; }
+.stat { padding: 14px 16px; border-right: 1px solid var(--rule); display: grid; gap: 2px; min-width: 0; }
+.stat:last-child { border-right: none; }
+.stat b { font: 600 24px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.stat.hl b { color: var(--accent); }
+nav.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+nav.tabs button { font: 500 14px var(--body); background: none; border: none; color: var(--muted); padding: 10px 14px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+nav.tabs button:focus-visible, .filters select:focus-visible, .filters input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+.filters label { display: grid; gap: 4px; font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.filters select, .filters input { font: 14px var(--body); color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 7px 10px; min-width: 0; }
+.filters input { width: min(280px, 70vw); }
+.count { font-size: 13px; color: var(--muted); margin-left: auto; }
+.ledger { display: grid; gap: 0; border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); overflow: hidden; }
+.entry { display: grid; grid-template-columns: 118px 1fr; gap: 6px 18px; padding: 14px 16px; border-top: 1px solid var(--rule); }
+.entry:first-child { border-top: none; }
+.when { font: 12px/1.45 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.when b { display: block; color: var(--ink); font-weight: 500; }
+.body { display: grid; gap: 6px; min-width: 0; }
+.head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.head h3 { margin: 0; font: 600 16px/1.3 var(--body); }
+.id { font: 12px var(--mono); color: var(--muted); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font: 500 11px/1 var(--mono); padding: 4px 7px; border-radius: 4px; background: var(--paper); color: var(--muted); border: 1px solid var(--rule); }
+.st-Active { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.st-Pending, .st-Parked { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.st-Superseded, .st-Declined { background: var(--gone-soft); color: var(--gone); border-color: transparent; }
+.by-You { background: var(--info-soft); color: var(--info); border-color: transparent; }
+.body p { margin: 0; max-width: 78ch; }
+dl.why { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; font-size: 13.5px; }
+dl.why dt { color: var(--muted); }
+dl.why dd { margin: 0; min-width: 0; }
+.tablebox { overflow-x: auto; border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--paper); position: sticky; top: 0; }
+td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+tfoot td { font-weight: 600; background: var(--paper); border-bottom: none; }
+.task b { display: block; font-weight: 600; }
+.task span { color: var(--muted); font-size: 12.5px; }
+.rolechips { display: flex; gap: 4px; flex-wrap: wrap; min-width: 220px; }
+.rolechips .chip { white-space: nowrap; }
+.bars { display: grid; gap: 8px; }
+.bar { display: grid; grid-template-columns: minmax(150px, 260px) 1fr 110px; gap: 10px; align-items: center; font-size: 13px; }
+.bar .track { height: 12px; background: var(--paper); border-radius: 3px; overflow: hidden; border: 1px solid var(--rule); }
+.bar .fill { height: 100%; background: var(--accent); }
+.bar .v { font: 12.5px var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+section.panel { display: grid; gap: 16px; }
+.note { font-size: 13px; color: var(--muted); max-width: 80ch; margin: 0; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.card { border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); padding: 14px 16px; display: grid; gap: 4px; }
+.card b { font: 600 22px var(--mono); font-variant-numeric: tabular-nums; }
+.card span { font-size: 13px; color: var(--muted); }
+h2 { font: 600 20px/1.2 var(--display); margin: 0; }
+@media (max-width: 640px) {
+  .entry { grid-template-columns: 1fr; }
+  .when b { display: inline; margin-right: 6px; }
+  .bar { grid-template-columns: 1fr 90px; } .bar .track { grid-column: 1 / -1; grid-row: 2; }
+  .count { margin-left: 0; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Acolyte · built by you and Claude Code · from 12 November 2026</div>
+    <h1>Decision register</h1>
+    <p class="lede">Every product, design and technical decision taken while building Acolyte, with when it was made, who made it and why. The effort tab estimates what each piece of work would have cost a South African team of human specialists.</p>
+  </header>
+
+  <div class="strip" id="strip"></div>
+
+  <nav class="tabs" role="tablist" aria-label="Register views">
+    <button role="tab" id="tab-decisions" aria-selected="true" aria-controls="decisions">Decisions</button>
+    <button role="tab" id="tab-effort" aria-selected="false" aria-controls="effort">Effort and cost</button>
+    <button role="tab" id="tab-team" aria-selected="false" aria-controls="team">Team and rates</button>
+  </nav>
+
+  <section class="panel" id="decisions" role="tabpanel" aria-labelledby="tab-decisions">
+    <div class="filters">
+      <label>Type<select id="f-kind"></select></label>
+      <label>Made by<select id="f-by"></select></label>
+      <label>Status<select id="f-status"></select></label>
+      <label>Search<input id="f-q" type="search" placeholder="e.g. Neon, branding, POPIA"></label>
+      <span class="count" id="f-count"></span>
+    </div>
+    <div class="ledger" id="ledger"></div>
+    <p class="note">"Made by": <b>You</b> means you set the direction; <b>Claude</b> means Claude proposed it and you went along; <b>Both</b> means it came out of discussion. Times are South African time (SAST).</p>
+  </section>
+
+  <section class="panel" id="effort" role="tabpanel" aria-labelledby="tab-effort" hidden>
+    <div class="cards" id="effort-cards"></div>
+    <div class="tablebox"><table>
+      <thead><tr><th>Shipped</th><th>Work</th><th>Who a human team needs (person-days)</th><th class="num">Days</th><th class="num">Cost (ZAR)</th></tr></thead>
+      <tbody id="tasks"></tbody>
+      <tfoot><tr><td></td><td>Total</td><td></td><td class="num" id="t-days"></td><td class="num" id="t-cost"></td></tr></tfoot>
+    </table></div>
+    <h2>Cost by specialist</h2>
+    <div class="bars" id="bars"></div>
+    <p class="note">How these are estimated: person-days for a competent specialist working from a clear brief, 8 hours a day, including testing and rework, but excluding meetings, hiring and management overhead (add 20–30% for those). Rates are typical 2025–26 South African contractor rates, not quotes. Treat every figure as an order of magnitude.</p>
+  </section>
+
+  <section class="panel" id="team" role="tabpanel" aria-labelledby="tab-team" hidden>
+    <div class="tablebox"><table>
+      <thead><tr><th>Specialist</th><th>Level</th><th class="num">Rate / hour</th><th class="num">Rate / day</th><th class="num">Days</th><th class="num">Total (ZAR)</th></tr></thead>
+      <tbody id="roles"></tbody>
+    </table></div>
+    <p class="note">Rates are typical 2025–26 South African contractor rates per hour, excluding VAT. Permanent salaries work out lower per hour, but add recruitment, benefits and the time a team takes to form.</p>
+  </section>
+</div>
+
+<script>
+const DATA = __DATA__;
+const R = (n) => "R" + Math.round(n).toLocaleString("en-ZA");
+const sast = (iso) => new Date(iso + "Z").getTime() + 2 * 3600e3;
+const fmtDay = (iso) => new Date(sast(iso)).toLocaleDateString("en-ZA", { day: "numeric", month: "short", timeZone: "UTC" });
+const fmtTime = (iso) => new Date(sast(iso)).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const roles = DATA.roles, tasks = DATA.tasks, decisions = DATA.decisions;
+const taskDays = (t) => Object.values(t.days).reduce((a, b) => a + b, 0);
+const taskCost = (t) => Object.entries(t.days).reduce((a, [r, d]) => a + d * 8 * roles[r].rate, 0);
+const totDays = tasks.reduce((a, t) => a + taskDays(t), 0), totCost = tasks.reduce((a, t) => a + taskCost(t), 0);
+const first = sast(tasks.concat(decisions).map((x) => x.at).sort()[0]), last = sast(DATA.updated);
+const elapsedDays = (last - first) / 86400e3;
+const teamSize = Object.keys(roles).length;
+
+document.getElementById("strip").innerHTML = [
+  [decisions.length, "decisions recorded"],
+  [decisions.filter((d) => d.status === "Pending" || d.status === "Parked").length, "waiting on you or a client"],
+  [elapsedDays.toFixed(1) + " days", "actual build time with Claude Code"],
+  [Math.round(totDays) + " days", "person-days for a human team", true],
+  [R(totCost), "estimated human cost", true],
+].map(([v, l, hl]) => `<div class="stat${hl ? " hl" : ""}"><b>${v}</b><span>${l}</span></div>`).join("");
+
+// ---- decisions
+const sel = (id, label, vals) => { const el = document.getElementById(id); el.innerHTML = `<option value="">All</option>` + vals.map((v) => `<option>${esc(v)}</option>`).join(""); return el; };
+const uniq = (k) => [...new Set(decisions.map((d) => d[k]))].sort();
+const fK = sel("f-kind", "Type", uniq("kind")), fB = sel("f-by", "Made by", ["You", "Claude", "Both"]), fS = sel("f-status", "Status", uniq("status"));
+const fQ = document.getElementById("f-q");
+function renderDecisions() {
+  const q = fQ.value.trim().toLowerCase();
+  const rows = decisions.filter((d) => (!fK.value || d.kind === fK.value) && (!fB.value || d.by === fB.value) && (!fS.value || d.status === fS.value)
+    && (!q || Object.values(d).join(" ").toLowerCase().includes(q))).slice().reverse();
+  document.getElementById("f-count").textContent = `${rows.length} of ${decisions.length}`;
+  document.getElementById("ledger").innerHTML = rows.length ? rows.map((d) => `
+    <article class="entry">
+      <div class="when"><b>${fmtDay(d.at)}</b>${fmtTime(d.at)} SAST</div>
+      <div class="body">
+        <div class="head"><span class="id">${d.id}</span><h3>${esc(d.title)}</h3></div>
+        <div class="chips"><span class="chip">${esc(d.kind)}</span><span class="chip by-${d.by}">${d.by === "Both" ? "You + Claude" : esc(d.by)}</span><span class="chip st-${d.status}">${esc(d.status)}</span></div>
+        <p>${esc(d.decision)}</p>
+        <dl class="why"><dt>Why</dt><dd>${esc(d.why)}</dd>
+          ${d.alternatives ? `<dt>Instead of</dt><dd>${esc(d.alternatives)}</dd>` : ""}
+          ${d.note ? `<dt>Since then</dt><dd>${esc(d.note)}</dd>` : ""}</dl>
+      </div>
+    </article>`).join("") : `<div class="entry"><div></div><div class="body"><p>No decisions match these filters.</p></div></div>`;
+}
+[fK, fB, fS].forEach((el) => el.addEventListener("change", renderDecisions));
+fQ.addEventListener("input", renderDecisions);
+renderDecisions();
+
+// ---- effort
+document.getElementById("tasks").innerHTML = tasks.slice().sort((a, b) => a.at.localeCompare(b.at)).map((t) => `
+  <tr><td class="when"><b>${fmtDay(t.at)}</b>${fmtTime(t.at)}</td>
+    <td class="task"><b>${esc(t.title)}</b><span>${esc(t.what)}</span></td>
+    <td><div class="rolechips">${Object.entries(t.days).map(([r, d]) => `<span class="chip" title="${esc(roles[r].title)}">${esc(roles[r].title.split(" (")[0])} ${d}d</span>`).join("")}</div></td>
+    <td class="num">${taskDays(t)}</td><td class="num">${R(taskCost(t))}</td></tr>`).join("");
+document.getElementById("t-days").textContent = totDays;
+document.getElementById("t-cost").textContent = R(totCost);
+const perRole = Object.keys(roles).map((r) => ({ r, days: tasks.reduce((a, t) => a + (t.days[r] || 0), 0) }))
+  .map((x) => ({ ...x, cost: x.days * 8 * roles[x.r].rate })).sort((a, b) => b.cost - a.cost);
+const maxC = perRole[0].cost;
+document.getElementById("bars").innerHTML = perRole.map((x) => `<div class="bar"><span>${esc(roles[x.r].title)}</span>
+  <div class="track"><div class="fill" style="width:${(100 * x.cost / maxC).toFixed(1)}%"></div></div><span class="v">${R(x.cost)}</span></div>`).join("");
+const weeks = (n) => Math.ceil(n / 5);
+const busiest = Math.max(...perRole.map((x) => x.days));
+document.getElementById("effort-cards").innerHTML = [
+  [Math.round(totDays) + " person-days", `About ${weeks(totDays)} working weeks for one person doing every role.`],
+  [`${weeks(busiest)}–${weeks(busiest) + 4} weeks`, `Calendar time for a ${teamSize}-specialist team working in parallel; the busiest role (${roles[perRole.sort((a, b) => b.days - a.days)[0].r].title.split(" (")[0]}, ${busiest} days) sets the pace.`],
+  [R(totCost), `Estimated human cost, before VAT and before 20–30% for management and meetings.`],
+  [elapsedDays.toFixed(1) + " days", "Actual elapsed time with you and Claude Code, including waiting for keys and deploys."],
+].map(([v, l]) => `<div class="card"><b>${v}</b><span>${l}</span></div>`).join("");
+
+// ---- team
+document.getElementById("roles").innerHTML = Object.entries(roles).map(([k, v]) => {
+  const d = tasks.reduce((a, t) => a + (t.days[k] || 0), 0);
+  return `<tr><td>${esc(v.title)}</td><td>${esc(v.level)}</td><td class="num">${R(v.rate)}</td><td class="num">${R(v.rate * 8)}</td><td class="num">${d}</td><td class="num">${R(d * 8 * v.rate)}</td></tr>`;
+}).join("") + `<tr><td><b>Total</b></td><td></td><td></td><td></td><td class="num"><b>${totDays}</b></td><td class="num"><b>${R(totCost)}</b></td></tr>`;
+
+// ---- tabs (hash-routed so a view can be linked)
+const tabs = ["decisions", "effort", "team"];
+function show(name) {
+  if (!tabs.includes(name)) name = "decisions";
+  tabs.forEach((t) => { document.getElementById(t).hidden = t !== name; document.getElementById("tab-" + t).setAttribute("aria-selected", String(t === name)); });
+}
+tabs.forEach((t) => document.getElementById("tab-" + t).addEventListener("click", () => { location.hash = t; show(t); }));
+addEventListener("hashchange", () => show(location.hash.slice(1)));
+show(location.hash.slice(1));
+</script>

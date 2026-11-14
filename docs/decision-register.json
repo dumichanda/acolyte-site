@@ -1,0 +1,1007 @@
+{
+ "updated": "2026-11-14T21:40",
+ "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
+ "roles": {
+  "PM": {
+   "title": "Product manager / business analyst",
+   "level": "Senior",
+   "rate": 750
+  },
+  "ARCH": {
+   "title": "Solution architect",
+   "level": "Senior",
+   "rate": 1100
+  },
+  "FE": {
+   "title": "Front-end developer (React, TypeScript)",
+   "level": "Senior",
+   "rate": 850
+  },
+  "BE": {
+   "title": "Back-end developer (Python, FastAPI)",
+   "level": "Senior",
+   "rate": 850
+  },
+  "DE": {
+   "title": "Data engineer (pipelines, Postgres)",
+   "level": "Senior",
+   "rate": 900
+  },
+  "AI": {
+   "title": "AI / LLM engineer",
+   "level": "Senior",
+   "rate": 1050
+  },
+  "DS": {
+   "title": "Data scientist / analyst",
+   "level": "Mid-senior",
+   "rate": 750
+  },
+  "UX": {
+   "title": "UI/UX and brand designer",
+   "level": "Mid-senior",
+   "rate": 650
+  },
+  "OPS": {
+   "title": "DevOps / cloud engineer",
+   "level": "Mid-senior",
+   "rate": 850
+  },
+  "QA": {
+   "title": "QA / test engineer",
+   "level": "Mid",
+   "rate": 450
+  },
+  "SEC": {
+   "title": "Security and POPIA reviewer",
+   "level": "Senior",
+   "rate": 1000
+  },
+  "CW": {
+   "title": "Copywriter / content",
+   "level": "Mid",
+   "rate": 450
+  }
+ },
+ "tasks": [
+  {
+   "at": "2026-11-12T13:12",
+   "title": "Automation Opportunity Index",
+   "what": "Adzuna job pipeline, Postgres schema, AI classification of automatable work, React/ECharts dashboard and a PDF report.",
+   "days": {
+    "PM": 1,
+    "DE": 4,
+    "AI": 2,
+    "FE": 5,
+    "DS": 2,
+    "UX": 2,
+    "QA": 1
+   }
+  },
+  {
+   "at": "2026-11-12T22:13",
+   "title": "Landing page, privacy notice and daily refresh",
+   "what": "Acolyte landing page, POPIA privacy notice, hosting config and the daily GitHub Actions data refresh.",
+   "days": {
+    "UX": 3,
+    "FE": 3,
+    "CW": 1.5,
+    "SEC": 1,
+    "OPS": 1.5
+   }
+  },
+  {
+   "at": "2026-11-12T22:44",
+   "title": "GitHub Pages hosting and contact form",
+   "what": "Base-path aware links, Formspree contact form, Pages deploy after each refresh.",
+   "days": {
+    "OPS": 1,
+    "FE": 0.5
+   }
+  },
+  {
+   "at": "2026-11-12T22:48",
+   "title": "AI job finders with verified links",
+   "what": "Claude web search and Gemini + Google Search job sources with retrieval-verified URLs, plus a Colab notebook with Google Sheets export.",
+   "days": {
+    "AI": 4,
+    "DE": 2,
+    "QA": 1
+   }
+  },
+  {
+   "at": "2026-11-12T23:36",
+   "title": "Rebrand and live demo",
+   "what": "AI-analytics-first landing page, new identity across site and dashboard, live Ask-your-data demo.",
+   "days": {
+    "UX": 4,
+    "FE": 3,
+    "CW": 1,
+    "PM": 0.5
+   }
+  },
+  {
+   "at": "2026-11-13T09:55",
+   "title": "Company enrichment, tools and skills, private CRM",
+   "what": "Employer research and domains, tool and skill extraction from ads, 68 employer profiles, sales pipeline rules, private CRM pages.",
+   "days": {
+    "DE": 4,
+    "AI": 3,
+    "FE": 4,
+    "BE": 2,
+    "DS": 1,
+    "SEC": 1,
+    "QA": 1
+   }
+  },
+  {
+   "at": "2026-11-13T14:28",
+   "title": "Agent harness",
+   "what": "Model-agnostic agent loop (OpenRouter or Claude) with budgets, verified saves, audit log, Exa search and redirect handling.",
+   "days": {
+    "AI": 5,
+    "BE": 2,
+    "ARCH": 1,
+    "QA": 1
+   }
+  },
+  {
+   "at": "2026-11-13T13:52",
+   "title": "Acolyte Analyst v1",
+   "what": "Chat-with-your-data agent: semantic layer, safe read-only SQL, chart artifacts, API on Render, smoke tests.",
+   "days": {
+    "AI": 6,
+    "BE": 4,
+    "FE": 5,
+    "ARCH": 2,
+    "OPS": 2,
+    "SEC": 1.5,
+    "QA": 2
+   }
+  },
+  {
+   "at": "2026-11-13T19:33",
+   "title": "Consulting-grade PowerPoint and PDF packs",
+   "what": "Native editable PowerPoint charts, direct PDF, embedded Poppins, storyline slide layout and automatic quality checks.",
+   "days": {
+    "FE": 7,
+    "UX": 3,
+    "AI": 2,
+    "DS": 1,
+    "QA": 2
+   }
+  },
+  {
+   "at": "2026-11-13T22:24",
+   "title": "Cost control and admin page",
+   "what": "Model routing with auto-escalation, conversation caching, cost per answer, admin page for costs, questions and agents.",
+   "days": {
+    "AI": 3,
+    "BE": 2,
+    "FE": 3,
+    "DS": 0.5
+   }
+  },
+  {
+   "at": "2026-11-14T09:24",
+   "title": "Client accounts and live dashboards",
+   "what": "PIN login, plans and limits, usage rings, saved chat history, pin-to-dashboard and live dashboards.",
+   "days": {
+    "BE": 5,
+    "FE": 6,
+    "SEC": 2,
+    "UX": 1.5,
+    "QA": 2
+   }
+  },
+  {
+   "at": "2026-11-14T11:37",
+   "title": "Executive brief and full pack",
+   "what": "5-slide executive version alongside the full pack.",
+   "days": {
+    "FE": 2,
+    "UX": 1
+   }
+  },
+  {
+   "at": "2026-11-14T14:37",
+   "title": "Multi-use-case repositioning",
+   "what": "Use cases section, dataset-neutral analyst, landing led by 'your own AI data analyst', README plan.",
+   "days": {
+    "PM": 2,
+    "CW": 2,
+    "FE": 1.5,
+    "UX": 1
+   }
+  },
+  {
+   "at": "2026-11-14T14:51",
+   "title": "Property dataset and Property Analyst",
+   "what": "Private Property via Scrappa in its own schema, industry workspaces, Daily Property Brief, property landing page, separate analysts per subscription.",
+   "days": {
+    "DE": 4,
+    "AI": 3,
+    "BE": 3,
+    "FE": 4,
+    "PM": 1.5,
+    "CW": 1,
+    "QA": 1.5
+   }
+  },
+  {
+   "at": "2026-11-14T15:46",
+   "title": "Retail Pricing, Marketplace and Talent sources",
+   "what": "Google Shopping basket, marketplace analyst, Google Jobs/LinkedIn/Glassdoor sources, five expert skills per analyst.",
+   "days": {
+    "DE": 5,
+    "AI": 3,
+    "DS": 3,
+    "PM": 1,
+    "QA": 1.5
+   }
+  },
+  {
+   "at": "2026-11-14T16:42",
+   "title": "Day-to-day change tracking",
+   "what": "What-changed views for property, retail and jobs; salary and rating history.",
+   "days": {
+    "DE": 3,
+    "DS": 1
+   }
+  },
+  {
+   "at": "2026-11-14T17:00",
+   "title": "Brief automation and recovery",
+   "what": "Brief workflow, restart recovery, step limits and cost recording.",
+   "days": {
+    "OPS": 1.5,
+    "BE": 1.5
+   }
+  },
+  {
+   "at": "2026-11-14T17:47",
+   "title": "Deeper datasets",
+   "what": "Property24, Google Trends signals, area crosswalk, unit prices, house brands and bigger daily volumes.",
+   "days": {
+    "DE": 6,
+    "DS": 2,
+    "QA": 1
+   }
+  },
+  {
+   "at": "2026-11-14T18:54",
+   "title": "Client data: uploads and Google Sheets",
+   "what": "CSV/Excel upload, per-client private schemas and logins enforced by the database, Google Sheets connector with daily sync.",
+   "days": {
+    "BE": 5,
+    "DE": 3,
+    "SEC": 3,
+    "FE": 3,
+    "QA": 2
+   }
+  },
+  {
+   "at": "2026-11-14T20:19",
+   "title": "Monthly reports and production fixes",
+   "what": "Monthly report pipeline, reports page and cards, IPv4 fix, Neon login lock-out fix, sequential runs.",
+   "days": {
+    "BE": 3,
+    "OPS": 3,
+    "AI": 1.5,
+    "FE": 3,
+    "DS": 1,
+    "QA": 1
+   }
+  },
+  {
+   "at": "2026-11-14T20:48",
+   "title": "Charts, themes and client branding",
+   "what": "Charts that pop, annotations, insight standard, dark and alternating slides, raised tiles, admin branding per client.",
+   "days": {
+    "FE": 5,
+    "UX": 4,
+    "AI": 1.5,
+    "BE": 1.5,
+    "QA": 1
+   }
+  },
+  {
+   "at": "2026-11-14T21:07",
+   "title": "Image library and Story reports",
+   "what": "OpenRouter image generator with letterbox repair, picture-led Story deck with drawn fallback.",
+   "days": {
+    "AI": 1.5,
+    "FE": 4,
+    "UX": 3,
+    "CW": 1,
+    "OPS": 0.5
+   }
+  },
+  {
+   "at": "2026-11-14T21:20",
+   "title": "Dashboard insights and Ask Acolyte AI",
+   "what": "Filters, automatic key insights for the filtered view (default this month), questions answered about the current view.",
+   "days": {
+    "FE": 4,
+    "AI": 1,
+    "DS": 1.5,
+    "UX": 1,
+    "QA": 1
+   }
+  },
+  {
+   "at": "2026-11-14T21:24",
+   "title": "Expert depth, web sources and Style",
+   "what": "Expert models with plain-language explainers, web research with server-verified quotes, Formal/Balanced/Creative style, model names hidden.",
+   "days": {
+    "AI": 4,
+    "DS": 2,
+    "CW": 1,
+    "FE": 2,
+    "BE": 1.5,
+    "QA": 1
+   }
+  },
+  {
+   "at": "2026-11-14T21:31",
+   "title": "Documentation and explainers",
+   "what": "Architecture page, platform guide, image prompt pack, production plan and this register.",
+   "days": {
+    "ARCH": 2,
+    "PM": 2,
+    "CW": 2,
+    "UX": 1.5
+   }
+  }
+ ],
+ "decisions": [
+  {
+   "id": "D01",
+   "at": "2026-11-12T07:49",
+   "kind": "Product",
+   "by": "Claude",
+   "status": "Superseded",
+   "title": "Pitch the person who owns the problem, not HR",
+   "decision": "Use job ads as a buying signal and send a researched pitch to the finance or operations owner instead of 'applying' to jobs.",
+   "why": "A job ad shows pain, budget and urgency; HR inboxes are the wrong buyer.",
+   "alternatives": "Auto-send applications to the job ad's email.",
+   "note": "Later became one use case of the wider platform (see 'Job automation becomes one use case')."
+  },
+  {
+   "id": "D02",
+   "at": "2026-11-12T07:56",
+   "kind": "Commercial",
+   "by": "Claude",
+   "status": "Active",
+   "title": "Target higher-paid admin roles and volume hiring",
+   "decision": "Focus on R18k+/month admin and finance roles and bulk hiring (e.g. call centres).",
+   "why": "South African wages make one low-paid role a weak automation case.",
+   "alternatives": "Target all admin roles equally.",
+   "note": ""
+  },
+  {
+   "id": "D03",
+   "at": "2026-11-12T09:10",
+   "kind": "Technical",
+   "by": "You",
+   "status": "Active",
+   "title": "Open source only, no Power BI or Qlik",
+   "decision": "Build analytics without paid BI licences.",
+   "why": "Cost, and everything should be code Claude Code can change.",
+   "alternatives": "Power BI, Qlik.",
+   "note": ""
+  },
+  {
+   "id": "D04",
+   "at": "2026-11-12T09:54",
+   "kind": "Technical",
+   "by": "Both",
+   "status": "Active",
+   "title": "Own React dashboards instead of Lightdash or Metabase",
+   "decision": "Dashboards and reports are built in the platform's own React code (later ECharts).",
+   "why": "A solo founder with Claude Code; Lightdash's AI features need the ~$3,000/month cloud plan; AGPL risk with Metabase.",
+   "alternatives": "Lightdash, Metabase, Superset.",
+   "note": ""
+  },
+  {
+   "id": "D05",
+   "at": "2026-11-12T12:34",
+   "kind": "Data",
+   "by": "Both",
+   "status": "Active",
+   "title": "Neon serverless Postgres, not Redshift",
+   "decision": "Use Neon's free Postgres tier as the platform database.",
+   "why": "Free, standard Postgres, scales to zero; Redshift is costly and overkill.",
+   "alternatives": "Amazon Redshift, Supabase.",
+   "note": ""
+  },
+  {
+   "id": "D06",
+   "at": "2026-11-12T12:34",
+   "kind": "Security",
+   "by": "Claude",
+   "status": "Active",
+   "title": "Real market data, no fake personal data",
+   "decision": "Use real public data; anything simulated is labelled; no personal contact data in demos.",
+   "why": "Credibility and POPIA.",
+   "alternatives": "Faker-generated contacts.",
+   "note": ""
+  },
+  {
+   "id": "D07",
+   "at": "2026-11-12T12:39",
+   "kind": "Product",
+   "by": "Both",
+   "status": "Active",
+   "title": "A live public demo on real SA data",
+   "decision": "Start with the SA Automation Opportunity Index on Adzuna's South Africa job feed.",
+   "why": "Shows the capability on data that changes every day.",
+   "alternatives": "Static sample dashboards.",
+   "note": ""
+  },
+  {
+   "id": "D08",
+   "at": "2026-11-12T22:07",
+   "kind": "Operations",
+   "by": "You",
+   "status": "Superseded",
+   "title": "Host on Netlify",
+   "decision": "Initial hosting choice for the site.",
+   "why": "Free static hosting.",
+   "alternatives": "",
+   "note": "Replaced the same evening by GitHub Pages."
+  },
+  {
+   "id": "D09",
+   "at": "2026-11-12T22:43",
+   "kind": "Operations",
+   "by": "You",
+   "status": "Active",
+   "title": "Host on GitHub Pages",
+   "decision": "Site deployed from the repo by GitHub Actions after each refresh.",
+   "why": "Free, same place as the code and the daily job.",
+   "alternatives": "Netlify, Vercel.",
+   "note": "Plan to move to Cloudflare Pages at launch (see production plan)."
+  },
+  {
+   "id": "D10",
+   "at": "2026-11-12T22:45",
+   "kind": "Data",
+   "by": "Both",
+   "status": "Active",
+   "title": "More jobs via AI search, with verified links",
+   "decision": "Add Claude and Gemini/Google search job finders; only keep URLs that were really retrieved.",
+   "why": "Free APIs alone gave too few jobs; AI search can invent links unless checked.",
+   "alternatives": "APIs only; unverified AI results.",
+   "note": "Adzuna paid plan added on 13 Nov."
+  },
+  {
+   "id": "D11",
+   "at": "2026-11-12T23:30",
+   "kind": "Design",
+   "by": "You",
+   "status": "Active",
+   "title": "Distinctive AI-analytics-first brand",
+   "decision": "Rebrand the landing page around automated analytics with a live demo and a real identity.",
+   "why": "The first version looked generic and still told the old story.",
+   "alternatives": "Keep the first landing page.",
+   "note": ""
+  },
+  {
+   "id": "D12",
+   "at": "2026-11-13T00:24",
+   "kind": "Data",
+   "by": "Both",
+   "status": "Active",
+   "title": "Neon stays the database; Sheets only as an export",
+   "decision": "Google Sheets is used for the Colab job finder's output, not as the platform store.",
+   "why": "Sheets can't do joins, roles or history at platform scale.",
+   "alternatives": "Google Sheets as the main database.",
+   "note": ""
+  },
+  {
+   "id": "D13",
+   "at": "2026-11-13T08:27",
+   "kind": "Data",
+   "by": "You",
+   "status": "Active",
+   "title": "Keep full job descriptions, tools and companies",
+   "decision": "Store the full ad, extracted tools and skills, and the employer for later analysis.",
+   "why": "These fields are what the analysis is built on.",
+   "alternatives": "Keep only titles and counts.",
+   "note": ""
+  },
+  {
+   "id": "D14",
+   "at": "2026-11-13T09:38",
+   "kind": "Product",
+   "by": "Both",
+   "status": "Active",
+   "title": "Enrich only the companies that posted the jobs",
+   "decision": "Company research, domains and contacts feed a private CRM for the employers in the data.",
+   "why": "Keeps outreach relevant and the data lawful.",
+   "alternatives": "Buy generic lead lists.",
+   "note": ""
+  },
+  {
+   "id": "D15",
+   "at": "2026-11-13T13:35",
+   "kind": "Technical",
+   "by": "Both",
+   "status": "Active",
+   "title": "Build our own analytics agent",
+   "decision": "Chat → safe SQL → chart and report artifacts, with a semantic guide, instead of adopting WrenAI or Vanna.",
+   "why": "Full control of branding, cost and SA datasets; Vanna was archived.",
+   "alternatives": "WrenAI, Vanna, Nao, DataLine.",
+   "note": ""
+  },
+  {
+   "id": "D16",
+   "at": "2026-11-13T14:23",
+   "kind": "Technical",
+   "by": "Both",
+   "status": "Active",
+   "title": "Model-agnostic agent harness with budgets",
+   "decision": "One loop for all agents, on OpenRouter or Claude, with dollar caps, verified saves and an audit log.",
+   "why": "Agents must be cheap, safe and checkable.",
+   "alternatives": "Separate scripts per agent.",
+   "note": ""
+  },
+  {
+   "id": "D17",
+   "at": "2026-11-13T16:05",
+   "kind": "Commercial",
+   "by": "You",
+   "status": "Active",
+   "title": "Keep multinationals operating in SA; drop firms with no SA presence",
+   "decision": "Foreign firms without a South African presence leave the sales pipeline.",
+   "why": "They can't buy local services; multinationals in SA can.",
+   "alternatives": "Drop all foreign firms.",
+   "note": ""
+  },
+  {
+   "id": "D18",
+   "at": "2026-11-13T17:13",
+   "kind": "Operations",
+   "by": "Claude",
+   "status": "Active",
+   "title": "Analyst API on Render (Docker blueprint)",
+   "decision": "Run the FastAPI analyst on Render's free plan.",
+   "why": "Free, deploys from the repo.",
+   "alternatives": "Fly.io, a VPS.",
+   "note": "Render Starter (~$7/month) planned for production to avoid cold starts."
+  },
+  {
+   "id": "D19",
+   "at": "2026-11-13T19:29",
+   "kind": "Design",
+   "by": "You",
+   "status": "Active",
+   "title": "Real PowerPoint with native charts, and direct PDF",
+   "decision": "Downloads produce editable PowerPoint charts and a real PDF instead of the print dialog.",
+   "why": "Clients edit and present the packs.",
+   "alternatives": "Screenshots; browser print.",
+   "note": ""
+  },
+  {
+   "id": "D20",
+   "at": "2026-11-13T19:35",
+   "kind": "Design",
+   "by": "You",
+   "status": "Active",
+   "title": "Poppins everywhere",
+   "decision": "Poppins in the site, PowerPoint and embedded in PDFs.",
+   "why": "Brand consistency.",
+   "alternatives": "System fonts.",
+   "note": ""
+  },
+  {
+   "id": "D21",
+   "at": "2026-11-13T20:02",
+   "kind": "Design",
+   "by": "Both",
+   "status": "Active",
+   "title": "Consulting-grade pack structure",
+   "decision": "Action titles, question chips, so-what boxes, Q&A, conclusions and method, based on your sample decks.",
+   "why": "Packs must read like a strategy consultancy's work.",
+   "alternatives": "Free-form AI text.",
+   "note": ""
+  },
+  {
+   "id": "D22",
+   "at": "2026-11-13T21:16",
+   "kind": "Technical",
+   "by": "Both",
+   "status": "Active",
+   "title": "Automatic checks and self-correction for packs",
+   "decision": "Server reviews each pack (lengths, numbers, missing parts) and the AI fixes issues once before publishing.",
+   "why": "Stop layout and quality slips without manual review.",
+   "alternatives": "Manual review.",
+   "note": ""
+  },
+  {
+   "id": "D23",
+   "at": "2026-11-13T22:21",
+   "kind": "Commercial",
+   "by": "Both",
+   "status": "Active",
+   "title": "Route questions to the cheapest capable model",
+   "decision": "Quick / balanced / deep tiers with automatic escalation, prompt caching and cost logged per answer.",
+   "why": "Keeps the cost per answer low while reports stay high quality.",
+   "alternatives": "One model for everything.",
+   "note": ""
+  },
+  {
+   "id": "D24",
+   "at": "2026-11-14T09:14",
+   "kind": "Product",
+   "by": "Both",
+   "status": "Active",
+   "title": "Client accounts with PIN login and plans",
+   "decision": "Accounts, PINs (hashed), Junior/Senior/Owner limits, usage rings, chat history panel, pinned live dashboards.",
+   "why": "Turns the demo into a sellable subscription.",
+   "alternatives": "Email/password accounts; no limits.",
+   "note": ""
+  },
+  {
+   "id": "D25",
+   "at": "2026-11-14T11:33",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "Two pack versions",
+   "decision": "A 5-slide executive brief and the ~12-slide full pack.",
+   "why": "Executives read less; analysts want detail.",
+   "alternatives": "One length.",
+   "note": ""
+  },
+  {
+   "id": "D26",
+   "at": "2026-11-14T14:35",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "Job automation becomes one use case",
+   "decision": "The platform is multi-use-case analytics; the job automation idea moves to use cases and proofs of concept.",
+   "why": "Same engine serves many markets.",
+   "alternatives": "Stay a job-automation tool.",
+   "note": ""
+  },
+  {
+   "id": "D27",
+   "at": "2026-11-14T14:39",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "Lead with 'your own AI data analyst'",
+   "decision": "The landing page opens with the personal AI analyst / data scientist, then use cases.",
+   "why": "Clear value before examples.",
+   "alternatives": "Lead with use cases.",
+   "note": ""
+  },
+  {
+   "id": "D28",
+   "at": "2026-11-14T14:44",
+   "kind": "Data",
+   "by": "Both",
+   "status": "Active",
+   "title": "Scrappa as second data provider, one schema per dataset",
+   "decision": "Add Scrappa sources, each dataset in its own schema with analyst views.",
+   "why": "Many SA datasets from one API; schemas keep them separate and safe.",
+   "alternatives": "Scrape sites directly.",
+   "note": ""
+  },
+  {
+   "id": "D29",
+   "at": "2026-11-14T15:02",
+   "kind": "Product",
+   "by": "Claude",
+   "status": "Declined",
+   "title": "No consumer property website",
+   "decision": "Declined the idea of a public site where people browse properties.",
+   "why": "Competes with portals that supply the data, licensing and POPIA risk.",
+   "alternatives": "Consumer property search site.",
+   "note": ""
+  },
+  {
+   "id": "D30",
+   "at": "2026-11-14T15:10",
+   "kind": "Security",
+   "by": "Both",
+   "status": "Active",
+   "title": "POPIA by design",
+   "decision": "No agent or seller personal data stored; PINs hashed; admin, CRM and client data never public.",
+   "why": "Legal compliance and client trust.",
+   "alternatives": "",
+   "note": ""
+  },
+  {
+   "id": "D31",
+   "at": "2026-11-14T15:25",
+   "kind": "Commercial",
+   "by": "You",
+   "status": "Active",
+   "title": "Separate analysts sold as separate subscriptions",
+   "decision": "Talent, Property, Retail Pricing and Marketplace analysts, each with its own data, skills, briefs and dashboards.",
+   "why": "Each industry buys only what it needs.",
+   "alternatives": "One analyst for all data.",
+   "note": ""
+  },
+  {
+   "id": "D32",
+   "at": "2026-11-14T15:34",
+   "kind": "Data",
+   "by": "Both",
+   "status": "Active",
+   "title": "Test new sources with few credits, then cap each source",
+   "decision": "Probe each Scrappa source cheaply; a shared 25,000-credit monthly budget with caps per source.",
+   "why": "Avoid burning credits on sources that don't work for SA.",
+   "alternatives": "Full runs immediately.",
+   "note": ""
+  },
+  {
+   "id": "D33",
+   "at": "2026-11-14T15:46",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "Five expert skills per analyst",
+   "decision": "Each analyst has five industry methods (e.g. CMA, rental yield screen, price-cut watch).",
+   "why": "Clients pay for expert method, not just charts.",
+   "alternatives": "Generic Q&A.",
+   "note": ""
+  },
+  {
+   "id": "D34",
+   "at": "2026-11-14T16:34",
+   "kind": "Data",
+   "by": "Both",
+   "status": "Active",
+   "title": "Track changes day to day",
+   "decision": "Daily snapshots and 'what changed' views for listings, prices, jobs, salaries and ratings.",
+   "why": "Trends need history; the source data only shows today.",
+   "alternatives": "Overwrite each day.",
+   "note": ""
+  },
+  {
+   "id": "D35",
+   "at": "2026-11-14T16:59",
+   "kind": "Security",
+   "by": "Claude",
+   "status": "Active",
+   "title": "Secrets only in GitHub Secrets and Render",
+   "decision": "Keys never in chat or code; a token pasted in chat must be rotated.",
+   "why": "A pasted admin token is exposed.",
+   "alternatives": "",
+   "note": ""
+  },
+  {
+   "id": "D36",
+   "at": "2026-11-14T17:22",
+   "kind": "Operations",
+   "by": "Claude",
+   "status": "Pending",
+   "title": "Lowest-cost production setup",
+   "decision": "A .co.za domain, Zoho Mail free, Cloudflare DNS and Pages, Render Starter, stay on Neon free for now (~R300–R600/month fixed).",
+   "why": "Keeps fixed costs low until clients arrive.",
+   "alternatives": "AWS/Azure stack; paid email.",
+   "note": "Waiting for your go-ahead."
+  },
+  {
+   "id": "D37",
+   "at": "2026-11-14T17:42",
+   "kind": "Data",
+   "by": "You",
+   "status": "Active",
+   "title": "Deepen datasets with tools we already have",
+   "decision": "Property24, Google Trends, unit prices, house brands and bigger volumes before adding new providers.",
+   "why": "Use what is already paid for.",
+   "alternatives": "Buy new data first.",
+   "note": ""
+  },
+  {
+   "id": "D38",
+   "at": "2026-11-14T18:49",
+   "kind": "Product",
+   "by": "Both",
+   "status": "Active",
+   "title": "Clients bring their own data, isolated by the database",
+   "decision": "CSV/Excel upload and Google Sheets first; each client gets a private schema and login that only it can read.",
+   "why": "Clients want their numbers next to the market; isolation must not depend on app code alone.",
+   "alternatives": "Shared tables with an account column; Sage connector first.",
+   "note": ""
+  },
+  {
+   "id": "D39",
+   "at": "2026-11-14T19:26",
+   "kind": "Product",
+   "by": "You",
+   "status": "Parked",
+   "title": "Live client connectors wait for a client",
+   "decision": "No live connectors (Sage, ERP) until a paying client needs one.",
+   "why": "Avoid building for imagined requirements.",
+   "alternatives": "Build connectors now.",
+   "note": ""
+  },
+  {
+   "id": "D40",
+   "at": "2026-11-14T20:06",
+   "kind": "Product",
+   "by": "Both",
+   "status": "Active",
+   "title": "Monthly report packs per analyst, with an honest look-back",
+   "decision": "A pack on the 1st of every month, a Reports & dashboards page and landing cards; the 5-month look-back uses only real history (12-month search trends) and says where data starts.",
+   "why": "Recurring value and promo content, without inventing history.",
+   "alternatives": "Back-fill made-up months.",
+   "note": ""
+  },
+  {
+   "id": "D41",
+   "at": "2026-11-14T20:40",
+   "kind": "Technical",
+   "by": "Claude",
+   "status": "Active",
+   "title": "Production hardening of reports",
+   "decision": "Prefer IPv4 on Render, re-apply database logins after setup, write reports one at a time.",
+   "why": "Fixes found in the first runs (no IPv6 route, Neon login lock-out, memory).",
+   "alternatives": "",
+   "note": ""
+  },
+  {
+   "id": "D42",
+   "at": "2026-11-14T20:44",
+   "kind": "Design",
+   "by": "You",
+   "status": "Active",
+   "title": "Annotated charts that pop",
+   "decision": "Charts mark anomalies, events, periods and ranges; stronger insight standard.",
+   "why": "Readers should see the story without hunting.",
+   "alternatives": "Plain charts.",
+   "note": ""
+  },
+  {
+   "id": "D43",
+   "at": "2026-11-14T20:54",
+   "kind": "Design",
+   "by": "You",
+   "status": "Active",
+   "title": "Dark and alternating slide styles with raised tiles",
+   "decision": "Light, dark and alternating dark / soft-green slides; rounded raised tiles; fill white space with insights.",
+   "why": "Your preference, and a more premium look.",
+   "alternatives": "Light only.",
+   "note": ""
+  },
+  {
+   "id": "D44",
+   "at": "2026-11-14T21:01",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "Admin brands each client's packs",
+   "decision": "Logo, colours, cover image and style per client, applied automatically.",
+   "why": "White-label value for agencies and brands.",
+   "alternatives": "One Acolyte look.",
+   "note": ""
+  },
+  {
+   "id": "D45",
+   "at": "2026-11-14T21:04",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "Story reports as the base for social and video content",
+   "decision": "A picture-led, plain-language Story deck next to the formal packs.",
+   "why": "Engages everyday readers and feeds promo content.",
+   "alternatives": "Formal packs only.",
+   "note": ""
+  },
+  {
+   "id": "D46",
+   "at": "2026-11-14T21:06",
+   "kind": "Technical",
+   "by": "Both",
+   "status": "Pending",
+   "title": "Image library from an OpenRouter image model",
+   "decision": "Generate ~50 tagged report images with an API image model, not a logged-in ChatGPT account.",
+   "why": "A personal ChatGPT login can't be automated safely; the API is repeatable and logged.",
+   "alternatives": "ChatGPT web app; stock photo licences.",
+   "note": "Waiting for OpenRouter credit (key limit)."
+  },
+  {
+   "id": "D47",
+   "at": "2026-11-14T21:06",
+   "kind": "Commercial",
+   "by": "Both",
+   "status": "Pending",
+   "title": "A few custom image prompts per plan",
+   "decision": "Clients can replace default pictures with their own prompts (proposed 10 / 40 / 200 a month).",
+   "why": "Personalisation without runaway cost.",
+   "alternatives": "Unlimited; none.",
+   "note": "Needs the image key on Render."
+  },
+  {
+   "id": "D48",
+   "at": "2026-11-14T21:15",
+   "kind": "Technical",
+   "by": "Claude",
+   "status": "Active",
+   "title": "A failed rewrite keeps the last good report",
+   "decision": "Reports retry up to 3 times and never wipe a published report.",
+   "why": "A restart had erased the Talent report.",
+   "alternatives": "",
+   "note": ""
+  },
+  {
+   "id": "D49",
+   "at": "2026-11-14T21:20",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "Key insights that follow dashboard filters",
+   "decision": "Insights recompute for the filtered view, default this month, with an Ask Acolyte AI bar about the current view.",
+   "why": "Answers in context, without writing a question from scratch.",
+   "alternatives": "Static insight text.",
+   "note": ""
+  },
+  {
+   "id": "D50",
+   "at": "2026-11-14T21:20",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "Expert depth explained in plain words",
+   "decision": "Use expert models and explain each term and why it matters, documentary style, without dropping the analysis.",
+   "why": "Readers range from executives to everyday people.",
+   "alternatives": "Simplify by removing detail.",
+   "note": ""
+  },
+  {
+   "id": "D51",
+   "at": "2026-11-14T21:24",
+   "kind": "Security",
+   "by": "Both",
+   "status": "Active",
+   "title": "Web sources are quoted and checked",
+   "decision": "Creative reports research the web and quote sources; the server drops any source the search didn't return.",
+   "why": "Outside context helps, invented citations destroy trust.",
+   "alternatives": "No web research; unchecked citations.",
+   "note": ""
+  },
+  {
+   "id": "D52",
+   "at": "2026-11-14T21:24",
+   "kind": "Product",
+   "by": "Both",
+   "status": "Active",
+   "title": "Users choose the creative range",
+   "decision": "Formal, Balanced or Creative style for answers.",
+   "why": "Different readers and uses (board vs social).",
+   "alternatives": "One fixed tone.",
+   "note": ""
+  },
+  {
+   "id": "D53",
+   "at": "2026-11-14T21:24",
+   "kind": "Design",
+   "by": "You",
+   "status": "Active",
+   "title": "Hide AI model names from users",
+   "decision": "Choices read 'Thinking: Auto / Quick / Balanced / Deep'.",
+   "why": "Customers buy an analyst, not a model.",
+   "alternatives": "Show vendor model names.",
+   "note": ""
+  },
+  {
+   "id": "D54",
+   "at": "2026-11-14T21:31",
+   "kind": "Operations",
+   "by": "You",
+   "status": "Active",
+   "title": "Keep a decision register",
+   "decision": "Record every product, design and technical decision with a timestamp, who made it and the effort it represents.",
+   "why": "A shared memory of why things are the way they are.",
+   "alternatives": "",
+   "note": ""
+  }
+ ]
+}
