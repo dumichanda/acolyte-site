@@ -76,6 +76,7 @@ const WORKSPACES: Record<Analyst, { label: string; name: string; sub: string; pl
     label: "Jobs & talent", name: "Acolyte Talent Analyst", placeholder: "Ask about South Africa's job market…",
     sub: "Your AI analyst for SA hiring: roles, skills, employers, salaries and automation potential, from live job ads.",
     starters: [
+      "What changed in SA hiring this week compared with last week?",
       "Which roles are SA employers hiring for most this month?",
       "Compare Gauteng and Western Cape: roles, salaries and hiring trend",
       "Which skills and software do finance job ads ask for most?",
@@ -94,6 +95,7 @@ const WORKSPACES: Record<Analyst, { label: string; name: string; sub: string; pl
     label: "Property", name: "Acolyte Property Analyst", placeholder: "Ask about SA property: stock, prices, rents, agencies…",
     sub: "Your AI analyst for SA property: stock, asking prices, rents, yields, price cuts and agency share, refreshed every morning.",
     starters: [
+      "What changed in the property market since yesterday?",
       "Where is residential stock for sale highest, by region?",
       "Median rent vs asking price by region: where are gross yields highest?",
       "Which agencies hold the most listings in Johannesburg, Cape Town and Durban?",
@@ -113,6 +115,7 @@ const WORKSPACES: Record<Analyst, { label: string; name: string; sub: string; pl
     label: "Retail pricing", name: "Acolyte Retail Pricing Analyst", placeholder: "Ask about SA shelf prices, retailers, baskets…",
     sub: "Your AI pricing analyst for FMCG: everyday-item prices across SA grocery chains, wholesalers, pharmacies and marketplaces, checked every morning.",
     starters: [
+      "Which prices moved since yesterday, and which look like promotions?",
       "Which retailer is cheapest for a like-for-like basket today?",
       "Where are the widest price gaps between retailers for the same item?",
       "Compare Makro, Woolworths and Checkers Sixty60 on pantry staples",
@@ -132,6 +135,7 @@ const WORKSPACES: Record<Analyst, { label: string; name: string; sub: string; pl
     label: "Marketplaces", name: "Acolyte Marketplace Analyst", placeholder: "Ask about Amazon.co.za and Takealot prices…",
     sub: "Your AI analyst for SA online marketplaces: Amazon.co.za and Takealot prices, sellers and reviews against grocery and wholesale, every morning.",
     starters: [
+      "What changed on Amazon.co.za and Takealot since yesterday?",
       "Is Amazon.co.za or Takealot cheaper on everyday items?",
       "How do marketplace prices compare with the cheapest grocery store?",
       "Which basket items are missing on Amazon.co.za or Takealot?",

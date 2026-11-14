@@ -39,3 +39,11 @@ Two kinds of data, use the right one:
 Useful derived measures:
 - Gross rental yield for an area ≈ 12 × median monthly rent / median sale price, comparing like with like
   (same region, property_type and beds). State that it is an indicative asking-price yield.
+
+## What changed day to day
+- analyst.property_stock_changes — full counts vs the previous day counted: day, province, region, is_province_total,
+  deal_type, category, listings, previous_day, previous_listings, change, change_pct. COMPLETE data: use for "how did
+  stock move since yesterday / this week". For a week, compare the latest day with the day 7 days earlier.
+- analyst.property_daily_activity — from the listing SAMPLE: day, province, region, deal_type, new_listings (first seen
+  that day), price_cuts, price_rises, avg_cut_pct. The first collection day is left out (baseline).
+For "what changed since yesterday", lead with stock changes (complete), then new listings and price cuts (sample).

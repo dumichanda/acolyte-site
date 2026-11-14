@@ -162,6 +162,10 @@ def fetch_salaries(conn, c: scrappa.Client) -> int:
                                 fetched_at = now()""",
                          (title, fam, loc, ltype, lid, e.get("currency"), e.get("pay_period"), b.get("p10"), b.get("p25"),
                           b.get("p50"), b.get("p75"), b.get("p90"), tp.get("p50"), e.get("salaries_count"), e.get("confidence")))
+            if b.get("p50"):
+                conn.execute("""INSERT INTO talent.salary_history VALUES (%s,%s,%s,%s,current_date,%s,%s,%s,%s,%s)
+                                ON CONFLICT DO NOTHING""", (title, lid, loc, fam, b.get("p25"), b.get("p50"), b.get("p75"),
+                                                           tp.get("p50"), e.get("salaries_count")))
             conn.commit()
             n += 1
     return n
@@ -187,6 +191,9 @@ def fetch_ratings(conn, c: scrappa.Client, limit: int) -> int:
                             url = EXCLUDED.url, matched = EXCLUDED.matched, fetched_at = now()""",
                      (name, cid, (best or {}).get("id"), (best or {}).get("name"), (best or {}).get("rating"),
                       (best or {}).get("review_count"), (best or {}).get("salary_count"), (best or {}).get("url"), bool(best)))
+        if best:
+            conn.execute("INSERT INTO talent.rating_history VALUES (%s, current_date, %s, %s) ON CONFLICT DO NOTHING",
+                         (name, best.get("rating"), best.get("review_count")))
         conn.commit()
         n += 1
     return n

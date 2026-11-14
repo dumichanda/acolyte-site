@@ -57,3 +57,12 @@ SELECT day, retailer, channel, count(*) AS items_priced,
        (SELECT count(*) FROM retail.basket) AS basket_items,
        sum(price_zar) AS basket_cost_zar
 FROM analyst.retail_prices GROUP BY day, retailer, channel;
+
+-- What changed: each item-retailer price vs the previous day it was seen.
+DROP VIEW IF EXISTS analyst.retail_price_changes CASCADE;
+CREATE VIEW analyst.retail_price_changes AS
+SELECT day, item, category, retailer, channel, price_zar,
+       lag(day) OVER w AS previous_day, lag(price_zar) OVER w AS previous_price_zar,
+       price_zar - lag(price_zar) OVER w AS change_zar,
+       round(100.0 * (price_zar - lag(price_zar) OVER w) / NULLIF(lag(price_zar) OVER w, 0), 1) AS change_pct
+FROM analyst.retail_prices WINDOW w AS (PARTITION BY item, retailer ORDER BY day);

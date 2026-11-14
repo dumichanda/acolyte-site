@@ -75,3 +75,9 @@ Use this, not analyst.jobs.salary_annual, for pay questions; jobs.salary_annual 
 ## analyst.employer_ratings — Glassdoor employer ratings for employers with the most open roles
 employer (matches analyst.employers.name and analyst.jobs.employer), glassdoor_name, rating (1-5), review_count,
 salary_count, url. Treat ratings with fewer than 20 reviews as indicative.
+
+## Tracking over time
+- analyst.jobs_new_by_day — day (posting date), role_family, province, source, new_ads. For "what changed since
+  yesterday / this week", compare the latest days with the same days a week earlier.
+- analyst.salary_history — Glassdoor salary medians at each monthly refresh (as_of, monthly_median, change_vs_previous,
+  change_pct). analyst.employer_rating_history — rating and review counts at each refresh (rating_change, new_reviews).

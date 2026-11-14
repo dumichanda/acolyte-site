@@ -35,3 +35,8 @@ Useful measures (define them in the answer):
 - Price index vs a reference retailer = 100 × retailer price / reference price, averaged over common items.
 - Price gap to cheapest = (price − cheapest price for that item that day) / cheapest.
 - Price change = latest price vs the earliest day in the data for the same item and retailer.
+
+## analyst.retail_price_changes — what changed day to day
+day, item, category, retailer, channel, price_zar, previous_day, previous_price_zar, change_zar, change_pct.
+Each item-retailer price vs the previous day it was seen. Moves of −10% or more are likely promotions; a return to
+the earlier price later means the promotion ended. For "what changed since yesterday" filter day = latest day.

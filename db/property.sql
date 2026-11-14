@@ -106,3 +106,32 @@ SELECT p.portal, p.listing_id, replace(l.province, 'KwaZulu Natal', 'KwaZulu-Nat
 FROM property.prices p JOIN property.listings l USING (portal, listing_id);
 
 CREATE VIEW analyst.bond_rate AS SELECT day, rate AS prime_bond_rate_pct FROM property.bond_rate;
+
+-- ---------------- What changed day to day ----------------
+DROP VIEW IF EXISTS analyst.property_stock_changes, analyst.property_daily_activity CASCADE;
+
+-- Full stock counts vs the previous day counted (complete data).
+CREATE VIEW analyst.property_stock_changes AS
+SELECT day, province, region, is_province_total, deal_type, category, listings,
+       lag(day) OVER w AS previous_day, lag(listings) OVER w AS previous_listings,
+       listings - lag(listings) OVER w AS change,
+       round(100.0 * (listings - lag(listings) OVER w) / NULLIF(lag(listings) OVER w, 0), 2) AS change_pct
+FROM analyst.property_stock WINDOW w AS (PARTITION BY portal, province, region, deal_type, category ORDER BY day);
+
+-- Daily activity in the listing sample: new listings first seen, price cuts and rises seen that day.
+CREATE VIEW analyst.property_daily_activity AS
+WITH ch AS (SELECT seen_on AS day, province, region, deal_type,
+                   count(*) FILTER (WHERE change_zar < 0) AS price_cuts,
+                   count(*) FILTER (WHERE change_zar > 0) AS price_rises,
+                   round(avg(100.0 * change_zar / NULLIF(price_zar - change_zar, 0)) FILTER (WHERE change_zar < 0), 1) AS avg_cut_pct
+            FROM analyst.property_price_changes GROUP BY 1, 2, 3, 4),
+     nw AS (SELECT first_seen AS day, province, region, deal_type, count(*) AS new_listings
+            FROM analyst.property_listings GROUP BY 1, 2, 3, 4)
+SELECT COALESCE(ch.day, nw.day) AS day, COALESCE(ch.province, nw.province) AS province,
+       COALESCE(ch.region, nw.region) AS region, COALESCE(ch.deal_type, nw.deal_type) AS deal_type,
+       COALESCE(nw.new_listings, 0) AS new_listings, COALESCE(ch.price_cuts, 0) AS price_cuts,
+       COALESCE(ch.price_rises, 0) AS price_rises, ch.avg_cut_pct
+FROM ch FULL JOIN nw ON ch.day = nw.day AND ch.region IS NOT DISTINCT FROM nw.region AND ch.deal_type = nw.deal_type
+                     AND ch.province IS NOT DISTINCT FROM nw.province
+-- the first day of collection is the baseline (every listing is "new" then), so it is left out
+WHERE COALESCE(ch.day, nw.day) > (SELECT min(first_seen) FROM property.listings);

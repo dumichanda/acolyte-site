@@ -53,6 +53,12 @@ def semantic(industry: str) -> str:
 # ---------------------------------------------------------------- starter dashboards (tiles re-run live)
 _LATEST = "(SELECT max(day) FROM property_stock)"
 PROPERTY_DASHBOARD = [
+    {"type": "table", "x": "Region", "y": ["Change"], "value_format": "number",
+     "title": "What changed since the previous day", "subtitle": "Full stock counts per region, biggest moves first",
+     "sql": """SELECT region AS "Region", deal_type AS "Deal", previous_listings AS "Previous", listings AS "Latest",
+       change AS "Change", change_pct AS "Change %" FROM property_stock_changes
+WHERE NOT is_province_total AND category = 'residential' AND day = (SELECT max(day) FROM property_stock)
+  AND previous_day IS NOT NULL ORDER BY abs(change) DESC LIMIT 15"""},
     {"type": "line", "x": "Day", "y": ["For sale", "To rent"], "value_format": "number",
      "title": "Homes on the market, South Africa", "subtitle": "Residential listings on Private Property, all provinces",
      "sql": """SELECT day AS "Day",
@@ -103,6 +109,11 @@ FROM property_listings WHERE price_change_pct < 0 AND active ORDER BY last_seen 
 
 _RLATEST = "(SELECT max(day) FROM retail_prices)"
 RETAIL_DASHBOARD = [
+    {"type": "table", "x": "Item", "y": ["Change %"], "value_format": "number",
+     "title": "Price moves since the previous day", "subtitle": "Same item and retailer; −10% or more is likely a promotion",
+     "sql": f"""SELECT item AS "Item", retailer AS "Retailer", previous_price_zar AS "Previous price", price_zar AS "Price",
+       change_pct AS "Change %" FROM retail_price_changes WHERE day = {_RLATEST} AND change_zar <> 0
+ORDER BY abs(change_pct) DESC LIMIT 20"""},
     {"type": "hbar", "x": "Retailer", "y": ["Items where cheapest"], "value_format": "number",
      "title": "Who is cheapest most often", "subtitle": "Basket items where each retailer had the lowest price, latest day",
      "sql": f"""WITH p AS (SELECT item, retailer, price_zar, rank() OVER (PARTITION BY item ORDER BY price_zar) r
@@ -154,14 +165,17 @@ DASHBOARDS = {"property": ("Property market", PROPERTY_DASHBOARD), "retail": ("R
 # ---------------------------------------------------------------- daily briefs
 BRIEFS = {
     "property": (
-        "Make me today's Daily Property Brief as a report pack for estate agency principals. Cover, in order of importance: "
+        "Make me today's Daily Property Brief as a report pack for estate agency principals. Open with what changed since "
+        "the previous day (analyst.property_stock_changes, then new listings and price cuts from property_daily_activity). "
+        "Then cover, in order of importance: "
         "(1) where stock for sale and to rent is rising or falling (province and region, latest full count versus the "
         "earliest day in the data, or say if there is only one day so far); (2) asking prices and rents by region, "
         "with indicative gross yields for 2-bedroom homes; (3) price reductions and listings with offers pending; "
         "(4) which agencies hold the most listings in the biggest regions; (5) the bond rate. Keep it to 4-6 sections. "
         "Actions should tell an agency where to focus listings and how to price."),
     "retail": (
-        "Make me today's Daily Retail Price Brief as a report pack for an FMCG brand or category manager. Cover, in order "
+        "Make me today's Daily Retail Price Brief as a report pack for an FMCG brand or category manager. Open with what "
+        "changed since the previous day (analyst.retail_price_changes: biggest moves, likely promotions). Then cover, in order "
         "of importance: (1) which retailer is cheapest on a like-for-like basket today and by how much; (2) price index by "
         "retailer and by channel; (3) the widest price spreads and biggest price moves since the earliest day (likely "
         "promotions), or the current spread if there is one day of data; (4) Amazon.co.za and Takealot versus grocery. "
