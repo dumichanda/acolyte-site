@@ -66,6 +66,7 @@ function App() {
   const [checked, setChecked] = useState(false);
   const [boards, setBoards] = useState<Board[]>([]);
   const [limit, setLimit] = useState(0);
+  const [templates, setTemplates] = useState<string[]>([]);
   const [current, setCurrent] = useState<number | null>(() => Number(new URLSearchParams(location.search).get("d")) || null);
   const [tiles, setTiles] = useState<Tile[]>([]);
   const [name, setName] = useState("");
@@ -73,8 +74,8 @@ function App() {
   const [err, setErr] = useState("");
 
   const loadBoards = useCallback(async () => {
-    const r = await api<{ dashboards: Board[]; limit: number }>("/dashboards");
-    setBoards(r.dashboards); setLimit(r.limit);
+    const r = await api<{ dashboards: Board[]; limit: number; templates?: string[] }>("/dashboards");
+    setBoards(r.dashboards); setLimit(r.limit); setTemplates(r.templates || []);
     setCurrent((c) => (c && r.dashboards.some((b) => b.id === c) ? c : r.dashboards[0]?.id ?? null));
   }, []);
   const loadTiles = useCallback(async (refresh = false) => {
@@ -134,6 +135,13 @@ function App() {
               try { const d = await api<{ id: number }>("/dashboards", { body: { name: n } }); await loadBoards(); setCurrent(d.id); }
               catch (e) { setErr((e as Error).message); }
             }}>+ New dashboard</button>
+            {templates.includes("property") && (
+              <button className="btn sm" disabled={boards.length >= limit} title="Eight live charts on stock, prices, rents, yields, agencies and price cuts"
+                onClick={async () => {
+                  try { const d = await api<{ id: number }>("/dashboards/template", { body: { industry: "property" } }); await loadBoards(); setCurrent(d.id); }
+                  catch (e) { setErr((e as Error).message); }
+                }}>+ Ready-made property dashboard</button>
+            )}
             <div className="side-account"><UsageCard me={me} onLogout={() => { logout(); setMe(null); setBoards([]); setTiles([]); }} /></div>
           </aside>
           <main>

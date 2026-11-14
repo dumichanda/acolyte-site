@@ -295,7 +295,7 @@ const USE_CASES: { title: string; status: "Live" | "Proof of concept" | "Next" |
     text: "Companies whose hiring points to a buying need, delivered as a weekly prospect list.", who: "Software vendors · consultancies · banks" },
   { title: "Regional Hiring Pulse", status: "Next",
     text: "Hiring momentum by province and metro, as an early read on local economic activity.", who: "Investors · property · municipalities" },
-  { title: "Property Market Pulse", status: "Live", href: "/analyst/",
+  { title: "Property Market Pulse", status: "Live", href: "/property/",
     text: "Asking prices, rents and stock by province, region and suburb, with price cuts tracked daily.", who: "Agencies · developers · banks · investors" },
   { title: "Rental Yield Finder", status: "Live", href: "/analyst/",
     text: "Where rents are high against asking prices, by region, property type and bedrooms.", who: "Buy-to-let investors · property funds" },

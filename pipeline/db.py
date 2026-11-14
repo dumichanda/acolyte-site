@@ -55,6 +55,7 @@ def setup_analyst_role(conn: psycopg.Connection) -> None:
                     admin.dashboard_tiles TO analyst_admin""")
     conn.execute("""GRANT USAGE ON SEQUENCE admin.accounts_id_seq, admin.dashboards_id_seq, admin.dashboard_tiles_id_seq
                     TO analyst_admin""")
+    conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON admin.briefs TO analyst_admin")
 
 
 def init_db() -> None:

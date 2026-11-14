@@ -102,6 +102,19 @@ jobs:
           if [ -n "${{ inputs.max_calls }}" ]; then ARGS="$ARGS --max-calls ${{ inputs.max_calls }}"; fi
           python refresh.py $ARGS
 
+      - name: Start the Daily Property Brief
+        # Optional: needs the ADMIN_TOKEN repository secret (same value as on Render). Without it, the brief is written
+        # when the first property client opens Ask AI after 07:00 SAST.
+        if: ${{ !inputs.setup_only }}
+        env:
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: |
+          if [ -z "$ADMIN_TOKEN" ]; then echo "ADMIN_TOKEN not set; the brief starts on first use."; exit 0; fi
+          for i in 1 2 3; do
+            curl -fsS --max-time 120 -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
+              https://acolyte-site.onrender.com/admin/briefs/property/run && break || sleep 30
+          done || true
+
       - name: Commit new snapshot
         run: |
           git config user.name "acolyte-bot"

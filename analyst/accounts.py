@@ -109,7 +109,7 @@ def login(db: str, pin: str, ip: str) -> dict:
 
 def get_account(db: str, account_id: int) -> dict | None:
     with psycopg.connect(db) as conn:
-        r = _rows(conn, "SELECT id, name, plan, active FROM admin.accounts WHERE id = %s", (account_id,))
+        r = _rows(conn, "SELECT id, name, plan, industry, active FROM admin.accounts WHERE id = %s", (account_id,))
     return r[0] if r and r[0]["active"] else None
 
 
@@ -133,7 +133,10 @@ def me(db: str, account: dict) -> dict:
     plan = PLANS[account["plan"]]
     u = usage(db, account["id"])
     left = lambda used, cap: max(0.0, round(100 * (1 - used / cap), 1)) if cap else 100.0  # noqa: E731
-    return {"account": {"id": account["id"], "name": account["name"], "plan": account["plan"], "plan_label": plan["label"]},
+    from .industries import INDUSTRIES
+    ind = INDUSTRIES.get(account.get("industry") or "all", INDUSTRIES["all"])
+    return {"account": {"id": account["id"], "name": account["name"], "plan": account["plan"], "plan_label": plan["label"],
+                        "industry": account.get("industry") or "all", "industry_label": ind["label"], "analyst_name": ind["name"]},
             "limits": {k: plan[k] for k in ("questions_day", "reports_day", "reports_week", "dashboards", "max_tier")},
             "usage": u, "day_left_pct": left(u["day_usd"], plan["daily_usd"]), "week_left_pct": left(u["week_usd"], plan["weekly_usd"])}
 
@@ -235,6 +238,22 @@ def create_dashboard(db: str, account: dict, name: str) -> dict:
     return r[0]
 
 
+def create_template_dashboard(db: str, account: dict, industry: str | None = None) -> dict:
+    """Create the industry's ready-made dashboard for this account (counts against the plan's dashboard limit)."""
+    from .industries import DASHBOARDS
+    tpl = DASHBOARDS.get(industry or account.get("industry") or "")
+    if not tpl:
+        raise Denied(404, "There is no ready-made dashboard for this industry yet.")
+    name, tiles = tpl
+    d = create_dashboard(db, account, name)
+    with psycopg.connect(db) as conn:
+        for pos, spec in enumerate(tiles, 1):
+            size = "full" if spec["type"] in ("table", "line", "area") else "half"
+            conn.execute("INSERT INTO admin.dashboard_tiles (dashboard_id, position, size, spec) VALUES (%s, %s, %s, %s)",
+                         (d["id"], pos, size, json.dumps({k: spec.get(k) for k in SPEC_KEYS})))
+    return d
+
+
 def _own_dashboard(conn, account_id: int, did: int) -> None:
     if not conn.execute("SELECT 1 FROM admin.dashboards WHERE id = %s AND account_id = %s", (did, account_id)).fetchone():
         raise Denied(404, "Dashboard not found.")
@@ -312,7 +331,7 @@ def dashboard_data(db: str, analyst_db: str, account_id: int, did: int, refresh:
 def admin_accounts(db: str) -> list[dict]:
     with psycopg.connect(db) as conn:
         return _jsonable(_rows(conn, """
-            SELECT a.id, a.name, a.plan, a.active, a.created_at, a.last_login,
+            SELECT a.id, a.name, a.plan, a.industry, a.active, a.created_at, a.last_login,
                    (SELECT count(*) FROM admin.analyst_usage u WHERE u.account_id = a.id AND u.at >= now() - interval '30 days') AS questions_30d,
                    (SELECT coalesce(sum(cost_usd), 0) FROM admin.analyst_usage u WHERE u.account_id = a.id AND u.at >= now() - interval '30 days') AS cost_30d,
                    (SELECT count(*) FROM admin.analyst_usage u WHERE u.account_id = a.id AND u.report AND u.at >= now() - interval '30 days') AS reports_30d,
@@ -320,9 +339,12 @@ def admin_accounts(db: str) -> list[dict]:
             FROM admin.accounts a ORDER BY a.created_at"""))
 
 
-def admin_create_account(db: str, name: str, plan: str, pin: str | None) -> dict:
+def admin_create_account(db: str, name: str, plan: str, pin: str | None, industry: str = "all") -> dict:
+    from .industries import INDUSTRIES
     if plan not in PLANS:
         raise Denied(400, "Unknown plan.")
+    if industry not in INDUSTRIES:
+        raise Denied(400, "Unknown industry.")
     pin = (pin or "").strip() or new_pin()
     if len(pin) < 6:
         raise Denied(400, "Use a PIN of at least 6 characters.")
@@ -331,14 +353,18 @@ def admin_create_account(db: str, name: str, plan: str, pin: str | None) -> dict
         for a in _rows(conn, "SELECT pin_salt, pin_hash FROM admin.accounts"):
             if hmac.compare_digest(hash_pin(pin, a["pin_salt"])[1], a["pin_hash"]):
                 raise Denied(400, "That PIN is already used by another account. Choose another.")
-        r = _rows(conn, "INSERT INTO admin.accounts (name, plan, pin_salt, pin_hash) VALUES (%s, %s, %s, %s) RETURNING id",
-                  ((name or "Client").strip()[:80], plan, salt, h))
+        r = _rows(conn, "INSERT INTO admin.accounts (name, plan, industry, pin_salt, pin_hash) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+                  ((name or "Client").strip()[:80], plan, industry, salt, h))
     return {"id": r[0]["id"], "pin": pin}
 
 
-def admin_update_account(db: str, aid: int, plan: str | None, active: bool | None, reset_pin: bool) -> dict:
+def admin_update_account(db: str, aid: int, plan: str | None, active: bool | None, reset_pin: bool,
+                         industry: str | None = None) -> dict:
+    from .industries import INDUSTRIES
     out = {}
     with psycopg.connect(db) as conn:
+        if industry in INDUSTRIES:
+            conn.execute("UPDATE admin.accounts SET industry = %s WHERE id = %s", (industry, aid))
         if plan in PLANS:
             conn.execute("UPDATE admin.accounts SET plan = %s WHERE id = %s", (plan, aid))
         if active is not None:
@@ -349,3 +375,44 @@ def admin_update_account(db: str, aid: int, plan: str | None, active: bool | Non
             conn.execute("UPDATE admin.accounts SET pin_salt = %s, pin_hash = %s WHERE id = %s", (salt, h, aid))
             out["pin"] = pin
     return out
+
+
+# ---------------------------------------------------------------- daily briefs
+def get_brief(db: str, industry: str, day=None) -> dict | None:
+    """The requested day's brief, else the latest ready one."""
+    with psycopg.connect(db) as conn:
+        r = _rows(conn, """SELECT industry, day, status, report, summary, cost_usd, error, started_at, finished_at
+                           FROM admin.briefs WHERE industry = %s AND (%s::date IS NULL OR day = %s::date)
+                           ORDER BY (status = 'ready') DESC, day DESC LIMIT 1""", (industry, day, day))
+    return _jsonable(r[0]) if r else None
+
+
+def brief_status(db: str, industry: str, day) -> str | None:
+    with psycopg.connect(db) as conn:
+        r = conn.execute("SELECT status FROM admin.briefs WHERE industry = %s AND day = %s", (industry, day)).fetchone()
+    return r[0] if r else None
+
+
+def list_briefs(db: str, industry: str, limit: int = 14) -> list[dict]:
+    with psycopg.connect(db) as conn:
+        return _jsonable(_rows(conn, """SELECT day, status, report->>'title' AS title, finished_at FROM admin.briefs
+                                       WHERE industry = %s ORDER BY day DESC LIMIT %s""", (industry, limit)))
+
+
+def claim_brief(db: str, industry: str, day) -> bool:
+    """Mark the day's brief as running. False if it is running or ready already (stale/failed runs can be retried)."""
+    with psycopg.connect(db) as conn:
+        r = conn.execute("""INSERT INTO admin.briefs AS b (industry, day) VALUES (%s, %s)
+                            ON CONFLICT (industry, day) DO UPDATE SET status = 'running', started_at = now(), error = NULL
+                            WHERE (b.status = 'failed' AND b.started_at < now() - interval '30 minutes')
+                               OR (b.status = 'running' AND b.started_at < now() - interval '20 minutes')
+                            RETURNING day""", (industry, day)).fetchone()
+    return bool(r)
+
+
+def finish_brief(db: str, industry: str, day, report: dict | None, summary: str, cost: float, error: str | None) -> None:
+    with psycopg.connect(db) as conn:
+        conn.execute("""UPDATE admin.briefs SET status = %s, report = %s, summary = %s, cost_usd = %s, error = %s,
+                        finished_at = now() WHERE industry = %s AND day = %s""",
+                     ("ready" if report else "failed", json.dumps(report, default=str) if report else None, (summary or "")[:4000],
+                      cost, (error or "")[:500] or None, industry, day))

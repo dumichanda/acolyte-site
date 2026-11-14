@@ -27,6 +27,7 @@ export default defineConfig({
         analyst: "analyst/index.html",
         admin: "admin/index.html",
         dashboards: "dashboards/index.html",
+        property: "property/index.html",
       },
     },
   },

@@ -21067,5 +21067,95 @@
   ],
   "recommendation": "Creditors & Debtors roles in Gauteng: high automation score (68/100) and R65.6m a year of value. Pitch: invoice & payment automation (Sage / Pastel / Xero integration).",
   "source": "template"
+ },
+ "property": {
+  "day": "2026-11-14",
+  "for_sale": 190209,
+  "to_rent": 34248,
+  "regions": 48,
+  "listings_tracked": 1749,
+  "bond_rate": "10.5",
+  "days_of_data": 1,
+  "top_regions": [
+   {
+    "region": "Johannesburg",
+    "listings": 28029
+   },
+   {
+    "region": "East Rand",
+    "listings": 20932
+   },
+   {
+    "region": "Durban",
+    "listings": 19241
+   },
+   {
+    "region": "Pretoria",
+    "listings": 18986
+   },
+   {
+    "region": "Cape Town",
+    "listings": 8279
+   },
+   {
+    "region": "Garden Route",
+    "listings": 8152
+   },
+   {
+    "region": "KZN South Coast",
+    "listings": 6770
+   },
+   {
+    "region": "Dolphin Coast",
+    "listings": 6244
+   }
+  ],
+  "provinces": [
+   {
+    "province": "Gauteng",
+    "for_sale": 84308,
+    "to_rent": 17724
+   },
+   {
+    "province": "KwaZulu-Natal",
+    "for_sale": 39087,
+    "to_rent": 6440
+   },
+   {
+    "province": "Western Cape",
+    "for_sale": 27010,
+    "to_rent": 5463
+   },
+   {
+    "province": "North West",
+    "for_sale": 9805,
+    "to_rent": 897
+   },
+   {
+    "province": "Eastern Cape",
+    "for_sale": 9394,
+    "to_rent": 1369
+   },
+   {
+    "province": "Mpumalanga",
+    "for_sale": 8084,
+    "to_rent": 1058
+   },
+   {
+    "province": "Limpopo",
+    "for_sale": 5795,
+    "to_rent": 684
+   },
+   {
+    "province": "Free State",
+    "for_sale": 4437,
+    "to_rent": 334
+   },
+   {
+    "province": "Northern Cape",
+    "for_sale": 2289,
+    "to_rent": 279
+   }
+  ]
  }
 }

@@ -18,7 +18,7 @@ function ExportBtn({ label, run, primary }: { label: string; run: () => Promise<
     {busy ? "Preparing…" : label}</button>;
 }
 
-import { API, api, getToken, logout, type Me } from "../auth";
+import { API, api, getToken, logout, type Industry, type Me } from "../auth";
 import { SignIn, UsageCard } from "../Account";
 
 /** Signed-in account (null = anonymous demo visitor). */
@@ -68,13 +68,91 @@ function PinButton({ c }: { c: ChartArtifact }) {
   );
 }
 
-const STARTERS = [
-  "Which roles are SA employers hiring for most this month?",
-  "Compare Gauteng and Western Cape: roles, salaries and hiring trend",
-  "Median rent vs asking price by region: where are gross yields highest?",
-  "Which role types have the most automatable work, and where?",
-  "Make me a report pack on the SA job market",
-];
+/** Industry workspaces: what the analyst covers, how the page introduces it, and where to start. */
+const WORKSPACES: Record<Industry, { label: string; name: string; sub: string; placeholder: string; starters: string[] }> = {
+  all: {
+    label: "All data", name: "Acolyte Analyst", placeholder: "Ask about SA jobs or property…",
+    sub: "Your AI analyst queries live South African jobs and property data, draws the charts and writes the report. Every number comes from a real query you can inspect.",
+    starters: [
+      "Which roles are SA employers hiring for most this month?",
+      "Median rent vs asking price by region: where are gross yields highest?",
+      "Jobs and housing: compare hiring with rents in Johannesburg, Cape Town and Durban",
+      "Which role types have the most automatable work, and where?",
+      "Make me a report pack on the SA job market",
+    ],
+  },
+  jobs: {
+    label: "Jobs & talent", name: "Acolyte Talent Analyst", placeholder: "Ask about South Africa's job market…",
+    sub: "Your AI analyst for SA hiring: roles, skills, employers, salaries and automation potential, from live job ads.",
+    starters: [
+      "Which roles are SA employers hiring for most this month?",
+      "Compare Gauteng and Western Cape: roles, salaries and hiring trend",
+      "Which skills and software do finance job ads ask for most?",
+      "Which role types have the most automatable work, and where?",
+      "Make me a report pack on the SA job market",
+    ],
+  },
+  property: {
+    label: "Property", name: "Acolyte Property Analyst", placeholder: "Ask about SA property: stock, prices, rents, agencies…",
+    sub: "Your AI analyst for SA property: stock, asking prices, rents, yields, price cuts and agency share, refreshed every morning.",
+    starters: [
+      "Where is residential stock for sale highest, by region?",
+      "Median rent vs asking price by region: where are gross yields highest?",
+      "Which agencies hold the most listings in Johannesburg, Cape Town and Durban?",
+      "Where are sellers cutting asking prices?",
+      "Make me a report pack on the Gauteng property market for an agency principal",
+    ],
+  },
+};
+const WS_KEY = "analystWorkspace";
+const initialWorkspace = (): Industry => {
+  try {
+    const q = new URLSearchParams(location.search).get("industry") as Industry | null;
+    if (q && q in WORKSPACES) { localStorage.setItem(WS_KEY, q); return q; }
+    const v = localStorage.getItem(WS_KEY) as Industry | null;
+    return v && v in WORKSPACES ? v : "all";
+  } catch { return "all"; }
+};
+
+interface Brief { day: string; status: string; report: ReportArtifact | null; summary: string | null; finished_at: string | null }
+interface BriefResp { today: string; today_status: string | null; brief: Brief | null; history: { day: string; status: string; title: string | null }[] }
+
+/** Today's industry brief for signed-in workspaces: opens in the canvas, downloads as the 5-slide executive pack. */
+function BriefCard({ industry, onOpen }: { industry: Industry; onOpen: (r: ReportArtifact) => void }) {
+  const me = useContext(AuthCtx);
+  const [b, setB] = useState<BriefResp | null>(null);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    if (!me || industry !== "property") return;
+    let stop = false, timer = 0;
+    const load = () => api<BriefResp>(`/briefs/${industry}`).then((r) => {
+      if (stop) return;
+      setB(r); setErr("");
+      if (r.today_status === "running") timer = window.setTimeout(load, 30000);
+    }).catch((e) => !stop && setErr((e as Error).message));
+    load();
+    return () => { stop = true; clearTimeout(timer); };
+  }, [me, industry]);
+  if (industry !== "property") return null;
+  if (!me) return <div className="brief-card"><b>Daily Property Brief</b><p className="muted small">Sign in to get a fresh property market brief every morning, ready as a 5-slide PowerPoint.</p></div>;
+  if (err) return null;
+  const r = b?.brief?.status === "ready" ? b.brief.report : null;
+  const isToday = b?.brief?.day === b?.today;
+  return (
+    <div className="brief-card">
+      <div className="brief-head"><b>Daily Property Brief</b>
+        {b?.today_status === "running" && <span className="pill run">Preparing today's brief…</span>}
+        {r && <span className="pill">{isToday ? "Today" : new Date(b!.brief!.day).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}</span>}
+      </div>
+      {r ? <>
+        <p>{r.exec?.takeaway || r.summary || r.title}</p>
+        <div className="row"><button className="btn primary sm" onClick={() => onOpen(r)}>Open the brief</button>
+          <ExportBtn label="Executive PowerPoint" run={async () => (await exporter()).reportToPptx(r, "executive")} /></div>
+      </> : <p className="muted small">{b?.today_status === "running" ? "Your analyst is writing this morning's brief from today's data. It takes about three minutes; this card updates itself."
+        : "The first brief is written after the morning data refresh (from 07:00)."}</p>}
+    </div>
+  );
+}
 
 interface Dataset { id: string; title: string; sql: string; columns: string[]; rows: unknown[][]; row_count: number }
 type Item =
@@ -209,9 +287,15 @@ function ReportView({ r, actions = true }: { r: ReportArtifact; actions?: boolea
       ))}
       {r.qa?.length ? <section><h3>Executive Q&A</h3><div className="qa">{r.qa.map((x, i) => <div key={i}><b>{x.q}</b><p>{x.a}</p></div>)}</div></section> : null}
       {r.conclusions?.actions?.length ? <section><h3>Recommended actions</h3><ol>{r.conclusions.actions.map((a, i) => <li key={i}>{a}</li>)}</ol></section> : null}
-      <div className="muted small foot">Source: Acolyte SA jobs dataset (public job ads, refreshed daily). Download the pack for the full method and limits.</div>
+      <div className="muted small foot">Source: Acolyte, {dataSourceLabel(r)} (refreshed daily). Download the pack for the full method and limits.</div>
     </div>
   );
+}
+
+function dataSourceLabel(r: ReportArtifact) {
+  const sql = Object.values(r.charts || {}).map((c) => c.sql || "").join(" ");
+  const p = /property_|bond_rate/.test(sql), j = /\b(jobs|job_tools|job_skills|employers|daily_stats)\b/.test(sql);
+  return p && j ? "SA jobs and property datasets" : p ? "SA property dataset (Private Property listings)" : "SA jobs dataset (public job ads)";
 }
 
 function Voice({ onText }: { onText: (t: string) => void }) {
@@ -244,6 +328,14 @@ function App() {
   const [me, setMe] = useState<Me | null>(null);
   const [history, setHistory] = useState<Conv[]>([]);
   const [sideOpen, setSideOpen] = useState(false);
+  const [pick, setPick] = useState<Industry>(initialWorkspace);
+  const locked = me?.account.industry && me.account.industry !== "all" ? me.account.industry : null;
+  const ws: Industry = locked || pick;
+  const W = WORKSPACES[ws];
+  const choose = (v: Industry) => { setPick(v); try { localStorage.setItem(WS_KEY, v); } catch { /* storage blocked */ } reset(); };
+  const openReport = (r: ReportArtifact) => {
+    setArtifacts((m) => ({ ...m, [r.id]: r })); setOrder((o) => [r.id, ...o.filter((x) => x !== r.id)]); setActive(r.id);
+  };
 
   const refreshAccount = useCallback(async () => {
     if (!getToken()) { setMe(null); setHistory(readLocal()); return; }
@@ -304,7 +396,7 @@ function App() {
       const token = getToken();
       const r = await fetch(`${API}/ask`, { method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ session_id: session.current, question, mode }) });
+        body: JSON.stringify({ session_id: session.current, question, mode, industry: ws }) });
       if (!r.ok || !r.body) {
         const err = await r.json().catch(() => ({ detail: r.statusText }));
         throw new Error(err.detail || "The analyst is unavailable.");
@@ -351,7 +443,7 @@ function App() {
   function reset() { session.current = null; setItems([]); setArtifacts({}); setOrder([]); setActive(null); setSideOpen(false); }
   const current = active ? artifacts[active] : null;
   const ready = health === "ok";
-  const placeholder = useMemo(() => (ready ? "Ask about South Africa's job market…" : health === "checking" ? "Waking up the analyst (can take up to a minute)…" : "Analyst offline"), [ready, health]);
+  const placeholder = useMemo(() => (ready ? W.placeholder : health === "checking" ? "Waking up the analyst (can take up to a minute)…" : "Analyst offline"), [ready, health, W]);
 
   return (
     <AuthCtx.Provider value={me}>
@@ -381,17 +473,25 @@ function App() {
         </aside>
         <section className="chat">
           <header>
-            <h1>Ask the data</h1>
-            <p className="sub">Acolyte Analyst queries the live SA job-market data, draws the charts and writes the report. Every number comes from a real query you can inspect.</p>
+            <div className="ws-row">
+              <h1>{me?.account.analyst_name && locked ? me.account.analyst_name : W.name}</h1>
+              {!locked && (
+                <select className="ws" value={pick} onChange={(e) => choose(e.target.value as Industry)} disabled={busy} aria-label="Which data">
+                  {(Object.keys(WORKSPACES) as Industry[]).map((k) => <option key={k} value={k}>{WORKSPACES[k].label}</option>)}
+                </select>
+              )}
+            </div>
+            <p className="sub">{W.sub}</p>
           </header>
           {health === "unconfigured" && <div className="banner">The analyst service isn't connected yet. It runs as a small server (see <code>analyst/</code> in the repo). Once it's deployed, its address goes in <code>site.ts → analystApi</code>.</div>}
           {health === "down" && <div className="banner">The analyst isn't responding. Please try again shortly.</div>}
 
           <div className="thread">
+            {items.length === 0 && <BriefCard industry={ws} onOpen={openReport} />}
             {items.length === 0 && (
               <div className="starters">
                 <div className="muted small">Try one of these</div>
-                {STARTERS.map((s) => <button key={s} className="starter" disabled={!ready} onClick={() => ask(s)}>{s}</button>)}
+                {W.starters.map((s) => <button key={s} className="starter" disabled={!ready} onClick={() => ask(s)}>{s}</button>)}
               </div>
             )}
             {items.map((it, i) => it.kind === "user"
@@ -442,7 +542,7 @@ function App() {
               <button className="btn primary" disabled={!ready || busy || !q.trim()}>{busy ? "Thinking…" : "Ask"}</button>
             </div>
           </form>
-          <p className="muted small">Demo on public job-ad data. Answers can be wrong; check the queries. <a href={url("/#contact")}>Want this on your own data?</a></p>
+          <p className="muted small">Built on public {ws === "property" ? "property listings" : ws === "jobs" ? "job ads" : "job ads and property listings"}. Answers can be wrong; check the queries. <a href={url("/#contact")}>Want this on your own data?</a></p>
         </section>
 
         <section className="canvas">

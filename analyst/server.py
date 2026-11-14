@@ -30,6 +30,7 @@ from pydantic import BaseModel, Field
 
 from . import accounts as acc
 from .agent import MODEL, TIERS, Budget, Session, answer, query, route
+from .industries import BRIEFS, INDUSTRIES
 
 REPORT_RX = re.compile(r"report|pack|deck|presentation|power ?point|\bppt|\bpdf", re.I)
 
@@ -66,6 +67,7 @@ class Ask(BaseModel):
     session_id: str | None = Field(default=None, max_length=64)
     question: str = Field(min_length=1, max_length=1500)
     mode: str = Field(default="auto", pattern="^(auto|fast|standard|deep)$")
+    industry: str | None = Field(default=None, pattern="^(all|jobs|property)$")
 
 
 def visitor(req: Request) -> str:
@@ -159,9 +161,14 @@ def ask(body: Ask, req: Request):
         max_tier = "deep" if is_report else plan["max_tier"]
         mode = tier if (body.mode != "auto" or tier != route(question, "auto")) else "auto"
 
+    # Industry workspace: a scoped account always gets its own industry; 'all' accounts and visitors may pick one.
+    industry = (account or {}).get("industry") or "all"
+    if industry == "all" and body.industry:
+        industry = body.industry
+
     with lock:
         s = sessions.get(body.session_id or "")
-    if s and s.account_id != (account["id"] if account else None):
+    if s and (s.account_id != (account["id"] if account else None) or s.industry != industry):
         s = None
     if not s and account and body.session_id:  # continue a saved conversation
         saved = acc.get_conversation(ADMIN_DB_URL, account["id"], body.session_id, with_state=True)
@@ -169,9 +176,9 @@ def ask(body: Ask, req: Request):
             st = saved["state"]
             s = Session(id=saved["id"], messages=st.get("messages", []), datasets=st.get("datasets", {}),
                         charts=st.get("charts", {}), account_id=account["id"], ui_items=saved.get("items") or [],
-                        ui_artifacts=saved.get("artifacts") or {})
+                        ui_artifacts=saved.get("artifacts") or {}, industry=industry)
     if not s:
-        s = Session(id=uuid.uuid4().hex, account_id=account["id"] if account else None)
+        s = Session(id=uuid.uuid4().hex, account_id=account["id"] if account else None, industry=industry)
     with lock:
         sessions[s.id] = s
     if s.turns >= MAX_TURNS:
@@ -288,7 +295,27 @@ class TilePatch(BaseModel):
 
 @app.get("/dashboards")
 def dashboards(account: dict = Depends(need_account)):
-    return {"dashboards": acc.list_dashboards(ADMIN_DB_URL, account["id"]), "limit": acc.PLANS[account["plan"]]["dashboards"]}
+    boards = acc.list_dashboards(ADMIN_DB_URL, account["id"])
+    if not boards and account.get("industry") in ("property",):   # first visit: start with the industry's ready-made board
+        try:
+            acc.create_template_dashboard(ADMIN_DB_URL, account)
+            boards = acc.list_dashboards(ADMIN_DB_URL, account["id"])
+        except acc.Denied:
+            pass
+    return {"dashboards": boards, "limit": acc.PLANS[account["plan"]]["dashboards"],
+            "templates": [k for k in ("property",) if account.get("industry") in (k, "all")]}
+
+
+class TemplateIn(BaseModel):
+    industry: str | None = Field(default=None, pattern="^(property)$")
+
+
+@app.post("/dashboards/template")
+def dashboard_template(body: TemplateIn, account: dict = Depends(need_account)):
+    ind = account.get("industry") or "all"
+    if body.industry and ind not in (body.industry, "all"):
+        raise HTTPException(403, "That dashboard is not part of your workspace.")
+    return guard(lambda: acc.create_template_dashboard(ADMIN_DB_URL, account, body.industry or ind))
 
 
 @app.post("/dashboards")
@@ -316,6 +343,92 @@ def tile_update(tid: int, body: TilePatch, account: dict = Depends(need_account)
 @app.get("/dashboards/{did}/data")
 def dashboard_data(did: int, refresh: bool = False, account: dict = Depends(need_account)):
     return guard(lambda: acc.dashboard_data(ADMIN_DB_URL, DB_URL, account["id"], did, refresh, query))
+
+
+# ---------------------------------------------------------------- daily industry briefs
+BRIEF_HOUR = int(os.environ.get("BRIEF_HOUR_SAST", "7"))   # the data refresh finishes around 06:30 SAST
+_brief_threads: dict[str, threading.Thread] = {}
+
+
+def sast_now() -> datetime:
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo("Africa/Johannesburg"))
+
+
+def generate_brief(industry: str, day) -> None:
+    """Run the industry's brief prompt as a deep report pack and store it. Never raises."""
+    t0, report, text, cost, err = time.time(), None, "", 0.0, None
+    s = Session(id=f"brief-{industry}-{day}", industry=industry)
+    rec_queries = []
+    try:
+        for ev in answer(client(), s, BRIEFS[industry], DB_URL, Budget(float(os.environ.get("BRIEF_MAX_USD", "3"))), "deep", "deep"):
+            t = ev.get("type")
+            if t == "text":
+                text += ev["text"]
+            elif t == "query":
+                rec_queries.append({"title": ev["dataset"].get("title"), "sql": ev["dataset"].get("sql")})
+            elif t == "artifact" and ev["artifact"].get("kind") == "report":
+                report = ev["artifact"]
+            elif t == "usage":
+                cost = ev.get("cost_usd") or 0.0
+            elif t == "error":
+                err = ev.get("text")
+        if not report and not err:
+            err = "The analyst finished without writing a report."
+    except Exception as e:
+        err = f"{e.__class__.__name__}: {e}"[:300]
+    print(f"[brief] {industry} {day}: {'ready' if report else 'failed'} ${cost:.3f} {err or ''}", flush=True)
+    try:
+        acc.finish_brief(ADMIN_DB_URL, industry, day, report, text, cost, None if report else err)
+        log_usage({"account_id": None, "visitor": "daily-brief", "session_id": s.id, "country": None,
+                   "question": f"[daily brief] {industry}", "mode": "deep", "tier": "deep", "models": [],
+                   "status": "done" if report else "error", "error": err, "queries": json.dumps(rec_queries)[:20000],
+                   "charts": len((report or {}).get("charts") or {}), "report": bool(report), "cost_usd": cost,
+                   "input": None, "cache_read": None, "cache_write": None, "output": None,
+                   "duration_ms": int((time.time() - t0) * 1000)})
+    except Exception as e:
+        print(f"[brief] could not save: {e}", flush=True)
+
+
+def start_brief(industry: str, day, force: bool = False) -> bool:
+    """Start today's brief in the background unless it is running or done. True if started."""
+    if not (DB_URL and os.environ.get("ANTHROPIC_API_KEY")) or industry not in BRIEFS:
+        return False
+    th = _brief_threads.get(industry)
+    if th and th.is_alive():
+        return False
+    if not acc.claim_brief(ADMIN_DB_URL, industry, day):
+        return False
+    th = threading.Thread(target=generate_brief, args=(industry, day), daemon=True)
+    _brief_threads[industry] = th
+    th.start()
+    return True
+
+
+@app.get("/briefs/{industry}")
+def brief(industry: str, day: str | None = None, account: dict = Depends(need_account)):
+    if industry not in BRIEFS:
+        raise HTTPException(404, "No daily brief for that industry.")
+    if (account.get("industry") or "all") not in (industry, "all"):
+        raise HTTPException(403, "That brief is not part of your workspace.")
+    now = sast_now()
+    today = now.date()
+    status = acc.brief_status(ADMIN_DB_URL, industry, today)
+    if status in (None, "failed") and now.hour >= BRIEF_HOUR and not day:
+        if start_brief(industry, today):   # first reader of the day after the refresh starts it (takes ~2-3 minutes)
+            status = "running"
+    b = acc.get_brief(ADMIN_DB_URL, industry, day)
+    return {"today": str(today), "today_status": status, "brief": b, "history": acc.list_briefs(ADMIN_DB_URL, industry)}
+
+
+@app.post("/admin/briefs/{industry}/run")
+def brief_run(industry: str, req: Request):
+    """Called by the daily workflow after the data refresh (or by hand from the admin page)."""
+    require_admin(req)
+    if industry not in BRIEFS:
+        raise HTTPException(404, "No daily brief for that industry.")
+    started = start_brief(industry, sast_now().date())
+    return {"started": started, "status": acc.brief_status(ADMIN_DB_URL, industry, sast_now().date())}
 
 
 def require_admin(req: Request) -> None:
@@ -380,21 +493,25 @@ class AccountIn(BaseModel):
     pin: str | None = Field(default=None, max_length=64)
     active: bool | None = None
     reset_pin: bool = False
+    industry: str | None = Field(default=None, pattern="^(all|jobs|property)$")
 
 
 @app.get("/admin/accounts")
 def admin_accounts(req: Request):
     require_admin(req)
-    return {"accounts": acc.admin_accounts(ADMIN_DB_URL), "plans": acc.PLANS}
+    return {"accounts": acc.admin_accounts(ADMIN_DB_URL), "plans": acc.PLANS,
+            "industries": {k: v["label"] for k, v in INDUSTRIES.items()}}
 
 
 @app.post("/admin/accounts")
 def admin_account_create(body: AccountIn, req: Request):
     require_admin(req)
-    return guard(lambda: acc.admin_create_account(ADMIN_DB_URL, body.name or "Client", body.plan or "junior", body.pin))
+    return guard(lambda: acc.admin_create_account(ADMIN_DB_URL, body.name or "Client", body.plan or "junior", body.pin,
+                                                    body.industry or "all"))
 
 
 @app.patch("/admin/accounts/{aid}")
 def admin_account_update(aid: int, body: AccountIn, req: Request):
     require_admin(req)
-    return guard(lambda: acc.admin_update_account(ADMIN_DB_URL, aid, body.plan, body.active, body.reset_pin))
+    return guard(lambda: acc.admin_update_account(ADMIN_DB_URL, aid, body.plan, body.active, body.reset_pin,
+                                                    body.industry))

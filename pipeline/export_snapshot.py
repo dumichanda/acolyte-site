@@ -165,6 +165,39 @@ def employers_and_tools(conn, kpis: dict) -> dict:
     return {"employers": employers, "posters": posters, "insights": tools, "history": history}
 
 
+def property_summary(conn) -> dict | None:
+    """Headline numbers for the public property page (None until the property dataset has data)."""
+    try:
+        day = conn.execute("SELECT max(day) FROM property.stock").fetchone()[0]
+        if not day:
+            return None
+        def q(sql, params=()):
+            cur = conn.execute(sql, params)
+            cols = [c.name for c in cur.description]
+            return [dict(zip(cols, r)) for r in cur.fetchall()]
+        tot = q("""SELECT sum(listings) FILTER (WHERE deal_type = 'sale') AS for_sale,
+                          sum(listings) FILTER (WHERE deal_type = 'rent') AS to_rent
+                   FROM property.stock WHERE day = %s AND region IS NULL AND category = 'residential'""", (day,))[0]
+        regions = q("""SELECT region, listings FROM property.stock WHERE day = %s AND region IS NOT NULL
+                       AND deal_type = 'sale' AND category = 'residential' ORDER BY listings DESC LIMIT 8""", (day,))
+        provinces = q("""SELECT replace(province, 'KwaZulu Natal', 'KwaZulu-Natal') AS province,
+                                sum(listings) FILTER (WHERE deal_type = 'sale') AS for_sale,
+                                sum(listings) FILTER (WHERE deal_type = 'rent') AS to_rent
+                         FROM property.stock WHERE day = %s AND region IS NULL AND category = 'residential'
+                         GROUP BY 1 ORDER BY 2 DESC""", (day,))
+        n_regions = conn.execute("SELECT count(*) FROM property.locations WHERE level = 2").fetchone()[0]
+        tracked = conn.execute("SELECT count(*) FROM property.listings").fetchone()[0]
+        rate = conn.execute("SELECT rate FROM property.bond_rate ORDER BY day DESC LIMIT 1").fetchone()
+        days = conn.execute("SELECT count(DISTINCT day) FROM property.stock").fetchone()[0]
+        return {"day": day, "for_sale": tot["for_sale"], "to_rent": tot["to_rent"], "regions": n_regions,
+                "listings_tracked": tracked, "bond_rate": rate[0] if rate else None, "days_of_data": days,
+                "top_regions": regions, "provinces": provinces}
+    except Exception as e:  # property schema not created yet
+        conn.rollback()
+        print(f"(no property summary: {e.__class__.__name__})")
+        return None
+
+
 def main() -> None:
     with connect() as conn:
         meta = rows(conn, """
@@ -235,6 +268,7 @@ def main() -> None:
             FROM v_jobs_value GROUP BY 1 ORDER BY 1""")
 
         extra = employers_and_tools(conn, kpis)
+        extra["property"] = property_summary(conn)
 
     snapshot = {
         "generated_at": datetime.now(timezone.utc).isoformat(),

@@ -92,3 +92,22 @@ CREATE TABLE IF NOT EXISTS admin.dashboard_tiles (
     spec         JSONB NOT NULL,        -- {type, x, y, title, subtitle, value_format, sql}: re-run live
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- ---------------------------------------------------------------- industry workspaces and daily briefs
+ALTER TABLE admin.accounts ADD COLUMN IF NOT EXISTS industry TEXT NOT NULL DEFAULT 'all';
+DO $$ BEGIN
+    ALTER TABLE admin.accounts ADD CONSTRAINT accounts_industry_check CHECK (industry IN ('all', 'jobs', 'property'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS admin.briefs (
+    industry    TEXT NOT NULL,
+    day         DATE NOT NULL,           -- SAST date
+    status      TEXT NOT NULL DEFAULT 'running' CHECK (status IN ('running', 'ready', 'failed')),
+    report      JSONB,                   -- the report artifact (charts embedded), exported as PowerPoint/PDF
+    summary     TEXT,                    -- the analyst's short written answer
+    cost_usd    NUMERIC,
+    error       TEXT,
+    started_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    finished_at TIMESTAMPTZ,
+    PRIMARY KEY (industry, day)
+);

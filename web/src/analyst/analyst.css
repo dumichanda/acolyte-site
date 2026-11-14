@@ -112,3 +112,13 @@
 .report-art .dl-groups { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; flex-shrink: 0; }
 .report-art .dl { display: flex; gap: 6px; align-items: center; }
 .report-art .dl span { font-size: 11px; color: var(--muted); margin-right: 2px; white-space: nowrap; }
+
+.analyst .ws-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.analyst .ws-row h1 { margin: 0; }
+.analyst select.ws { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); }
+.analyst .brief-card { border: 1px solid var(--line); border-left: 3px solid var(--accent, #c8f135); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; background: var(--panel); display: grid; gap: 8px; }
+.analyst .brief-card p { margin: 0; }
+.analyst .brief-card .brief-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.analyst .brief-card .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--line); color: var(--muted); }
+.analyst .brief-card .pill.run { background: #c8f13533; color: var(--text); }
+.analyst .brief-card .row { display: flex; gap: 8px; flex-wrap: wrap; }

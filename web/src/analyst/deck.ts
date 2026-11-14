@@ -153,10 +153,21 @@ export function tableLayout(c: ChartArtifact, w: number, h: number): TableLayout
 // ------------------------------------------------------------------ slides
 export type Variant = "standard" | "executive";
 
+/** Which Acolyte dataset(s) a report draws on, from its charts' SQL. */
+export function dataSource(r: ReportArtifact): { data: string; caveat: string } {
+  const sql = Object.values(r.charts || {}).map((c) => c.sql || "").join(" ");
+  const property = /property_|bond_rate/.test(sql);
+  const jobs = /\b(jobs|job_tools|job_skills|employers|daily_stats)\b/.test(sql);
+  if (property && jobs) return { data: "public job ads and property listings", caveat: "public job ads and property listings; asking prices, not sale prices" };
+  if (property) return { data: "public property listings (Private Property)", caveat: "public property listings; asking prices, not sale prices" };
+  return { data: "public job ads", caveat: "public job-ad data, not a census of employment" };
+}
+
 /** standard = the full pack (~12 slides); executive = 5 slides: cover, summary, top-2 findings, recommendations. */
 export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): SlideSpec[] {
   const slides: SlideSpec[] = [];
   const full = variant === "standard";
+  const src = dataSource(r);
   const sections = full ? r.sections : r.sections.slice(0, 2);   // the AI orders findings by importance
   const date = fmtDate(r.generated || new Date().toISOString());
   const footer = `Acolyte · SA Automation Opportunity Index${r.scope ? " · " + clean(r.scope) : ""} · ${date}`;
@@ -178,7 +189,7 @@ export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): Sli
     p.push({ t: "rect", x: 8.35, y: 0.5, w: 4.4, h: 6.1, fill: C.darkCard, radius: 0.08 });
     p.push({ t: "text", x: 8.6, y: 0.7, w: 4, h: 0.3, text: full ? "QUESTIONS THIS PACK ANSWERS" : "IN THIS BRIEF", size: 9, bold: true, color: C.lime, spacing: 1 });
     p.push({ t: "list", x: 8.6, y: 1.1, w: 3.95, h: 5.3, items: questions.map((q, i) => `Q${i + 1}  ${clean(q)}`), size: 11, min: 8, color: C.white, marker: "" });
-    p.push({ t: "text", x: 0.6, y: 6.75, w: 7.5, h: 0.3, text: `${date} · Prepared with Acolyte Analyst · public job-ad data, not a census of employment`, size: 8, color: C.darkMuted });
+    p.push({ t: "text", x: 0.6, y: 6.75, w: 7.5, h: 0.3, text: `${date} · Prepared with Acolyte Analyst · ${src.caveat}`, size: 8, color: C.darkMuted });
     slides.push({ bg: C.ink, prims: p });
   }
 
@@ -296,7 +307,7 @@ export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): Sli
   if (full && (me.steps?.length || me.limits?.length)) {
     const p: Prim[] = [];
     chrome(p, "Method and limits", slides.length + 1, footer);
-    heading(p, "How this was built, what to trust, and what is estimated", "Every figure comes from live SQL over public job ads; the queries are shown in Acolyte Analyst.");
+    heading(p, "How this was built, what to trust, and what is estimated", `Every figure comes from live SQL over ${src.data}; the queries are shown in Acolyte Analyst.`);
     const y = 1.72, w1 = 4.6, w2 = (W - 2 * M - w1 - 0.4) / 2;
     const steps = (me.steps || []).slice(0, 5);
     const sh = Math.min((6.98 - y) / Math.max(steps.length, 1), Math.max(...steps.map((st) => textHeight(st, w1 - 0.6, 10)), 0.4) + 0.35);
@@ -334,7 +345,7 @@ export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): Sli
     const sy = bottom + 0.25;
     p.push({ t: "rect", x: M, y: sy, w: W - 2 * M, h: 0.72, fill: C.paper, radius: 0.06 });
     p.push({ t: "text", x: M + 0.2, y: sy + 0.04, w: W - 2 * M - 3.6, h: 0.64,
-             text: `How this was built: ${how || "live SQL over public job ads; every figure is traceable in Acolyte Analyst."} The full pack has the detail, Q&A and method.`,
+             text: `How this was built: ${how || `live SQL over ${src.data}; every figure is traceable in Acolyte Analyst.`} The full pack has the detail, Q&A and method.`,
              size: 9, min: 7, color: C.neutral, valign: "middle" });
     p.push({ t: "rect", x: W - M - 3.2, y: sy + 0.14, w: 3.0, h: 0.44, fill: C.lime, radius: 0.22 });
     p.push({ t: "text", x: W - M - 3.2, y: sy + 0.14, w: 3.0, h: 0.44, text: "Talk to Acolyte →", size: 11, bold: true, color: C.ink, align: "center", valign: "middle" });

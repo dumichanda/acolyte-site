@@ -13,8 +13,10 @@ const TOKEN = "acolyteSession";
 export const getToken = () => { try { return localStorage.getItem(TOKEN) || ""; } catch { return ""; } };
 export const setToken = (t: string) => { try { t ? localStorage.setItem(TOKEN, t) : localStorage.removeItem(TOKEN); } catch { /* storage blocked */ } };
 
+export type Industry = "all" | "jobs" | "property";
+
 export interface Me {
-  account: { id: number; name: string; plan: string; plan_label: string };
+  account: { id: number; name: string; plan: string; plan_label: string; industry?: Industry; industry_label?: string; analyst_name?: string };
   limits: { questions_day: number; reports_day: number; reports_week: number; dashboards: number; max_tier: string };
   usage: { day_usd: number; week_usd: number; questions_today: number; reports_today: number; reports_week: number };
   day_left_pct: number; week_left_pct: number;

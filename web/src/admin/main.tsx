@@ -60,13 +60,15 @@ function Kpi({ label, value, hint, tone }: { label: string; value: string; hint?
   return <div className="kpi"><div className="label">{label}</div><div className={"value " + (tone || "")}>{value}</div>{hint && <div className="hint">{hint}</div>}</div>;
 }
 
-interface AccountRow { id: number; name: string; plan: string; active: boolean; created_at: string; last_login: string | null;
+interface AccountRow { id: number; name: string; plan: string; industry?: string; active: boolean; created_at: string; last_login: string | null;
                      questions_30d: number; cost_30d: string; reports_30d: number; dashboards: number }
 const PLAN_LABEL: Record<string, string> = { junior: "Junior Analyst (R30k)", senior: "Senior AI & Data Science (R50k)", owner: "Owner" };
+const INDUSTRY_LABEL: Record<string, string> = { all: "All datasets", jobs: "Jobs & talent", property: "Property" };
 
 function Accounts({ adminKey }: { adminKey: string }) {
   const [rows, setRows] = useState<AccountRow[]>([]);
-  const [name, setName] = useState(""), [plan, setPlan] = useState("junior"), [pin, setPin] = useState("");
+  const [name, setName] = useState(""), [plan, setPlan] = useState("junior"), [pin, setPin] = useState(""), [industry, setIndustry] = useState("property");
+  const [brief, setBrief] = useState("");
   const [notice, setNotice] = useState(""), [err, setErr] = useState("");
   const call = useCallback(async (path: string, method = "GET", body?: unknown) => {
     const r = await fetch(`${API}${path}`, { method, headers: { Authorization: `Bearer ${adminKey}`, ...(body ? { "Content-Type": "application/json" } : {}) },
@@ -84,25 +86,37 @@ function Accounts({ adminKey }: { adminKey: string }) {
       <h2>Client accounts</h2>
       <p className="desc">Each client signs in to Ask AI and Dashboards with their PIN. PINs are stored only as secure hashes, so a new PIN is shown once here: copy it and send it to the client privately.</p>
       <form className="toolbar" onSubmit={(e) => { e.preventDefault(); act(async () => {
-        const d = await call("/admin/accounts", "POST", { name, plan, pin: pin || undefined });
+        const d = await call("/admin/accounts", "POST", { name, plan, industry, pin: pin || undefined });
         setNotice(`Account "${name || "Client"}" created. PIN: ${d.pin}`); setName(""); setPin("");
       }); }}>
         <input placeholder="Client or company name" value={name} onChange={(e) => setName(e.target.value)} />
         <select value={plan} onChange={(e) => setPlan(e.target.value)}>
           {Object.entries(PLAN_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
+        <select value={industry} onChange={(e) => setIndustry(e.target.value)} title="Which analyst and data the client gets">
+          {Object.entries(INDUSTRY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
         <input placeholder="PIN (blank = generate)" value={pin} onChange={(e) => setPin(e.target.value)} style={{ maxWidth: 190 }} />
         <button className="btn primary" disabled={!name.trim()}>Create account</button>
       </form>
+      <div className="toolbar">
+        <button type="button" className="btn" onClick={() => act(async () => {
+          const d = await call("/admin/briefs/property/run", "POST");
+          setBrief(d.started ? "Writing today's Daily Property Brief now (about 3 minutes)." : `Today's brief is ${d.status || "not started"}.`);
+        })}>Run today's Daily Property Brief</button>
+        {brief && <span className="small muted">{brief}</span>}
+      </div>
       {notice && <div className="notice">{notice} <button className="link" onClick={() => setNotice("")}>Hide</button></div>}
       {err && <div className="err">{err}</div>}
       <div className="table-scroll">
         <table>
-          <thead><tr><th>Client</th><th>Plan</th><th className="num">Questions 30d</th><th className="num">Reports 30d</th><th className="num">AI cost 30d</th>
+          <thead><tr><th>Client</th><th>Workspace</th><th>Plan</th><th className="num">Questions 30d</th><th className="num">Reports 30d</th><th className="num">AI cost 30d</th>
             <th className="num">Dashboards</th><th>Last sign-in</th><th>Status</th><th /></tr></thead>
           <tbody>{rows.map((a) => (
             <tr key={a.id} className={a.active ? "" : "inactive"}>
               <td><b>{a.name}</b></td>
+              <td><select value={a.industry || "all"} onChange={(e) => act(() => call(`/admin/accounts/${a.id}`, "PATCH", { industry: e.target.value }))}>
+                {Object.entries(INDUSTRY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></td>
               <td><select value={a.plan} onChange={(e) => act(() => call(`/admin/accounts/${a.id}`, "PATCH", { plan: e.target.value }))}>
                 {Object.entries(PLAN_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></td>
               <td className="num">{a.questions_30d}</td><td className="num">{a.reports_30d}</td><td className="num">{usd(a.cost_30d)}</td>
@@ -113,7 +127,7 @@ function Accounts({ adminKey }: { adminKey: string }) {
                 const d = await call(`/admin/accounts/${a.id}`, "PATCH", { reset_pin: true }); setNotice(`New PIN for ${a.name}: ${d.pin}`);
               })}>Reset PIN</button></td>
             </tr>))}
-            {!rows.length && <tr><td colSpan={9} className="muted">No client accounts yet.</td></tr>}</tbody>
+            {!rows.length && <tr><td colSpan={10} className="muted">No client accounts yet.</td></tr>}</tbody>
         </table>
       </div>
     </section>
