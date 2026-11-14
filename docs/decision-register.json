@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-14T21:40",
+ "updated": "2026-11-14T22:05",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -351,6 +351,17 @@
     "PM": 2,
     "CW": 2,
     "UX": 1.5
+   }
+  },
+  {
+   "at": "2026-11-14T21:55",
+   "title": "Safe errors, credit tracker and owner alerts",
+   "what": "Generic client errors with references, alerts table, credit tracker with % milestones, admin card, hourly alerts workflow.",
+   "days": {
+    "BE": 2,
+    "FE": 1,
+    "OPS": 1,
+    "QA": 0.5
    }
   }
  ],
@@ -1002,6 +1013,30 @@
    "why": "A shared memory of why things are the way they are.",
    "alternatives": "",
    "note": ""
+  },
+  {
+   "id": "D55",
+   "at": "2026-11-14T21:45",
+   "kind": "Security",
+   "by": "Both",
+   "status": "Active",
+   "title": "Clients never see technical errors",
+   "decision": "When the AI service fails, clients see a short message with a support reference; the full cause goes to the server log, the alerts and the owner only.",
+   "why": "A raw billing error was shown in Ask AI; it exposes internals and looks broken.",
+   "alternatives": "Show the provider's error text.",
+   "note": ""
+  },
+  {
+   "id": "D56",
+   "at": "2026-11-14T21:50",
+   "kind": "Operations",
+   "by": "Both",
+   "status": "Active",
+   "title": "Owner alerts by GitHub issue, every 10% of credit used",
+   "decision": "Record each top-up (US$100 on 14 Nov); an hourly check opens a GitHub issue, which GitHub emails, at every 10% of the top-up used and at once if the credit runs out.",
+   "why": "The Anthropic balance can't be read by the app, so spend since the top-up is tracked from Acolyte's own cost log.",
+   "alternatives": "A fixed dollar threshold; checking the Console by hand.",
+   "note": "Changed from a single $39 threshold to 10% steps at your request."
   }
  ]
 }
