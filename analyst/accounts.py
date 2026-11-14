@@ -218,7 +218,7 @@ def delete_conversation(db: str, account_id: int, cid: str) -> None:
 
 
 # ---------------------------------------------------------------- dashboards
-SPEC_KEYS = ("type", "x", "y", "title", "subtitle", "value_format", "sql")
+SPEC_KEYS = ("type", "x", "y", "title", "subtitle", "value_format", "sql", "annotations")
 
 
 def list_dashboards(db: str, account_id: int) -> list[dict]:
@@ -440,9 +440,11 @@ def finish_report(db: str, industry: str, period, report: dict | None, summary: 
                       (report or {}).get("title"), (summary or "")[:4000], cost, (error or "")[:500] or None, industry, period))
 
 
-def report_status(db: str, industry: str, period) -> str | None:
+def report_status(db: str, industry: str, period, with_error: bool = False):
     with psycopg.connect(db) as conn:
-        r = conn.execute("SELECT status FROM admin.reports WHERE industry = %s AND period = %s", (industry, period)).fetchone()
+        r = conn.execute("SELECT status, error FROM admin.reports WHERE industry = %s AND period = %s", (industry, period)).fetchone()
+    if with_error:
+        return {"status": r[0], "error": r[1]} if r else {"status": None, "error": None}
     return r[0] if r else None
 
 

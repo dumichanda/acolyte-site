@@ -67,6 +67,19 @@ You answer questions about the data below by querying it, charting it and explai
 How to work:
 - Always get numbers from run_sql. Never state a figure you did not query. If the data cannot answer the question, say so and suggest what it can answer.
 - Write PostgreSQL SELECT queries against the analyst schema only. Aggregate in SQL; keep result sets small (under ~50 rows for charts).
+- Insight standard (apply to every answer and every report section):
+  * Lead with the non-obvious finding, not a description of the chart. Ask: what would surprise or change a decision?
+  * Benchmark every key number: against the average or median, the previous day/week/month, peers or the market, or its
+    share of the total. A number without a comparison is not an insight.
+  * Size the gap in both rand and %, and say whether it is big or small for this market.
+  * Explain the driver: break the number down (by region, type, segment, retailer, role) to show what moves it.
+  * Call out concentration (e.g. top 3 = 60% of the total), outliers (well above or below the median) and turning
+    points in trends, and annotate them on the chart.
+  * State confidence: how many rows, listings, offers or days the finding rests on, and what would change it.
+  * End with "so what" (implication for this reader) and "now what" (a concrete action or the next question to ask).
+- Annotate charts like an analyst would: mark anomalies and records (point), events, targets, averages or the bond rate
+  (line), and periods such as promotions or month-ends, or a normal range (band). Keep it to the 1-3 call-outs that carry
+  the story, and mention them in your answer.
 - When a chart would help (comparisons, rankings, trends, distributions), call make_chart with the dataset from run_sql. Prefer one or two strong charts over many weak ones. Use "hbar" for rankings with long labels, "line" for time, "pie" only for 2-6 parts of a whole, "table" for detailed lists, "kpi" for a single headline number.
 - When the user asks for a report, pack, deck, presentation or something to download/share, build it like a strategy-consultancy pack:
   frame it as 4-8 questions the reader cares about; run the queries and make one strong chart per question first (clean,
@@ -140,8 +153,28 @@ TOOLS = [
                 "title": {"type": "string"},
                 "subtitle": {"type": "string", "description": "One line on what is measured, or empty."},
                 "value_format": {"type": "string", "enum": ["number", "rand", "percent", "score"]},
+                "annotations": {
+                    "type": "array",
+                    "description": ("0-5 call-outs that make the chart's story obvious: an anomaly or record (point), an event "
+                                    "date, target, average or rate (line), a period or a normal range (band). Use [] when "
+                                    "nothing stands out. Every value must come from your queries."),
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "kind": {"type": "string", "enum": ["point", "line", "band"]},
+                            "at": {"type": "string", "description": "x category exactly as in the data (point, vertical line, band start); '' for a horizontal line or band"},
+                            "to": {"type": "string", "description": "band end category; '' otherwise"},
+                            "y": {"type": ["number", "null"], "description": "value for a horizontal line, or the start of a value band; null otherwise"},
+                            "y_to": {"type": ["number", "null"], "description": "end of a value band (a normal range); null otherwise"},
+                            "label": {"type": "string", "description": "2-6 words, e.g. 'Black Friday week', 'Prime 10.5%', 'Spike: +38%'"},
+                            "tone": {"type": "string", "enum": ["highlight", "negative", "positive", "neutral"]},
+                        },
+                        "required": ["kind", "at", "to", "y", "y_to", "label", "tone"],
+                        "additionalProperties": False,
+                    },
+                },
             },
-            "required": ["dataset_id", "type", "x", "y", "title", "subtitle", "value_format"],
+            "required": ["dataset_id", "type", "x", "y", "title", "subtitle", "value_format", "annotations"],
             "additionalProperties": False,
         },
     },
@@ -310,6 +343,39 @@ def run_sql(s: Session, args: dict, db_url: str) -> tuple[str, dict]:
 CHART_TYPES = {"bar", "hbar", "line", "area", "pie", "scatter", "table", "kpi"}
 
 
+def annotations(items: list, ds: dict, args: dict) -> list[dict]:
+    """Validate chart call-outs against the data: categories must exist on the x axis, values must be numbers."""
+    if not isinstance(items, list) or args.get("type") in ("table", "kpi", "pie"):
+        return []
+    xi = ds["columns"].index(args["x"]) if args.get("x") in ds["columns"] else None
+    cats = {str(r[xi]) for r in ds["rows"]} if xi is not None else set()
+    out, bad = [], []
+    for a in items[:5]:
+        if not isinstance(a, dict) or a.get("kind") not in ("point", "line", "band"):
+            continue
+        at, to = str(a.get("at") or ""), str(a.get("to") or "")
+        y, y_to = a.get("y"), a.get("y_to")
+        num = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)  # noqa: E731
+        if at and at not in cats:
+            bad.append(at)
+            continue
+        if to and to not in cats:
+            bad.append(to)
+            continue
+        if a["kind"] == "point" and not at:
+            continue
+        if a["kind"] == "band" and not ((at and to) or (num(y) and num(y_to))):
+            continue
+        if a["kind"] == "line" and not (at or num(y)):
+            continue
+        out.append({"kind": a["kind"], "at": at, "to": to, "y": y if num(y) else None, "y_to": y_to if num(y_to) else None,
+                    "label": str(a.get("label") or "")[:40],
+                    "tone": a.get("tone") if a.get("tone") in ("highlight", "negative", "positive", "neutral") else "highlight"})
+    if bad:
+        raise ValueError(f"Annotation categories {bad[:3]} are not on the x axis; use values exactly as in column {args.get('x')!r}.")
+    return out
+
+
 def make_chart(s: Session, args: dict) -> tuple[str, dict]:
     ds = s.datasets.get(args.get("dataset_id", ""))
     if not ds:
@@ -328,9 +394,11 @@ def make_chart(s: Session, args: dict) -> tuple[str, dict]:
         idx = [cols.index(c) for c in args["y"]]
         if not any(isinstance(r[i], (int, float)) for r in ds["rows"] for i in idx):
             raise ValueError(f"y columns {args['y']} have no numeric values; pick numeric columns or use type 'table'.")
+    notes = annotations(args.get("annotations") or [], ds, args)
     chart_id = f"c{len(s.charts) + 1}"
     chart = {"id": chart_id, "dataset_id": ds["id"], **{k: args.get(k) for k in
-             ("type", "x", "y", "title", "subtitle", "value_format")}, "columns": cols, "rows": ds["rows"], "sql": ds["sql"]}
+             ("type", "x", "y", "title", "subtitle", "value_format")}, "columns": cols, "rows": ds["rows"], "sql": ds["sql"],
+             "annotations": notes}
     s.charts[chart_id] = chart
     return f"chart_id: {chart_id} created ({args['type']}: {args['title']}). It is shown to the user.", \
         {"type": "artifact", "artifact": {"kind": "chart", **chart}}

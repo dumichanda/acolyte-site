@@ -121,7 +121,12 @@ function chartBlock(prims: Prim[], c: ChartArtifact, x: number, y: number, w: nu
     const tl = tableLayout(chart, w, ch - 0.22);
     if (tl.more) prims.push({ t: "text", x, y: y + h - 0.2, w, h: 0.2, text: `+${tl.more} more rows · full list in the CSV download`, size: 7.5, color: C.muted });
   }
-  prims.push({ t: "chart", x, y: top, w, h: c.type === "table" ? ch - 0.22 : ch, chart });
+  // Native PowerPoint charts can't draw call-outs: list them under the chart instead.
+  const notes = (c.annotations || []).filter((a) => a.label);
+  const nh = notes.length && c.type !== "table" ? 0.24 : 0;
+  if (nh) prims.push({ t: "text", x, y: y + h - nh, w, h: nh, size: 7.5, min: 6.5, color: C.muted,
+    text: "Marked: " + notes.map((a) => `${a.kind === "point" ? "●" : a.kind === "line" ? "┆" : "▭"} ${clean(a.label)}${a.at ? ` (${a.at}${a.to ? `–${a.to}` : ""})` : ""}`).join("   ") });
+  prims.push({ t: "chart", x, y: top, w, h: (c.type === "table" ? ch - 0.22 : ch) - nh, chart });
 }
 
 export interface TableLayout { cols: string[]; widths: number[]; rows: string[][]; numeric: boolean[]; rowH: number; headH: number; pt: number; more: number }

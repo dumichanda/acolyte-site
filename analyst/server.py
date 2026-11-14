@@ -596,7 +596,7 @@ def report_admin_status(industry: str, req: Request, month: str | None = None):
     require_admin(req)
     period, _ = _period(month)
     try:
-        return {"period": str(period), "status": acc.report_status(ADMIN_DB_URL, industry, period)}
+        return {"period": str(period), **acc.report_status(ADMIN_DB_URL, industry, period, with_error=True)}
     except Exception as e:
         raise HTTPException(500, f"{e.__class__.__name__}: {str(e)[-700:]}")
 
