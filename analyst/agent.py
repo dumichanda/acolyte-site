@@ -205,7 +205,9 @@ TOOLS = [
 
 # Belt and braces: the database role is read-only and can only see the analyst schema anyway.
 FORBIDDEN = re.compile(r"\b(insert|update|delete|drop|alter|create|grant|revoke|truncate|copy|vacuum|"
-                       r"pg_sleep|pg_read\w*|lo_import|dblink\w*)\b", re.I)
+                       r"pg_sleep|pg_read\w*|lo_\w+|dblink\w*|set_config|\w+_to_xml\w*|ts_stat|ts_rewrite|"
+                       r"pg_terminate\w*|pg_cancel\w*|current_setting)\b", re.I)
+CLIENT_SCHEMA = re.compile(r"\bclient_(\d+)\b", re.I)
 
 
 def clean(v):
@@ -227,6 +229,7 @@ class Session:
     report_reviews: int = 0
     account_id: int | None = None
     industry: str = "all"
+    client_guide: str = ""          # the client's own uploaded tables (private), appended to the system prompt
     ui_items: list = field(default_factory=list)       # what the chat panel shows (saved with the conversation)
     ui_artifacts: dict = field(default_factory=dict)
     turns: int = 0
@@ -268,10 +271,14 @@ def query(sql: str, db_url: str, limit: int = MAX_ROWS) -> tuple[list, list]:
     code = re.sub(r"'(?:[^']|'')*'", "''", sql)  # ignore words inside string literals ('Call Centre')
     if not re.match(r"^(select|with)\b", code, re.I) or ";" in code or FORBIDDEN.search(code):
         raise ValueError("Only a single read-only SELECT/WITH statement is allowed.")
+    # A client's login is client_<id>: it may read its own schema (and the database enforces that it can't read others).
+    me = re.search(r"//(client_\d+):", db_url or "")
+    if any(f"client_{n}" != (me.group(1) if me else None) for n in CLIENT_SCHEMA.findall(code)):
+        raise ValueError("That data belongs to another account.")
     with psycopg.connect(db_url, autocommit=False) as conn:
         conn.execute("SET TRANSACTION READ ONLY")
         conn.execute("SET LOCAL statement_timeout = '10s'")
-        conn.execute("SET LOCAL search_path = analyst")
+        conn.execute("SET LOCAL search_path = analyst" + (f", {me.group(1)}" if me else ""))
         cur = conn.execute(f"SELECT * FROM ({sql}) AS q LIMIT {limit + 1}")
         cols = [c.name for c in cur.description]
         rows = [[clean(v) for v in r] for r in cur.fetchall()]
@@ -546,7 +553,8 @@ def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode
                     model=cfg["model"],
                     max_tokens=16000,
                     # explicit breakpoint on the static prefix + automatic caching of the growing conversation
-                    system=[{"type": "text", "text": system_for(s.industry), "cache_control": {"type": "ephemeral"}}],
+                    system=[{"type": "text", "text": system_for(s.industry), "cache_control": {"type": "ephemeral"}}]
+                           + ([{"type": "text", "text": s.client_guide}] if s.client_guide else []),
                     cache_control={"type": "ephemeral"},
                     tools=TOOLS,
                     messages=s.messages,

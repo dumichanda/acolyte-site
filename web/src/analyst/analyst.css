@@ -130,3 +130,23 @@
 .analyst .skill { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--text); cursor: pointer; }
 .analyst .skill:hover:not(:disabled) { background: var(--accent); color: #0c0c0e; }
 .analyst .skill:disabled { opacity: .5; cursor: default; }
+
+.analyst .your-data { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 6px; display: grid; gap: 8px; }
+.analyst .your-data summary { cursor: pointer; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.analyst .your-data p { margin: 0; }
+.analyst .your-data .upload { cursor: pointer; justify-self: start; }
+.analyst .your-data .upload.busy { opacity: .6; }
+.analyst .your-data .data-msg { background: var(--panel); border-radius: 8px; padding: 8px 10px; display: grid; gap: 6px; }
+.analyst .your-data .row { display: flex; gap: 6px; flex-wrap: wrap; }
+.analyst .dt { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.analyst .dt-head { width: 100%; text-align: left; background: none; border: none; color: var(--text); font: inherit; padding: 8px 10px; cursor: pointer; display: grid; gap: 2px; }
+.analyst .dt-head b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.analyst .dt-head em { font-style: normal; font-size: 11px; color: var(--muted); }
+.analyst .dt-body { padding: 0 10px 10px; display: grid; gap: 8px; font-size: 12px; }
+.analyst .dt-body table { width: 100%; border-collapse: collapse; display: block; max-height: 220px; overflow: auto; }
+.analyst .dt-body td { padding: 3px 6px 3px 0; vertical-align: top; border-bottom: 1px solid var(--line); }
+.analyst .dt-body .tag { font-size: 10px; margin-left: 4px; padding: 0 5px; border-radius: 4px; background: var(--accent-soft); color: var(--text); }
+.analyst .describe { display: grid; gap: 4px; }
+.analyst .describe textarea { font: inherit; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; resize: vertical; }
+.analyst .btn.danger { border-color: #ff6a3d; color: #ff6a3d; }
+.analyst .starter.mine { border-color: var(--accent); }

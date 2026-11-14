@@ -362,6 +362,92 @@ function Voice({ onText }: { onText: (t: string) => void }) {
   return <button className={"mic" + (on ? " on" : "")} onClick={start} title="Ask by voice" aria-label="Ask by voice">{on ? "● Listening" : "🎙"}</button>;
 }
 
+interface DataCol { name: string; original: string; type: string; examples?: string[]; min?: string; max?: string; place?: boolean }
+interface DataTable { id: number; table_name: string; display_name: string; row_count: number; columns: DataCol[]; description: string | null }
+
+/** The client's own data: upload CSV/Excel into their private area, describe it, and ask across it and the market. */
+function YourData({ onAsk, onChange }: { onAsk: (q: string) => void; onChange: (n: number) => void }) {
+  const me = useContext(AuthCtx);
+  const [tables, setTables] = useState<DataTable[]>([]);
+  const [limit, setLimit] = useState(0);
+  const [open, setOpen] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [dup, setDup] = useState<File | null>(null);
+  const [del, setDel] = useState<number | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const load = useCallback(async () => {
+    try { const r = await api<{ tables: DataTable[]; limit: number }>("/data"); setTables(r.tables); setLimit(r.limit); onChange(r.tables.length); }
+    catch { /* signed out */ }
+  }, [onChange]);
+  useEffect(() => { if (me) load(); }, [me, load]);
+  if (!me) return null;
+
+  const send = async (f: File, replace = false) => {
+    setBusy(true); setMsg(""); setDup(null);
+    const fd = new FormData(); fd.append("file", f); fd.append("replace", String(replace));
+    try {
+      const r = await fetch(`${API}/data/upload`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` }, body: fd });
+      const d = await r.json().catch(() => ({}));
+      if (r.status === 409) { setDup(f); setMsg(d.detail); return; }
+      if (!r.ok) throw new Error(d.detail || r.statusText);
+      setMsg(`Loaded ${d.rows.toLocaleString("en-ZA")} rows into ${d.name}. Check the columns below and add a short description.`);
+      await load();
+    } catch (e) { setMsg((e as Error).message); }
+    finally { setBusy(false); if (fileRef.current) fileRef.current.value = ""; }
+  };
+  return (
+    <details className="your-data" open>
+      <summary>Your data <span className="muted">({tables.length}/{limit})</span></summary>
+      <p className="muted small">Upload a CSV or Excel file. It stays private to your account, and your analyst can compare it with the market.</p>
+      <label className={"btn sm upload" + (busy ? " busy" : "")}>
+        {busy ? "Uploading…" : "Upload CSV or Excel"}
+        <input ref={fileRef} type="file" id="data-upload" accept=".csv,.txt,.xlsx,.xlsm" hidden disabled={busy}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) send(f); }} />
+      </label>
+      {msg && <div className="small data-msg">{msg}
+        {dup && <div className="row"><button className="btn sm" onClick={() => send(dup, true)}>Replace it</button>
+          <button className="btn sm" onClick={() => { setDup(null); setMsg(""); }}>Cancel</button></div>}</div>}
+      {tables.map((t) => (
+        <div key={t.id} className="dt">
+          <button className="dt-head" onClick={() => setOpen(open === t.id ? null : t.id)} aria-expanded={open === t.id}>
+            <b>{t.display_name}</b><em>{t.row_count.toLocaleString("en-ZA")} rows · {t.columns.length} columns</em>
+          </button>
+          {open === t.id && (
+            <div className="dt-body">
+              <table><tbody>{t.columns.map((c) => (
+                <tr key={c.name}><td><code>{c.name}</code>{c.place && <span className="tag">place</span>}</td><td className="muted">{c.type}</td>
+                  <td className="muted">{c.min ? `${c.min} … ${c.max}` : (c.examples || []).join(", ")}</td></tr>))}</tbody></table>
+              <DescribeBox t={t} onSaved={load} />
+              <div className="row">
+                <button className="btn sm primary" onClick={() => onAsk(`Give me an overview of my ${t.display_name} data: what's in it, the main totals and anything unusual.`)}>Explore it</button>
+                <button className="btn sm" onClick={() => onAsk(`Compare my ${t.display_name} data with the market data. Where do we stand?`)}>Compare with market</button>
+                {del === t.id
+                  ? <><button className="btn sm danger" onClick={async () => { await api(`/data/${t.id}`, { method: "DELETE" }).catch(() => {}); setDel(null); load(); }}>Yes, delete</button>
+                      <button className="btn sm" onClick={() => setDel(null)}>Keep</button></>
+                  : <button className="btn sm" onClick={() => setDel(t.id)}>Delete</button>}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </details>
+  );
+}
+
+function DescribeBox({ t, onSaved }: { t: DataTable; onSaved: () => void }) {
+  const [v, setV] = useState(t.description || "");
+  const [saved, setSaved] = useState(false);
+  return (
+    <form className="describe" onSubmit={async (e) => { e.preventDefault(); await api(`/data/${t.id}`, { method: "PATCH", body: { description: v } }); setSaved(true); onSaved(); }}>
+      <label htmlFor={`desc-${t.id}`} className="small muted">What is this table? (helps your analyst)</label>
+      <textarea id={`desc-${t.id}`} rows={2} value={v} placeholder="e.g. Our active sale mandates, exported from our CRM on 14 Nov"
+        onChange={(e) => { setV(e.target.value); setSaved(false); }} />
+      <button className="btn sm" disabled={saved}>{saved ? "Saved" : "Save description"}</button>
+    </form>
+  );
+}
+
 function App() {
   const [items, setItems] = useState<Item[]>([]);
   const [artifacts, setArtifacts] = useState<Record<string, Artifact>>({});
@@ -378,6 +464,7 @@ function App() {
   const [history, setHistory] = useState<Conv[]>([]);
   const [sideOpen, setSideOpen] = useState(false);
   const [pick, setPick] = useState<Analyst>(initialWorkspace);
+  const [myTables, setMyTables] = useState(0);
   const own = me?.account.industry;
   const locked: Analyst | null = own && own !== "all" && own in WORKSPACES ? (own as Analyst) : null;
   const ws: Analyst = locked || pick;
@@ -520,6 +607,7 @@ function App() {
               </div>
             ))}
           </div>
+          <YourData onAsk={(q) => { setSideOpen(false); ask(q); }} onChange={setMyTables} />
           <div className="side-account">
             {me ? <UsageCard me={me} onLogout={() => { logout(); reset(); refreshAccount(); }} />
               : <SignIn onDone={(m) => { setMe(m); reset(); refreshAccount(); }} />}
@@ -549,6 +637,7 @@ function App() {
                 <div className="muted small">Expert skills</div>
                 <div className="skills">{W.skills.map((k) => <button key={k.name} className="skill" disabled={!ready} title={k.ask} onClick={() => ask(k.ask)}>{k.name}</button>)}</div>
                 <div className="muted small">Or try one of these</div>
+                {myTables > 0 && <button className="starter mine" disabled={!ready} onClick={() => ask("Compare my own data with the market data: where do we stand, and what should we do?")}>Compare my own data with the market</button>}
                 {W.starters.map((s) => <button key={s} className="starter" disabled={!ready} onClick={() => ask(s)}>{s}</button>)}
               </div>
             )}

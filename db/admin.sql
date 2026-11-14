@@ -113,3 +113,19 @@ CREATE TABLE IF NOT EXISTS admin.briefs (
 );
 -- Each conversation belongs to one analyst (jobs or property); history is shown per analyst.
 ALTER TABLE admin.conversations ADD COLUMN IF NOT EXISTS industry TEXT NOT NULL DEFAULT 'jobs';
+
+-- ---------------------------------------------------------------- client data uploads (see analyst/clientdata.py)
+-- The data itself lives in schema client_<account id>, readable only by login role client_<account id>.
+CREATE TABLE IF NOT EXISTS admin.client_tables (
+    id           SERIAL PRIMARY KEY,
+    account_id   INT NOT NULL REFERENCES admin.accounts(id) ON DELETE CASCADE,
+    table_name   TEXT NOT NULL,          -- in schema client_<account_id>
+    display_name TEXT NOT NULL,
+    filename     TEXT,
+    row_count    INT NOT NULL,
+    columns      JSONB NOT NULL,         -- profile: name, original header, type, examples, min/max, place hint
+    description  TEXT,                   -- what the client says this table is
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (account_id, table_name)
+);

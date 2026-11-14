@@ -23,12 +23,13 @@ import time
 import uuid
 from collections import defaultdict, deque
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import accounts as acc
+from . import clientdata as cd
 from .agent import MODEL, TIERS, Budget, Session, answer, query, route
 from .industries import BRIEFS, INDUSTRIES
 
@@ -182,6 +183,15 @@ def ask(body: Ask, req: Request):
         s = Session(id=uuid.uuid4().hex, account_id=account["id"] if account else None, industry=industry)
     with lock:
         sessions[s.id] = s
+    # The client's own uploaded data: questions then run as the client's private read-only login.
+    db_url = DB_URL
+    if account:
+        try:
+            s.client_guide = cd.guide(ADMIN_DB_URL, account["id"])
+            if s.client_guide:
+                db_url = cd.client_url(DB_URL, account["id"])
+        except Exception as e:
+            print(f"client data guide failed: {e.__class__.__name__}", flush=True)
     if s.turns >= MAX_TURNS:
         raise HTTPException(429, "This conversation is long. Start a new one to keep going.")
 
@@ -194,7 +204,7 @@ def ask(body: Ask, req: Request):
         ui = {"kind": "assistant", "text": "", "status": [], "queries": [], "artifacts": [], "done": True}
         yield f"data: {json.dumps({'type': 'session', 'session_id': s.id})}\n\n"
         try:
-            for ev in answer(client(), s, question, DB_URL, budget, mode, max_tier):
+            for ev in answer(client(), s, question, db_url, budget, mode, max_tier):
                 t = ev.get("type")
                 if t == "text":
                     ui["text"] += ev["text"]
@@ -346,7 +356,40 @@ def tile_update(tid: int, body: TilePatch, account: dict = Depends(need_account)
 
 @app.get("/dashboards/{did}/data")
 def dashboard_data(did: int, refresh: bool = False, account: dict = Depends(need_account)):
-    return guard(lambda: acc.dashboard_data(ADMIN_DB_URL, DB_URL, account["id"], did, refresh, query))
+    url = cd.client_url(DB_URL, account["id"]) if cd.has_space(ADMIN_DB_URL, account["id"]) else DB_URL
+    return guard(lambda: acc.dashboard_data(ADMIN_DB_URL, url, account["id"], did, refresh, query))
+
+
+# ---------------------------------------------------------------- the client's own data (CSV / Excel uploads)
+@app.get("/data")
+def data_list(account: dict = Depends(need_account)):
+    return {"tables": cd.list_tables(ADMIN_DB_URL, account["id"]), "limit": cd.TABLE_LIMIT.get(account["plan"], 10),
+            "schema": cd.role(account["id"])}
+
+
+@app.post("/data/upload")
+async def data_upload(file: UploadFile = File(...), name: str = Form(default=""), replace: bool = Form(default=False),
+                      account: dict = Depends(need_account)):
+    body = await file.read(cd.MAX_BYTES + 1)
+    import anyio
+    return await anyio.to_thread.run_sync(lambda: guard(lambda: cd.upload(ADMIN_DB_URL, account, body, file.filename or "data.csv",
+                                                                          name.strip() or None, replace)))
+
+
+class DescribeIn(BaseModel):
+    description: str = Field(max_length=2000)
+
+
+@app.patch("/data/{tid}")
+def data_describe(tid: int, body: DescribeIn, account: dict = Depends(need_account)):
+    guard(lambda: cd.describe(ADMIN_DB_URL, account["id"], tid, body.description))
+    return {"ok": True}
+
+
+@app.delete("/data/{tid}")
+def data_delete(tid: int, account: dict = Depends(need_account)):
+    guard(lambda: cd.delete(ADMIN_DB_URL, account["id"], tid))
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------- daily industry briefs
@@ -408,6 +451,21 @@ def start_brief(industry: str, day, force: bool = False) -> bool:
     _brief_threads[industry] = th
     th.start()
     return True
+
+
+@app.on_event("startup")
+def _sync_client_logins() -> None:
+    """Client logins' passwords derive from the server secret: re-sync them in case the secret changed."""
+    if not ADMIN_DB_URL:
+        return
+    try:
+        import psycopg
+        with psycopg.connect(ADMIN_DB_URL, connect_timeout=10) as conn:
+            ids = [r[0] for r in conn.execute("SELECT DISTINCT account_id FROM admin.client_tables")]
+        for aid in ids:
+            cd.ensure_space(ADMIN_DB_URL, aid)
+    except Exception as e:
+        print(f"client login sync skipped: {e.__class__.__name__}", flush=True)
 
 
 @app.on_event("startup")

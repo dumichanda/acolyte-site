@@ -56,6 +56,17 @@ def setup_analyst_role(conn: psycopg.Connection) -> None:
     conn.execute("""GRANT USAGE ON SEQUENCE admin.accounts_id_seq, admin.dashboards_id_seq, admin.dashboard_tiles_id_seq
                     TO analyst_admin""")
     conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON admin.briefs TO analyst_admin")
+    # Client data uploads: analyst_admin creates a private schema + read-only login role per client account.
+    conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON admin.client_tables TO analyst_admin")
+    conn.execute("GRANT USAGE ON SEQUENCE admin.client_tables_id_seq TO analyst_admin")
+    conn.execute(sql.SQL("GRANT CREATE ON DATABASE {} TO analyst_admin").format(
+        sql.Identifier(conn.execute("SELECT current_database()").fetchone()[0])))
+    conn.execute("GRANT analyst_reader TO analyst_admin WITH ADMIN OPTION")
+    try:
+        with conn.transaction():   # savepoint: a refusal must not abort the rest of the setup
+            conn.execute("ALTER ROLE analyst_admin CREATEROLE")
+    except Exception as e:  # the owner login needs CREATEROLE itself (Neon's owner role has it)
+        print(f"Could not give analyst_admin CREATEROLE ({e.__class__.__name__}); client data uploads stay off.")
 
 
 def init_db() -> None:
