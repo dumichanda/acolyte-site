@@ -18,3 +18,28 @@
 .admin .notice { background: var(--accent-soft); color: var(--accent); border-radius: 10px; padding: 10px 12px; margin: 6px 0 10px; font-family: "JetBrains Mono", monospace; font-size: 13px; }
 .admin tr.inactive td { opacity: .5; }
 .admin .link { background: none; border: none; color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; padding: 0; }
+
+.brand-btn { margin-left: 10px; display: inline-flex; align-items: center; gap: 5px; }
+.brand-btn i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.branding { margin-top: 16px; border: 1px solid var(--accent); border-radius: 14px; padding: 16px; display: grid; gap: 12px; background: var(--panel); }
+.branding .b-head { display: flex; justify-content: space-between; align-items: center; }
+.branding h3 { margin: 0; }
+.branding .b-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 18px; }
+@media (max-width: 860px) { .branding .b-grid { grid-template-columns: 1fr; } }
+.branding .b-form { display: grid; gap: 6px; align-content: start; }
+.branding .b-form label, .branding .lbl { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.branding input[type=text], .branding #b-name, .branding select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.branding .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.branding .presets button { font: inherit; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.branding .presets button.on { border-color: var(--accent); }
+.branding .presets i { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+.branding .colors { display: flex; gap: 16px; }
+.branding .colors label { display: flex; align-items: center; gap: 6px; }
+.branding .b-preview { border-radius: 12px; aspect-ratio: 16 / 9; max-width: 100%; display: grid; grid-template-columns: 1.7fr 1fr; gap: 10px; padding: 14px; box-shadow: 0 10px 30px -12px rgba(0,0,0,.6); }
+.branding .pv-left { display: flex; flex-direction: column; gap: 8px; justify-content: center; min-width: 0; }
+.branding .pv-logo { max-height: 34px; max-width: 160px; object-fit: contain; align-self: flex-start; }
+.branding .pv-rule { width: 40px; height: 4px; border-radius: 2px; }
+.branding .pv-title { color: #fff; font-size: 18px; line-height: 1.2; }
+.branding .pv-kpi { font-size: 22px; font-weight: 700; }
+.branding .pv-right { border-radius: 10px; background-size: cover; background-position: center; padding: 10px; font-size: 9px; font-weight: 700; letter-spacing: .06em; }
+.branding .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }

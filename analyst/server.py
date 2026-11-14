@@ -47,7 +47,7 @@ MAX_TURNS = 25
 SESSION_TTL = 2 * 3600
 
 app = FastAPI(title="Acolyte Analyst", docs_url=None, redoc_url=None)
-app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "POST", "PATCH", "DELETE"], allow_headers=["Content-Type", "Authorization"])
+app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"], allow_headers=["Content-Type", "Authorization"])
 
 budget = Budget(float(os.environ.get("ANALYST_DAILY_BUDGET_USD", "3")))
 sessions: dict[str, Session] = {}
@@ -690,6 +690,28 @@ def admin_stats(req: Request, days: int = 30):
         print(f"admin stats failed: {e}", flush=True)
         raise HTTPException(503, "Admin database unavailable (has the setup run created the analyst_admin login?).")
     return json.loads(json.dumps(out, default=str))
+
+
+@app.get("/brand")
+def my_brand(account: dict = Depends(need_account)):
+    """The signed-in client's report branding (None = Acolyte's own)."""
+    return {"brand": acc.get_brand(ADMIN_DB_URL, account["id"])}
+
+
+class BrandIn(BaseModel):
+    brand: dict | None = None
+
+
+@app.get("/admin/accounts/{aid}/brand")
+def admin_brand(aid: int, req: Request):
+    require_admin(req)
+    return {"brand": acc.get_brand(ADMIN_DB_URL, aid), "presets": acc.BRAND_PRESETS}
+
+
+@app.put("/admin/accounts/{aid}/brand")
+def admin_brand_set(aid: int, body: BrandIn, req: Request):
+    require_admin(req)
+    return {"brand": guard(lambda: acc.set_brand(ADMIN_DB_URL, aid, body.brand))}
 
 
 class AccountIn(BaseModel):

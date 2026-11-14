@@ -55,7 +55,7 @@ export function download(name: string, data: string, type: string) {
   a.download = name; a.click();
 }
 
-export function chartOption(c: ChartArtifact, theme: { ink: string; muted: string; line: string; panel: string }, print = false): EChartsOption {
+export function chartOption(c: ChartArtifact, theme: { ink: string; muted: string; line: string; panel: string; accent?: string; accent2?: string }, print = false): EChartsOption {
   const xi = c.columns.indexOf(c.x);
   const yi = c.y.map((y) => c.columns.indexOf(y)).filter((i) => i >= 0);
   const rows = c.rows.slice(0, 60);
@@ -86,7 +86,7 @@ export function chartOption(c: ChartArtifact, theme: { ink: string; muted: strin
   const catAxis = { type: "category" as const, data: horizontal ? [...cats].reverse() : cats, axisTick: { show: false },
     axisLabel: { color: theme.ink, fontSize: 12, interval: 0, rotate: !horizontal && cats.length > 6 ? 35 : 0, width: horizontal ? 180 : 110, overflow: "truncate" as const },
   };
-  const ACC = print ? "#5d7a0a" : "#c8f135", ACC2 = print ? "#3f5306" : "#8fb31f";
+  const ACC = theme.accent || (print ? "#5d7a0a" : "#c8f135"), ACC2 = theme.accent2 || (print ? "#3f5306" : "#8fb31f");
   const grad = (a: string, b: string, h: boolean) => ({ type: "linear", x: 0, y: 0, x2: h ? 1 : 0, y2: h ? 0 : 1,
     colorStops: [{ offset: 0, color: h ? b : a }, { offset: 1, color: h ? a : b }] });
   const series = yi.map((i, k) => {

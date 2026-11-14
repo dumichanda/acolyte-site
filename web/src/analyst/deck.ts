@@ -14,14 +14,43 @@ export const C = {
 };
 export const TONE: Record<string, string> = { brand: C.olive, positive: C.pos, negative: C.neg, neutral: C.neutral };
 
+// ---------------------------------------------------------------- client branding
+/** A client's brand (set on the admin page): their colours, logo, cover image and name replace Acolyte's in their packs. */
+export interface Brand {
+  name: string; accent: string; dark: string;            // hex without '#'
+  logo?: string | null; logoAspect?: number;             // data URL (PNG/JPEG), width / height
+  cover?: string | null; coverAspect?: number;
+  style?: string;
+}
+let BRAND: Brand | null = null;
+const ACOLYTE = { ...C };
+const hexRgb = (h: string) => [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+/** Mix a hex colour toward black (t < 0) or white (t > 0). */
+export function shade(h: string, t: number): string {
+  return hexRgb(h).map((v) => Math.round(t < 0 ? v * (1 + t) : v + (255 - v) * t).toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+export function setDeckBrand(b: Brand | null) {
+  BRAND = b && /^[0-9A-Fa-f]{6}$/.test(b.accent || "") && /^[0-9A-Fa-f]{6}$/.test(b.dark || "") ? b : null;
+  Object.assign(C, ACOLYTE);
+  if (BRAND) {
+    C.lime = BRAND.accent.toUpperCase(); C.olive = shade(BRAND.accent, -0.48);
+    C.ink = BRAND.dark.toUpperCase(); C.darkCard = shade(BRAND.dark, 0.08);
+    C.note = shade(BRAND.accent, 0.9);
+  }
+  TONE.brand = C.olive;
+}
+export const brand = () => BRAND;
+const who = () => BRAND?.name || "Acolyte";
+
 export type Prim =
-  | { t: "rect"; x: number; y: number; w: number; h: number; fill: string; radius?: number; shadow?: boolean }
+  | { t: "rect"; x: number; y: number; w: number; h: number; fill: string; radius?: number; shadow?: boolean; alpha?: number }
   | { t: "text"; x: number; y: number; w: number; h: number; text: string; size: number; color: string; bold?: boolean;
       align?: "left" | "center" | "right"; valign?: "top" | "middle" | "bottom"; min?: number; spacing?: number }
   | { t: "list"; x: number; y: number; w: number; h: number; items: string[]; size: number; color: string; numbered?: boolean;
       marker?: string; min?: number }
   | { t: "chart"; x: number; y: number; w: number; h: number; chart: ChartArtifact }
-  | { t: "logo"; x: number; y: number; s: number }
+  | { t: "logo"; x: number; y: number; s: number; w?: number }
+  | { t: "image"; x: number; y: number; w: number; h: number; data: string; aspect: number }
   | { t: "link"; x: number; y: number; w: number; h: number; url: string };
 
 export interface SlideSpec { bg: string; prims: Prim[] }
@@ -63,10 +92,16 @@ const boxNeed = (text: string | string[], w: number) =>
   0.55 + (Array.isArray(text) ? text.reduce((a, t) => a + textHeight(t, w - 0.6, 10) + 0.08, 0) : textHeight(text, w - 0.32, 10));
 
 // ------------------------------------------------------------------ shared chrome
+/** The brand mark: a client's own logo (keeps its proportions), or the Acolyte mark + wordmark. */
+function logoMark(prims: Prim[], x: number, y: number, s: number, size: number) {
+  const b = BRAND;
+  if (b?.logo) { prims.push({ t: "logo", x, y, s, w: Math.min(s * (b.logoAspect || 1), s * 6) }); return; }
+  if (!b) prims.push({ t: "logo", x, y, s });
+  prims.push({ t: "text", x: b ? x : x + s + 0.08, y: y - 0.04, w: 4, h: s + 0.08, text: who().toUpperCase(), size, bold: true, color: C.white, valign: "middle", spacing: 3 });
+}
 function chrome(prims: Prim[], section: string, page: number, footer: string) {
   prims.push({ t: "rect", x: 0, y: 0, w: W, h: 0.42, fill: C.ink });
-  prims.push({ t: "logo", x: M, y: 0.1, s: 0.22 });
-  prims.push({ t: "text", x: M + 0.3, y: 0.06, w: 3, h: 0.3, text: "ACOLYTE", size: 10, bold: true, color: C.white, valign: "middle", spacing: 3 });
+  logoMark(prims, M, 0.1, 0.22, 10);
   prims.push({ t: "text", x: W - M - 5, y: 0.06, w: 5, h: 0.3, text: section, size: 9, color: C.darkMuted, align: "right", valign: "middle" });
   prims.push({ t: "rect", x: M, y: 7.08, w: W - 2 * M, h: 0.01, fill: C.line });
   prims.push({ t: "text", x: M, y: 7.12, w: 11, h: 0.26, text: footer, size: 7.5, color: C.muted, valign: "middle" });
@@ -179,15 +214,14 @@ export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): Sli
   const src = dataSource(r);
   const sections = full ? r.sections : r.sections.slice(0, 2);   // the AI orders findings by importance
   const date = fmtDate(r.generated || new Date().toISOString());
-  const footer = `Acolyte · SA Automation Opportunity Index${r.scope ? " · " + clean(r.scope) : ""} · ${date}`;
+  const footer = `${BRAND ? `Prepared for ${who()} · ` : "Acolyte · "}${src.data}${r.scope ? " · " + clean(r.scope) : ""} · ${date}`;
   const exec = r.exec;
   const questions = full && r.questions?.length ? r.questions : sections.map((s) => s.question || s.title || s.heading).filter(Boolean);
 
   // 1. Cover
   {
     const p: Prim[] = [];
-    p.push({ t: "logo", x: 0.6, y: 0.5, s: 0.34 });
-    p.push({ t: "text", x: 1.05, y: 0.5, w: 3, h: 0.34, text: "ACOLYTE", size: 12, bold: true, color: C.white, valign: "middle", spacing: 3 });
+    logoMark(p, 0.6, 0.5, BRAND?.logo ? 0.5 : 0.34, 12);
     p.push({ t: "rect", x: 6.0, y: 0.5, w: 1.7, h: 0.32, fill: C.lime, radius: 0.16 });
     p.push({ t: "text", x: 6.0, y: 0.5, w: 1.7, h: 0.32, text: full ? "LIVE DATA PACK" : "EXECUTIVE BRIEF", size: 8, bold: true, color: C.ink, align: "center", valign: "middle" });
     p.push({ t: "rect", x: 0.6, y: 1.55, w: 0.9, h: 0.07, fill: C.lime });
@@ -195,10 +229,13 @@ export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): Sli
     if (r.scope) p.push({ t: "text", x: 0.6, y: 3.5, w: 7.3, h: 0.5, text: clean(r.scope), size: 12, min: 9, bold: true, color: C.lime });
     const ks = (r.cover_kpis?.length ? r.cover_kpis : exec?.kpis || []).slice(0, 3);
     ks.forEach((k, i) => kpiCard(p, k, 0.6 + i * 2.48, 4.35, 2.32, 1.55, true));
-    p.push({ t: "rect", x: 8.35, y: 0.5, w: 4.4, h: 6.1, fill: C.darkCard, radius: 0.08 });
+    if (BRAND?.cover) {   // the client's cover image under a dark tint
+      p.push({ t: "image", x: 8.35, y: 0.5, w: 4.4, h: 6.1, data: BRAND.cover, aspect: BRAND.coverAspect || 1 });
+      p.push({ t: "rect", x: 8.35, y: 0.5, w: 4.4, h: 6.1, fill: C.ink, alpha: 0.62 });
+    } else p.push({ t: "rect", x: 8.35, y: 0.5, w: 4.4, h: 6.1, fill: C.darkCard, radius: 0.08 });
     p.push({ t: "text", x: 8.6, y: 0.7, w: 4, h: 0.3, text: full ? "QUESTIONS THIS PACK ANSWERS" : "IN THIS BRIEF", size: 9, bold: true, color: C.lime, spacing: 1 });
     p.push({ t: "list", x: 8.6, y: 1.1, w: 3.95, h: 5.3, items: questions.map((q, i) => `Q${i + 1}  ${clean(q)}`), size: 11, min: 8, color: C.white, marker: "" });
-    p.push({ t: "text", x: 0.6, y: 6.75, w: 7.5, h: 0.3, text: `${date} · Prepared with Acolyte Analyst · ${src.caveat}`, size: 8, color: C.darkMuted });
+    p.push({ t: "text", x: 0.6, y: 6.75, w: 7.5, h: 0.3, text: `${date} · ${BRAND ? `Prepared for ${who()} by Acolyte Analyst` : "Prepared with Acolyte Analyst"} · ${src.caveat}`, size: 8, color: C.darkMuted });
     slides.push({ bg: C.ink, prims: p });
   }
 
@@ -217,6 +254,23 @@ export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): Sli
     const hb = Math.min(7.0 - yb - 0.05, Math.max(boxNeed(exec.so_what || "", bw), boxNeed(exec.catch || "", bw), 1.1));
     if (exec.so_what) box(p, "so_what", "So what", exec.so_what, M, yb, exec.catch ? half : W - 2 * M, hb);
     if (exec.catch) box(p, "note", "The catch", exec.catch, exec.so_what ? M + half + 0.2 : M, yb, exec.so_what ? half : W - 2 * M, hb);
+    // Fill the rest of the slide with the pack's key findings (one tile per section), so no space is wasted.
+    const fy = (exec.so_what || exec.catch ? yb + hb + 0.2 : yb), fh = 6.95 - fy;
+    const finds = sections.filter((x) => x.title || x.takeaway).slice(0, 4);
+    if (fh > 0.95 && finds.length) {
+      p.push({ t: "text", x: M, y: fy, w: 6, h: 0.26, text: "KEY FINDINGS IN THIS PACK", size: 8.5, bold: true, color: C.olive, spacing: 1 });
+      const n = finds.length, tw = (W - 2 * M - (n - 1) * 0.18) / n, ty = fy + 0.32, th = fh - 0.34;
+      finds.forEach((f, i) => {
+        const x = M + i * (tw + 0.18);
+        p.push({ t: "rect", x, y: ty, w: tw, h: th, fill: C.paper, radius: 0.14 });
+        p.push({ t: "rect", x: x + 0.16, y: ty + 0.14, w: 0.42, h: 0.24, fill: C.lime, radius: 0.12 });
+        p.push({ t: "text", x: x + 0.16, y: ty + 0.14, w: 0.42, h: 0.24, text: `Q${i + 1}`, size: 8, bold: true, color: C.ink, align: "center", valign: "middle" });
+        const titleH = Math.min(th * 0.42, textHeight(clean(f.title || f.heading), tw - 0.32, 10.5, true) + 0.06);
+        p.push({ t: "text", x: x + 0.16, y: ty + 0.46, w: tw - 0.32, h: titleH, text: clean(f.title || f.heading), size: 10.5, min: 8, bold: true, color: C.ink });
+        if (th - titleH - 0.6 > 0.25 && f.takeaway)
+          p.push({ t: "text", x: x + 0.16, y: ty + 0.5 + titleH, w: tw - 0.32, h: th - titleH - 0.62, text: clean(f.takeaway), size: 9, min: 7, color: C.neutral });
+      });
+    }
     slides.push({ bg: C.white, prims: p });
   } else if (r.summary) {
     const p: Prim[] = [];
@@ -353,20 +407,28 @@ export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): Sli
     const how = (me.steps || []).slice(0, 2).map(clean).join(" ");
     const sy = bottom + 0.25;
     p.push({ t: "rect", x: M, y: sy, w: W - 2 * M, h: 0.72, fill: C.paper, radius: 0.06 });
-    p.push({ t: "text", x: M + 0.2, y: sy + 0.04, w: W - 2 * M - 3.6, h: 0.64,
+    p.push({ t: "text", x: M + 0.2, y: sy + 0.04, w: W - 2 * M - (BRAND ? 0.4 : 3.6), h: 0.64,
              text: `How this was built: ${how || `live SQL over ${src.data}; every figure is traceable in Acolyte Analyst.`} The full pack has the detail, Q&A and method.`,
              size: 9, min: 7, color: C.neutral, valign: "middle" });
-    p.push({ t: "rect", x: W - M - 3.2, y: sy + 0.14, w: 3.0, h: 0.44, fill: C.lime, radius: 0.22 });
-    p.push({ t: "text", x: W - M - 3.2, y: sy + 0.14, w: 3.0, h: 0.44, text: "Talk to Acolyte →", size: 11, bold: true, color: C.ink, align: "center", valign: "middle" });
-    p.push({ t: "link", x: W - M - 3.2, y: sy + 0.14, w: 3.0, h: 0.44, url: "https://dumichanda.github.io/acolyte-site/#contact" });
+    if (!BRAND) {
+      p.push({ t: "rect", x: W - M - 3.2, y: sy + 0.14, w: 3.0, h: 0.44, fill: C.lime, radius: 0.22 });
+      p.push({ t: "text", x: W - M - 3.2, y: sy + 0.14, w: 3.0, h: 0.44, text: "Talk to Acolyte →", size: 11, bold: true, color: C.ink, align: "center", valign: "middle" });
+      p.push({ t: "link", x: W - M - 3.2, y: sy + 0.14, w: 3.0, h: 0.44, url: "https://dumichanda.github.io/acolyte-site/#contact" });
+    }
     slides.push({ bg: C.white, prims: p });
   }
 
   // 7. Close (full pack only)
   if (full) {
     const p: Prim[] = [];
-    p.push({ t: "logo", x: 0.6, y: 0.5, s: 0.34 });
-    p.push({ t: "text", x: 1.05, y: 0.5, w: 3, h: 0.34, text: "ACOLYTE", size: 12, bold: true, color: C.white, valign: "middle", spacing: 3 });
+    logoMark(p, 0.6, 0.5, BRAND?.logo ? 0.5 : 0.34, 12);
+    if (BRAND) {   // a client's pack closes on their brand, without Acolyte's sales pitch
+      p.push({ t: "rect", x: 0.6, y: 2.05, w: 0.9, h: 0.07, fill: C.lime });
+      p.push({ t: "text", x: 0.6, y: 2.3, w: 11, h: 0.9, text: `Prepared for ${who()}`, size: 34, bold: true, color: C.white });
+      p.push({ t: "text", x: 0.6, y: 3.3, w: 10, h: 0.9, text: "Every figure comes from live queries; ask your analyst a follow-up question in Acolyte to go deeper.", size: 15, color: C.darkMuted });
+      p.push({ t: "text", x: 0.6, y: 6.75, w: 9, h: 0.3, text: `${date} · Acolyte Analyst`, size: 9, color: C.darkMuted });
+      slides.push({ bg: C.ink, prims: p });
+    } else {
     p.push({ t: "text", x: 0.6, y: 2.3, w: 11, h: 0.9, text: "Want this on your own data?", size: 34, bold: true, color: C.white });
     p.push({ t: "text", x: 0.6, y: 3.3, w: 10, h: 0.9, text: "Acolyte builds AI analysts, live dashboards and automated board packs for South African businesses, running on your own data and servers.", size: 15, color: C.darkMuted });
     p.push({ t: "rect", x: 0.6, y: 4.6, w: 3.0, h: 0.6, fill: C.lime, radius: 0.3 });
@@ -374,6 +436,7 @@ export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): Sli
     p.push({ t: "link", x: 0.6, y: 4.6, w: 3.0, h: 0.6, url: "https://dumichanda.github.io/acolyte-site/#contact" });
     p.push({ t: "text", x: 0.6, y: 6.75, w: 9, h: 0.3, text: "dumichanda.github.io/acolyte-site", size: 9, color: C.darkMuted });
     slides.push({ bg: C.ink, prims: p });
+    }
   }
   // Final guard: nothing on a content slide may run past the footer rule.
   for (const sl of slides) {
@@ -404,14 +467,15 @@ export function chartsDeck(charts: ChartArtifact[], title: string): ReportArtifa
 // ---------------------------------------------------------------- dark theme
 export type DeckTheme = "light" | "dark" | "alternate";
 /** Dark slides: content slides move to near-black with light text and lime accents; dark cover/close slides stay. */
-const DARK_MAP: Record<string, string> = {
-  [C.white]: "1C1D22", [C.paper]: "1C1D22", [C.note]: "23271A", [C.line]: "2B2D32", "FAF8F3": "16171A",
+const darkMap = (): Record<string, string> => ({
+  [C.white]: "1C1D22", [C.paper]: "1C1D22", [C.note]: shade(C.lime, -0.82), [C.line]: "2B2D32", "FAF8F3": "16171A",
   [C.ink]: "ECEBE6", [C.muted]: "A9A8B0", [C.neutral]: "C9C8C2", [C.olive]: C.lime, [C.neg]: "FF6A3D", [C.pos]: "3FB950",
-};
-const DARK_FILL: Record<string, string> = { ...DARK_MAP, [C.ink]: "0B0B0D", [C.olive]: "3F5306" };
+});
+const darkFill = (): Record<string, string> => ({ ...darkMap(), [C.ink]: shade(C.ink, -0.2), [C.olive]: shade(C.olive, -0.3) });
 export const DARK_BG = "141417";
 
 export function toDark(slides: SlideSpec[]): SlideSpec[] {
+  const DARK_MAP = darkMap(), DARK_FILL = darkFill();
   return slides.map((sl) => {
     if (sl.bg !== C.white) return sl;   // cover and close are already dark
     return { bg: DARK_BG, prims: sl.prims.map((p) => {
@@ -431,7 +495,7 @@ export function toAlternate(slides: SlideSpec[]): SlideSpec[] {
   let k = 0;
   return slides.map((sl, i) => {
     if (sl.bg !== C.white) return sl;
-    return k++ % 2 === 0 ? dark[i] : { bg: MINT_BG, prims: sl.prims.map((p) =>
+    return k++ % 2 === 0 ? dark[i] : { bg: BRAND ? shade(C.lime, 0.9) : MINT_BG, prims: sl.prims.map((p) =>
       p.t === "rect" && p.fill === C.white ? { ...p, fill: "FBFDF5" } : p.t === "rect" && p.fill === C.paper ? { ...p, fill: "FFFFFF" } : p) };
   });
 }

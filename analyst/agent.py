@@ -89,6 +89,10 @@ How to work:
   (implication or recommendation for the reader's business) and a note for caveats. Fill the executive Q&A, conclusions
   (findings, risks, numbered actions) and method (how it was built, what to trust, what is estimated or not comparable).
   Tone for KPI cards: positive = good news, negative = problem/risk, brand = headline figure, neutral = context.
+  FILL THE PACK (no empty space on any slide; every element carries a number or an implication): executive summary
+  with 4-8 KPI cards, a so-what and a catch; every section with 2-3 KPI cards, 3-4 bullets that each contain a number
+  (a comparison, gap, share or change), a so-what and a how-to-read note; 4-6 Q&A pairs; conclusions with 4-6 findings,
+  3-5 risks and 4-6 numbered actions; method with 3-5 steps and 3 limits. Prefer more distinct insights over longer text.
   ORDER sections by importance: the first two become the 5-slide executive brief (cover, summary, those two findings,
   recommendations); the full pack has all of them. Put the most decision-relevant findings first and make the
   conclusions' actions concrete, because executives may only read those.

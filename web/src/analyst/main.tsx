@@ -21,7 +21,7 @@ function ExportBtn({ label, run, primary }: { label: string; run: () => Promise<
 import { API, api, getToken, logout, type Industry, type Me } from "../auth";
 import { SignIn, UsageCard } from "../Account";
 import { loadIndex, loadReport, monthLabel, type ReportCard } from "../reports/data";
-import { DeckStyle, getDeckTheme, useDeckTheme } from "./DeckStyle";
+import { clearClientBrand, DeckStyle, getDeckTheme, loadClientBrand, useDeckTheme } from "./DeckStyle";
 
 /** Fills the empty canvas: this analyst's latest monthly reports, opened straight into the canvas. */
 function LatestReports({ industry, onOpen }: { industry: string; onOpen: (r: ReportArtifact) => void }) {
@@ -549,10 +549,11 @@ function App() {
   const localFor = (a: Analyst) => readLocal().filter((c) => (c.industry || "jobs") === a);
   const refreshAccount = useCallback(async () => {
     const a = wsRef.current;
-    if (!getToken()) { setMe(null); setHistory(localFor(a)); return; }
+    if (!getToken()) { setMe(null); setHistory(localFor(a)); clearClientBrand(); return; }
     try {
       const m = await api<Me>("/me");
       setMe(m);
+      loadClientBrand(api);
       const own = m.account.industry && m.account.industry !== "all" ? m.account.industry : a;
       setHistory((await api<{ conversations: Conv[] }>(`/conversations?industry=${own}`)).conversations);
     } catch { setMe(null); setHistory(localFor(a)); }

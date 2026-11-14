@@ -6,6 +6,7 @@ import ReactECharts from "../Chart";
 import PlatformNav from "../PlatformNav";
 import { SignIn, UsageCard } from "../Account";
 import { api, getToken, logout, type Me } from "../auth";
+import { loadClientBrand } from "../analyst/DeckStyle";
 import { readTheme } from "../charts";
 import { url } from "../site";
 import { chartOption, download, fmt, toCSV, type ChartArtifact } from "../analyst/chart";
@@ -94,7 +95,7 @@ function App() {
   useEffect(() => {
     (async () => {
       if (getToken()) {
-        try { setMe(await api<Me>("/me")); await loadBoards(); } catch { setMe(null); }
+        try { setMe(await api<Me>("/me")); loadClientBrand(api); await loadBoards(); } catch { setMe(null); }
       }
       setChecked(true);
     })();

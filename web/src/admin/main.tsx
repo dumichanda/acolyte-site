@@ -6,6 +6,7 @@ import ReactECharts from "../Chart";
 import PlatformNav from "../PlatformNav";
 import { SITE } from "../site";
 import { CATEGORICAL, mode as themeMode } from "../viz";
+import Branding from "./Branding";
 
 // Private admin page: reads /admin/stats from the analyst API with the admin key (kept only in this browser).
 const API = (() => {
@@ -60,7 +61,7 @@ function Kpi({ label, value, hint, tone }: { label: string; value: string; hint?
   return <div className="kpi"><div className="label">{label}</div><div className={"value " + (tone || "")}>{value}</div>{hint && <div className="hint">{hint}</div>}</div>;
 }
 
-interface AccountRow { id: number; name: string; plan: string; industry?: string; active: boolean; created_at: string; last_login: string | null;
+interface AccountRow { id: number; name: string; plan: string; industry?: string; active: boolean; branded?: boolean; brand_accent?: string | null; brand_dark?: string | null; created_at: string; last_login: string | null;
                      questions_30d: number; cost_30d: string; reports_30d: number; dashboards: number }
 const PLAN_LABEL: Record<string, string> = { junior: "Junior Analyst (R30k)", senior: "Senior AI & Data Science (R50k)", owner: "Owner" };
 const INDUSTRY_LABEL: Record<string, string> = { jobs: "Talent Analyst", property: "Property Analyst", retail: "Retail Pricing Analyst",
@@ -70,6 +71,7 @@ function Accounts({ adminKey }: { adminKey: string }) {
   const [rows, setRows] = useState<AccountRow[]>([]);
   const [name, setName] = useState(""), [plan, setPlan] = useState("junior"), [pin, setPin] = useState(""), [industry, setIndustry] = useState("property");
   const [brief, setBrief] = useState("");
+  const [brandFor, setBrandFor] = useState<AccountRow | null>(null);
   const [notice, setNotice] = useState(""), [err, setErr] = useState("");
   const call = useCallback(async (path: string, method = "GET", body?: unknown) => {
     const r = await fetch(`${API}${path}`, { method, headers: { Authorization: `Bearer ${adminKey}`, ...(body ? { "Content-Type": "application/json" } : {}) },
@@ -130,11 +132,15 @@ function Accounts({ adminKey }: { adminKey: string }) {
                 {a.active ? "Active · deactivate" : "Inactive · activate"}</button></td>
               <td><button className="link" onClick={() => confirm(`Give ${a.name} a new PIN? The old one stops working.`) && act(async () => {
                 const d = await call(`/admin/accounts/${a.id}`, "PATCH", { reset_pin: true }); setNotice(`New PIN for ${a.name}: ${d.pin}`);
-              })}>Reset PIN</button></td>
+              })}>Reset PIN</button>
+                <button className="link brand-btn" onClick={() => setBrandFor(a)}>
+                  {a.branded && <i style={{ background: `linear-gradient(135deg, #${a.brand_dark} 55%, #${a.brand_accent} 55%)` }} />}
+                  {a.branded ? "Branding" : "Add branding"}</button></td>
             </tr>))}
             {!rows.length && <tr><td colSpan={10} className="muted">No client accounts yet.</td></tr>}</tbody>
         </table>
       </div>
+      {brandFor && <Branding account={brandFor} call={call} onDone={() => { setBrandFor(null); load(); }} />}
     </section>
   );
 }

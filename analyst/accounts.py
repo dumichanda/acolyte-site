@@ -333,6 +333,7 @@ def admin_accounts(db: str) -> list[dict]:
     with psycopg.connect(db) as conn:
         return _jsonable(_rows(conn, """
             SELECT a.id, a.name, a.plan, a.industry, a.active, a.created_at, a.last_login,
+                   a.brand IS NOT NULL AS branded, a.brand->>'accent' AS brand_accent, a.brand->>'dark' AS brand_dark,
                    (SELECT count(*) FROM admin.analyst_usage u WHERE u.account_id = a.id AND u.at >= now() - interval '30 days') AS questions_30d,
                    (SELECT coalesce(sum(cost_usd), 0) FROM admin.analyst_usage u WHERE u.account_id = a.id AND u.at >= now() - interval '30 days') AS cost_30d,
                    (SELECT count(*) FROM admin.analyst_usage u WHERE u.account_id = a.id AND u.report AND u.at >= now() - interval '30 days') AS reports_30d,
@@ -463,3 +464,53 @@ def get_report(db: str, rid: int) -> dict | None:
         r = _rows(conn, """SELECT id, industry, period, month_to_date, title, report, finished_at FROM admin.reports
                            WHERE id = %s AND status = 'ready' AND published""", (rid,))
     return _jsonable(r[0]) if r else None
+
+
+# ---------------------------------------------------------------- client branding (admin sets, client's exports use)
+BRAND_PRESETS = {
+    "acolyte": ("C8F135", "0C0C0E"), "ocean": ("38A3FF", "0B1A2B"), "emerald": ("2ECC8F", "0B1F17"),
+    "royal": ("8B7CFF", "14112B"), "sunset": ("FF8A3D", "1F120B"), "gold": ("E8C15A", "141414"),
+}
+_HEX = __import__("re").compile(r"^[0-9A-Fa-f]{6}$")
+_IMG = __import__("re").compile(r"^data:image/(png|jpeg);base64,[A-Za-z0-9+/=]+$")
+
+
+def clean_brand(b: dict | None) -> dict | None:
+    """Validate a brand from the admin page. None clears it (back to Acolyte's own brand)."""
+    if not b:
+        return None
+    accent, dark = str(b.get("accent", "")).lstrip("#"), str(b.get("dark", "")).lstrip("#")
+    if not (_HEX.match(accent) and _HEX.match(dark)):
+        raise Denied(400, "Pick two colours (accent and dark).")
+    out = {"name": str(b.get("name") or "").strip()[:60], "accent": accent.upper(), "dark": dark.upper(),
+           "preset": str(b.get("preset") or "custom")[:20], "style": b.get("style") if b.get("style") in ("light", "dark", "alternate") else "alternate"}
+    for key, cap, label in (("logo", 400_000, "Logo"), ("cover", 1_500_000, "Cover image")):
+        v = b.get(key)
+        if v:
+            if not isinstance(v, str) or not _IMG.match(v):
+                raise Denied(400, f"{label} must be a PNG or JPG image.")
+            if len(v) > cap:
+                raise Denied(413, f"{label} is too large; use a file under {cap * 3 // 4 // 1000} KB.")
+            out[key] = v
+            asp = b.get(key + "Aspect")
+            out[key + "Aspect"] = float(asp) if isinstance(asp, (int, float)) and 0.05 < asp < 20 else 1.0
+    return out
+
+
+def get_brand(db: str, account_id: int) -> dict | None:
+    with psycopg.connect(db) as conn:
+        r = conn.execute("SELECT brand, name FROM admin.accounts WHERE id = %s", (account_id,)).fetchone()
+    if not r or not r[0]:
+        return None
+    b = dict(r[0])
+    b["name"] = b.get("name") or r[1]
+    return b
+
+
+def set_brand(db: str, account_id: int, brand: dict | None) -> dict | None:
+    b = clean_brand(brand)
+    with psycopg.connect(db) as conn:
+        if not conn.execute("UPDATE admin.accounts SET brand = %s WHERE id = %s",
+                            (json.dumps(b) if b else None, account_id)).rowcount:
+            raise Denied(404, "Account not found.")
+    return b

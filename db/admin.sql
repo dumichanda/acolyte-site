@@ -151,3 +151,6 @@ CREATE TABLE IF NOT EXISTS admin.reports (
     finished_at TIMESTAMPTZ,
     UNIQUE (industry, period)
 );
+
+-- Client branding for their report packs: colours, logo, cover image (data URLs), default slide style.
+ALTER TABLE admin.accounts ADD COLUMN IF NOT EXISTS brand JSONB;

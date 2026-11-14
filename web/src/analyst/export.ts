@@ -9,7 +9,7 @@ import * as echarts from "echarts";
 import { url } from "../site";
 import { CATEGORICAL, registerThemes } from "../viz";
 import { chartOption, fmt, type ChartArtifact, type ReportArtifact } from "./chart";
-import { approxWidth, buildDeck, C, chartsDeck, DARK_BG, fitSize, H, tableLayout, themed, W, type DeckTheme, type Prim, type SlideSpec, type Variant } from "./deck";
+import { approxWidth, brand, buildDeck, C, chartsDeck, DARK_BG, fitSize, H, setDeckBrand, shade, tableLayout, themed, W, type Brand, type DeckTheme, type Prim, type SlideSpec, type Variant } from "./deck";
 
 const PALETTE = CATEGORICAL.light.map((c) => c.replace("#", "").toUpperCase());
 const FONT = "Poppins";   // brand font: embedded in PDFs; PowerPoint shows it where Poppins is installed (free, Google Fonts)
@@ -79,7 +79,9 @@ function chartImage(c: ChartArtifact, w = 880, h = 480): string | null {
   try {
     const dark = THEME === "dark";
     const inst = echarts.init(div, dark ? "acolyte-dark" : "acolyte-light", { renderer: "canvas", width: w, height: h });
-    const pal = dark ? { ink: "#ECEBE6", muted: "#A9A8B0", line: "#2B2D32", panel: "#1C1D22" } : { ink: "#16140f", muted: "#6b6656", line: "#e7e2d6", panel: "#ffffff" };
+    const acc = dark ? C.lime : C.olive;
+    const pal = { ...(dark ? { ink: "#ECEBE6", muted: "#A9A8B0", line: "#2B2D32", panel: "#1C1D22" } : { ink: "#16140f", muted: "#6b6656", line: "#e7e2d6", panel: "#ffffff" }),
+      accent: "#" + acc, accent2: "#" + shade(acc, dark ? -0.35 : -0.3) };
     inst.setOption({ ...chartOption(c, pal, !dark), animation: false,
       textStyle: { fontFamily: "Poppins, Arial, sans-serif", color: pal.ink } });
     // JPEG keeps PDFs small (a 2x PNG chart is several MB inside a PDF)
@@ -162,7 +164,8 @@ function drawPptx(pptx: Pptx, spec: SlideSpec, logo: string | null) {
   s.background = { color: spec.bg };
   for (const p of spec.prims) {
     if (p.t === "rect") {
-      s.addShape(p.radius ? "roundRect" : "rect", { x: p.x, y: p.y, w: p.w, h: p.h, fill: { color: p.fill }, line: { color: p.fill, width: 0 },
+      s.addShape(p.radius ? "roundRect" : "rect", { x: p.x, y: p.y, w: p.w, h: p.h,
+        fill: { color: p.fill, ...(p.alpha !== undefined ? { transparency: Math.round((1 - p.alpha) * 100) } : {}) }, line: { color: p.fill, width: 0 },
         ...(p.radius ? { rectRadius: p.radius } : {}),
         ...(p.shadow ? { shadow: { type: "outer" as const, color: "000000", opacity: THEME === "dark" ? 0.55 : 0.16, blur: 10, offset: 3, angle: 90 } } : {}) });
     } else if (p.t === "text") {
@@ -177,7 +180,8 @@ function drawPptx(pptx: Pptx, spec: SlideSpec, logo: string | null) {
         breakLine: true, paraSpaceAfter: 5 } })),
       { x: p.x, y: p.y, w: p.w, h: p.h, fontFace: FONT, fontSize: size, color: p.color, valign: "top", margin: 0, lineSpacingMultiple: 1.05 });
     } else if (p.t === "chart") nativeChart(s, p.chart, p.x, p.y, p.w, p.h);
-    else if (p.t === "logo" && logo) s.addImage({ data: logo, x: p.x, y: p.y, w: p.s, h: p.s });
+    else if (p.t === "logo") { const lg = brand()?.logo || logo; if (lg) s.addImage({ data: lg, x: p.x, y: p.y, w: p.w || p.s, h: p.s }); }
+    else if (p.t === "image") s.addImage({ data: p.data, x: p.x, y: p.y, w: p.w, h: p.h, sizing: { type: "cover", w: p.w, h: p.h } });
     else if (p.t === "link") s.addText(" ", { x: p.x, y: p.y, w: p.w, h: p.h, hyperlink: { url: p.url } });
   }
 }
@@ -259,8 +263,11 @@ export async function reportToPdf(r: ReportArtifact, variant: Variant = "standar
           });
           if (GS) (doc as any).setGState(new GS({ opacity: 1 }));
         }
+        const GSa = (doc as any).GState;
+        if (p.alpha !== undefined && GSa) (doc as any).setGState(new GSa({ opacity: p.alpha }));
         doc.setFillColor(...hex(p.fill));
         if (p.radius) doc.roundedRect(p.x, p.y, p.w, p.h, p.radius, p.radius, "F"); else doc.rect(p.x, p.y, p.w, p.h, "F");
+        if (p.alpha !== undefined && GSa) (doc as any).setGState(new GSa({ opacity: 1 }));
       } else if (p.t === "text") {
         if (p.spacing) doc.setCharSpace(p.spacing / 100);
         drawText(p.text, p.x, p.y, p.w, p.h, p.size, p.color, p.bold, p.align, p.valign, p.min);
@@ -289,10 +296,21 @@ export async function reportToPdf(r: ReportArtifact, variant: Variant = "standar
           const img = chartImage(p.chart, Math.round(p.w * 100), Math.round(p.h * 100));
           if (img) doc.addImage(img, "JPEG", p.x, p.y, p.w, p.h, undefined, "FAST");
         }
-      } else if (p.t === "logo" && logo) doc.addImage(logo, "PNG", p.x, p.y, p.s, p.s);
-      else if (p.t === "link") doc.link(p.x, p.y, p.w, p.h, { url: p.url });
+      } else if (p.t === "logo") {
+        const lg = brand()?.logo || logo;
+        if (lg) doc.addImage(lg, lg.startsWith("data:image/jpeg") ? "JPEG" : "PNG", p.x, p.y, p.w || p.s, p.s);
+      } else if (p.t === "image") {   // cover-fit: scale to fill, centre, clip to the box
+        const box = p.w / p.h, iw = p.aspect > box ? p.h * p.aspect : p.w, ih = p.aspect > box ? p.h : p.w / p.aspect;
+        doc.saveGraphicsState();
+        doc.rect(p.x, p.y, p.w, p.h, null as any); (doc as any).clip(); (doc as any).discardPath();
+        doc.addImage(p.data, p.data.startsWith("data:image/jpeg") ? "JPEG" : "PNG", p.x + (p.w - iw) / 2, p.y + (p.h - ih) / 2, iw, ih);
+        doc.restoreGraphicsState();
+      } else if (p.t === "link") doc.link(p.x, p.y, p.w, p.h, { url: p.url });
     }
   });
   doc.save(`${slug(r.title)}${variant === "executive" ? "-executive" : ""}${theme === "light" ? "" : "-" + theme}.pdf`);
   slideTheme("FFFFFF");
 }
+
+/** Brand every export from now on with a client's colours, logo and cover (null = Acolyte's own brand). */
+export function setBrand(b: Brand | null) { setDeckBrand(b); }

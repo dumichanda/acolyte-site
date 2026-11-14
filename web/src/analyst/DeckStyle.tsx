@@ -26,3 +26,14 @@ export function DeckStyle({ value, onChange }: { value: DeckTheme; onChange: (t:
 export function useDeckTheme() {
   return useState<DeckTheme>(getDeckTheme);
 }
+
+/** Apply the signed-in client's branding to every export (Acolyte's own brand when none is set). */
+export async function loadClientBrand(api: <T>(path: string) => Promise<T>) {
+  try {
+    const r = await api<{ brand: import("./deck").Brand | null }>("/brand");
+    (await import("./export")).setBrand(r.brand);
+    if (r.brand?.style) { try { if (!localStorage.getItem(KEY)) localStorage.setItem(KEY, r.brand.style); } catch { /* storage blocked */ } }
+    return r.brand;
+  } catch { return null; }
+}
+export async function clearClientBrand() { (await import("./export")).setBrand(null); }
