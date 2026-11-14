@@ -409,6 +409,23 @@ def start_brief(industry: str, day, force: bool = False) -> bool:
     return True
 
 
+@app.on_event("startup")
+def _reset_interrupted_briefs() -> None:
+    """A brief that was 'running' when the server stopped (e.g. a redeploy) can never finish: mark it failed so it
+    restarts on the next request instead of waiting for the stale-run timeout."""
+    if not ADMIN_DB_URL:
+        return
+    try:
+        import psycopg
+        with psycopg.connect(ADMIN_DB_URL, connect_timeout=10) as conn:
+            n = conn.execute("""UPDATE admin.briefs SET status = 'failed', error = 'Interrupted by a server restart',
+                                started_at = now() - interval '1 hour', finished_at = now() WHERE status = 'running'""").rowcount
+        if n:
+            print(f"[brief] reset {n} interrupted brief(s)", flush=True)
+    except Exception as e:
+        print(f"[brief] startup reset skipped: {e.__class__.__name__}", flush=True)
+
+
 @app.get("/briefs/{industry}")
 def brief(industry: str, day: str | None = None, account: dict = Depends(need_account)):
     if industry not in BRIEFS:
