@@ -520,3 +520,60 @@ def set_brand(db: str, account_id: int, brand: dict | None) -> dict | None:
                             (json.dumps(b) if b else None, account_id)).rowcount:
             raise Denied(404, "Account not found.")
     return b
+
+
+# ---------------------------------------------------------------- owner alerts and the AI credit tracker
+def add_alert(db: str, kind: str, message: str, ref: str | None = None) -> None:
+    """Record an operational problem for the owner. The same kind is recorded at most once an hour. Never raises."""
+    try:
+        with psycopg.connect(db, connect_timeout=10) as conn:
+            if conn.execute("SELECT 1 FROM admin.alerts WHERE kind = %s AND NOT resolved AND at > now() - interval '1 hour'",
+                            (kind,)).fetchone():
+                return
+            conn.execute("INSERT INTO admin.alerts (kind, ref, message) VALUES (%s, %s, %s)", (kind, ref, message[:2000]))
+    except Exception as e:
+        print(f"[alert] could not record {kind}: {e.__class__.__name__}", flush=True)
+
+
+def credit_status(db: str) -> dict | None:
+    """Estimated AI credit left: the last balance the owner entered, minus what the analyst has spent since."""
+    with psycopg.connect(db) as conn:
+        r = conn.execute("SELECT at, balance_usd, alert_usd FROM admin.credit ORDER BY at DESC LIMIT 1").fetchone()
+        if not r:
+            return None
+        spent = conn.execute("SELECT coalesce(sum(cost_usd), 0) FROM admin.analyst_usage WHERE at >= %s", (r[0],)).fetchone()[0]
+    left = float(r[1]) - float(spent)
+    return {"since": r[0].isoformat(), "balance_usd": float(r[1]), "spent_usd": round(float(spent), 2),
+            "left_usd": round(left, 2), "alert_usd": float(r[2]), "low": left <= float(r[2])}
+
+
+def set_credit(db: str, balance_usd: float, alert_usd: float) -> dict:
+    with psycopg.connect(db) as conn:
+        conn.execute("INSERT INTO admin.credit (balance_usd, alert_usd) VALUES (%s, %s)", (balance_usd, alert_usd))
+        conn.execute("UPDATE admin.alerts SET resolved = TRUE WHERE kind IN ('ai_credit', 'low_credit') AND NOT resolved")
+    return credit_status(db) or {}
+
+
+def pending_alerts(db: str) -> list[dict]:
+    """Alerts not yet sent to the owner, including a low-credit alert when the estimate crosses the threshold."""
+    c = None
+    try:
+        c = credit_status(db)
+    except Exception:
+        pass
+    if c and c["low"]:
+        add_alert(db, "low_credit", f"Estimated AI credit left: ${c['left_usd']:.2f} (alert at ${c['alert_usd']:.0f}). "
+                                    f"Balance ${c['balance_usd']:.2f} entered {c['since'][:16]}, spent ${c['spent_usd']:.2f} since. "
+                                    "Top up in the Anthropic Console, then enter the new balance on the admin page.")
+    with psycopg.connect(db) as conn:
+        return _jsonable(_rows(conn, "SELECT id, at, kind, ref, message FROM admin.alerts WHERE NOT notified ORDER BY at"))
+
+
+def mark_notified(db: str, ids: list[int]) -> None:
+    with psycopg.connect(db) as conn:
+        conn.execute("UPDATE admin.alerts SET notified = TRUE WHERE id = ANY(%s)", (ids,))
+
+
+def recent_alerts(db: str, limit: int = 20) -> list[dict]:
+    with psycopg.connect(db) as conn:
+        return _jsonable(_rows(conn, "SELECT id, at, kind, ref, message, notified, resolved FROM admin.alerts ORDER BY at DESC LIMIT %s", (limit,)))

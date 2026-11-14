@@ -227,7 +227,12 @@ def ask(body: Ask, req: Request):
                 elif t == "usage":
                     rec["usage"] = ui["usage"] = ev
                 elif t == "error":
-                    rec["status"], rec["error"] = "error", ev.get("text")
+                    rec["status"], rec["error"] = "error", ev.get("detail") or ev.get("text")
+                    if ev.get("kind"):
+                        acc.add_alert(ADMIN_DB_URL, ev["kind"], ev.get("detail") or ev.get("text", ""), ev.get("ref"))
+                    if ev.get("detail") and (account or {}).get("plan") == "owner":   # only the owner sees the technical cause
+                        ev = {**ev, "text": f"{ev['text']} Detail (owner only): {ev['detail']}"}
+                    ev = {k: v for k, v in ev.items() if k not in ("detail", "kind")}
                     ui["error"] = ev.get("text")
                 yield f"data: {json.dumps(ev, default=str)}\n\n"
         except Exception as e:  # never leave the browser hanging
@@ -448,7 +453,9 @@ def write_pack(industry: str, prompt: str, sid: str, label: str) -> tuple[dict |
             elif t == "usage":
                 cost = ev.get("cost_usd") or 0.0
             elif t == "error":
-                err = ev.get("text")
+                err = ev.get("detail") or ev.get("text")
+                if ev.get("kind"):
+                    acc.add_alert(ADMIN_DB_URL, ev["kind"], f"[{label} {industry}] {err}", ev.get("ref"))
         if not report and not err:
             err = "The analyst finished without writing a report."
     except Exception as e:
@@ -645,6 +652,42 @@ def require_admin(req: Request) -> None:
     token = (req.headers.get("authorization") or "").removeprefix("Bearer ").strip()
     if not ADMIN_TOKEN or not hmac.compare_digest(token, ADMIN_TOKEN):
         raise HTTPException(401, "Admin key required.")
+
+
+class CreditIn(BaseModel):
+    balance_usd: float = Field(ge=0, le=100000)
+    alert_usd: float = Field(default=39, ge=0, le=100000)
+
+
+@app.get("/admin/credit")
+def admin_credit(req: Request):
+    require_admin(req)
+    return {"credit": acc.credit_status(ADMIN_DB_URL), "alerts": acc.recent_alerts(ADMIN_DB_URL)}
+
+
+@app.post("/admin/credit")
+def admin_set_credit(body: CreditIn, req: Request):
+    """The owner records the balance shown in the Anthropic Console after a top-up, and the alert threshold."""
+    require_admin(req)
+    return acc.set_credit(ADMIN_DB_URL, body.balance_usd, body.alert_usd)
+
+
+@app.get("/admin/alerts/pending")
+def admin_alerts_pending(req: Request):
+    """For the hourly alerts workflow: alerts not yet sent (it opens a GitHub issue, which emails the owner)."""
+    require_admin(req)
+    return {"alerts": acc.pending_alerts(ADMIN_DB_URL)}
+
+
+class AckIn(BaseModel):
+    ids: list[int]
+
+
+@app.post("/admin/alerts/ack")
+def admin_alerts_ack(body: AckIn, req: Request):
+    require_admin(req)
+    acc.mark_notified(ADMIN_DB_URL, body.ids)
+    return {"ok": True}
 
 
 @app.get("/admin/stats")

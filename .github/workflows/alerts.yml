@@ -1,0 +1,54 @@
+name: Owner alerts
+
+# Hourly: ask the analyst server for new alerts (AI credit running low or exhausted, AI errors) and open a
+# GitHub issue for each, which GitHub emails to the repo owner. Alerts are marked as sent so each arrives once.
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  alerts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API: https://acolyte-site.onrender.com
+      ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Send new alerts
+        run: |
+          set -e
+          ok=""
+          for i in 1 2 3 4 5 6; do   # the free server may be asleep
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$API/health") || true
+            [ "$code" = "200" ] && ok=1 && break; sleep 20
+          done
+          [ -n "$ok" ] || { echo "Analyst server not responding"; exit 0; }
+          curl -sS --max-time 60 -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/alerts/pending" > alerts.json
+          python3 - <<'PY'
+          import json, subprocess
+          data = json.load(open("alerts.json"))
+          alerts = data.get("alerts") or []
+          print(f"{len(alerts)} new alert(s)")
+          titles = {"ai_credit": "AI credit exhausted: the analyst cannot answer",
+                    "low_credit": "AI credit is running low",
+                    "ai_error": "AI service error"}
+          sent = []
+          for a in alerts:
+              title = titles.get(a["kind"], a["kind"])
+              body = (f"**{title}** at {a['at'][:16]} UTC" + (f" (client reference {a['ref']})" if a.get("ref") else "") +
+                      f"\n\n```\n{a['message']}\n```\n\n"
+                      "What to do: check the balance in the Anthropic Console (Billing), top up if needed, then enter the "
+                      "new balance on the Acolyte admin page so the low-credit estimate resets. Close this issue when done.")
+              subprocess.run(["gh", "issue", "create", "--title", f"[Acolyte alert] {title}", "--body", body], check=True)
+              sent.append(a["id"])
+          json.dump({"ids": sent}, open("ack.json", "w"))
+          PY
+          if [ "$(python3 -c 'import json;print(len(json.load(open("ack.json"))["ids"]))')" != "0" ]; then
+            curl -sS --max-time 60 -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+              -d @ack.json "$API/admin/alerts/ack"
+          fi

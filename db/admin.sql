@@ -154,3 +154,21 @@ CREATE TABLE IF NOT EXISTS admin.reports (
 
 -- Client branding for their report packs: colours, logo, cover image (data URLs), default slide style.
 ALTER TABLE admin.accounts ADD COLUMN IF NOT EXISTS brand JSONB;
+
+-- ---------------------------------------------------------------- operational alerts (AI credit, failures) for the owner
+CREATE TABLE IF NOT EXISTS admin.alerts (
+    id        SERIAL PRIMARY KEY,
+    at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    kind      TEXT NOT NULL,              -- ai_credit | ai_error | low_credit
+    ref       TEXT,                       -- reference shown to the client ("contact support, ref …")
+    message   TEXT NOT NULL,              -- full technical detail (never shown to clients)
+    notified  BOOLEAN NOT NULL DEFAULT FALSE,
+    resolved  BOOLEAN NOT NULL DEFAULT FALSE
+);
+-- AI credit tracker: the owner records the balance after a top-up; spend since then comes from analyst_usage.
+CREATE TABLE IF NOT EXISTS admin.credit (
+    id          SERIAL PRIMARY KEY,
+    at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    balance_usd NUMERIC NOT NULL,         -- balance shown in the Anthropic Console at this moment
+    alert_usd   NUMERIC NOT NULL DEFAULT 39   -- alert when the estimated balance falls to this
+);

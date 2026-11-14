@@ -753,15 +753,16 @@ def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode
             except anthropic.RateLimitError:
                 yield {"type": "error", "text": "The analyst is busy right now. Please try again in a minute."}
                 return
-            except anthropic.BadRequestError as e:
-                msg = getattr(e, "message", None) or str(e)
-                print(f"Anthropic 400: {msg}", flush=True)
-                yield {"type": "error", "text": f"The AI request was rejected: {msg[:300]}"}
-                return
             except (anthropic.APIConnectionError, anthropic.APIStatusError) as e:
-                print(f"Anthropic error: {e.__class__.__name__}: {e}", flush=True)
+                # Clients get a short message with a reference; the detail goes to the log, the owner and the alerts.
+                msg = getattr(e, "message", None) or str(e)
                 code = getattr(e, "status_code", "")
-                yield {"type": "error", "text": f"The AI service is unavailable ({e.__class__.__name__}{f' {code}' if code else ''}: {str(e)[:160]})."}
+                ref = uuid.uuid4().hex[:6].upper()
+                kind = "ai_credit" if re.search(r"credit balance|billing|purchase credits", msg, re.I) else "ai_error"
+                print(f"Anthropic error ref={ref} {e.__class__.__name__} {code}: {msg}", flush=True)
+                yield {"type": "error", "ref": ref, "kind": kind,
+                       "text": f"The analyst is unavailable right now. Please try again shortly, or contact Acolyte support (reference {ref}).",
+                       "detail": f"{e.__class__.__name__} {code}: {msg}"[:600]}
                 return
 
             served = response.model or cfg["model"]

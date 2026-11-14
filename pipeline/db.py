@@ -59,6 +59,8 @@ def setup_analyst_role(conn: psycopg.Connection) -> None:
     conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON admin.reports TO analyst_admin")
     conn.execute("GRANT USAGE ON SEQUENCE admin.reports_id_seq TO analyst_admin")
     # Client data uploads: analyst_admin creates a private schema + read-only login role per client account.
+    conn.execute("GRANT SELECT, INSERT, UPDATE ON admin.alerts, admin.credit TO analyst_admin")
+    conn.execute("GRANT USAGE ON SEQUENCE admin.alerts_id_seq, admin.credit_id_seq TO analyst_admin")
     conn.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON admin.client_tables TO analyst_admin")
     conn.execute("GRANT USAGE ON SEQUENCE admin.client_tables_id_seq TO analyst_admin")
     conn.execute(sql.SQL("GRANT CREATE ON DATABASE {} TO analyst_admin").format(
