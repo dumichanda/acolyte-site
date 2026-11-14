@@ -365,6 +365,7 @@ function ReportView({ r, actions = true }: { r: ReportArtifact; actions?: boolea
           <div className="boxes">
             {s.so_what && <div className="box so"><b>So what</b><p>{s.so_what}</p></div>}
             {s.note && <div className="box note"><b>How to read it</b><p>{s.note}</p></div>}
+            {(s.explainers || []).map((e, k) => <div key={"x" + k} className="box note explain"><b>In plain words · {e.term}</b><p>{e.means}</p><p><i>Why it matters:</i> {e.why}</p></div>)}
           </div>
           {s.bullets?.length ? <ul>{s.bullets.map((b, k) => <li key={k}>{b}</li>)}</ul> : !s.takeaway && <Md text={s.body} />}
         </section>

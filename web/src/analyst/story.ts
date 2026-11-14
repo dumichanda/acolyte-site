@@ -217,7 +217,13 @@ export function buildStory(r: ReportArtifact, images: StoryImage[]): SlideSpec[]
       if (big.label) p.push({ t: "text", x: tx, y: y + 1.25, w: tw, h: 0.4, text: big.label, size: 11, min: 8, color: sub });
       y += 1.85;
     }
-    if (s.takeaway) { p.push({ t: "text", x: tx, y, w: tw, h: 1.25, text: clean(s.takeaway), size: 15, min: 10, color: ink, valign: "top" }); y += 1.35; }
+    if (s.takeaway) { p.push({ t: "text", x: tx, y, w: tw, h: 1.1, text: clean(s.takeaway), size: 15, min: 10, color: ink, valign: "top" }); y += 1.2; }
+    const ex = (s.explainers || [])[0];
+    if (ex?.term && y < 5.2) {   // the jargon buster, documentary-style
+      p.push({ t: "rect", x: tx, y: y + 0.05, w: 0.06, h: 0.75, fill: dark ? C.lime : C.olive });
+      p.push({ t: "text", x: tx + 0.2, y, w: tw - 0.2, h: 0.85, text: `${clean(ex.term)}: ${clean(ex.means)} ${clean(ex.why)}`, size: 11.5, min: 8, color: sub, valign: "middle" });
+      y += 1.0;
+    }
     if (s.so_what && y < 6.2) {
       p.push({ t: "rect", x: tx, y, w: tw, h: H - 0.6 - y, fill: dark ? C.darkCard : "FFFFFF", radius: 0.16, shadow: true });
       p.push({ t: "text", x: tx + 0.22, y: y + 0.14, w: tw - 0.44, h: 0.3, text: "WHAT IT MEANS FOR YOU", size: 9, bold: true, color: dark ? C.lime : C.olive, spacing: 1 });

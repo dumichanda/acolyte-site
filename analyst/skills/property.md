@@ -31,3 +31,16 @@ For: where sellers are under pressure, prospecting for listings. Method: analyst
 property_listings.price_change_pct / price_reduced, days_tracked, by region and type; biggest cuts.
 Deliverable: price-cut rate by region chart, table of the largest reductions with links, and where an agency should
 prospect (areas with many cuts and long-listed stock).
+
+## Expert models and plain-language glossary (use these words when explaining)
+- Gross rental yield = 12 × monthly rent ÷ price. A year's rent as a share of the price. Above the prime rate means
+  rent can cover the cost of a bond; below it, investors rely on price growth.
+- Prime / bond rate: what banks charge home buyers. The hurdle every yield and affordability call is measured against.
+- Price-cut rate: share of listings whose asking price was lowered. A pressure gauge: rising = sellers are overpriced
+  and buyers have leverage; above roughly 1 in 5 listings is a buyer's market signal.
+- Stock (inventory) change: homes for sale now vs earlier. Rising stock with flat demand pushes prices down.
+- Price per m²: price ÷ floor size. Lets you compare homes of different sizes fairly.
+- Median vs average: the median is the middle listing, so a few mansions do not distort it. Use medians for prices.
+- Interquartile range (P25-P75): the middle half of prices. The honest "normal" range for a CMA.
+- Asking vs sale price: listings show what sellers hope for; deeds data shows what buyers paid. Say which you use.
+- Search interest (Google Trends): demand signal indexed 0-100, relative to the busiest week. Leading indicator.

@@ -28,3 +28,14 @@ signals (expansion, new capability, churn).
 For: where to open an office, hub or hire remotely. Method: per province/city, open roles (demand), salary median
 (analyst.salary_benchmarks by province), share of remote/hybrid ads, competing employers. Deliverable: scorecard
 table ranking locations on talent depth, cost and competition, with a recommended location and runner-up.
+
+## Expert models and plain-language glossary (use these words when explaining)
+- Salary bands P25/P50/P75: the pay a quarter, half and three-quarters of people earn below. P50 (median) is "market
+  rate"; paying below P25 makes hiring hard.
+- Compa-ratio = pay ÷ market median. 1.0 is market rate; below 0.9 risks losing people.
+- Pay premium: how much more a skill, city or seniority pays than the baseline, in % and rand.
+- Demand index: job ads now vs a base period. Rising = employers competing for the same people.
+- Employer rating gap: an employer's rating vs the industry average. Low ratings raise the cost of hiring.
+- Automation exposure: share of a role's tasks that software or AI can do. High exposure = role likely to change,
+  not necessarily disappear.
+- Ads are a demand signal, not a count of jobs: one ad can be several posts, and many jobs are never advertised.

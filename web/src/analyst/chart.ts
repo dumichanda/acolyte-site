@@ -13,6 +13,7 @@ export interface Kpi { value: string; label: string; context: string; tone: "bra
 export interface Section {
   heading: string; body: string; chart_ids: string[];
   question?: string; title?: string; takeaway?: string; kpis?: Kpi[]; so_what?: string; note?: string; bullets?: string[];
+  explainers?: { term: string; means: string; why: string }[];
 }
 export interface ReportArtifact {
   kind: "report"; id: string; title: string; summary: string; generated: string;

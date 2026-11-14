@@ -30,3 +30,16 @@ For: channel strategy, wholesale vs grocery vs online. Method: for each item, sp
 retailer (% gap), and average gap by channel (wholesale, grocery chain, pharmacy, quick commerce, online
 marketplace). Deliverable: dispersion chart by item, channel comparison, and which channel is cheapest for which
 categories.
+
+## Expert models and plain-language glossary (use these words when explaining)
+- Basket index: the cost of a fixed list of items, indexed to 100 on the start date. Shows food inflation in our data.
+- Unit price: price per kg, litre or 100 units. The only fair way to compare pack sizes.
+- House-brand gap: how much cheaper a retailer's own brand is than the name brand, per unit. Wider gap = more
+  reason for shoppers to trade down when budgets are tight.
+- Price dispersion: how far the cheapest and dearest offers for the same item differ (max ÷ min, or the spread).
+  High dispersion = shopping around pays, and a retailer has room to win on price.
+- Promo depth and frequency: how big discounts are and how often items are on special. Deep, frequent promos train
+  shoppers to wait for specials.
+- Shrinkflation: smaller pack, same price. Shows up as a rising unit price with a flat shelf price.
+- Price leadership: share of items where a retailer is cheapest. A positioning scorecard.
+- Month-end effect: shopping and promotions peak around payday (25th to 1st) in South Africa.

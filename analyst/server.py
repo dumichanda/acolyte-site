@@ -69,6 +69,7 @@ class Ask(BaseModel):
     question: str = Field(min_length=1, max_length=1500)
     mode: str = Field(default="auto", pattern="^(auto|fast|standard|deep)$")
     industry: str | None = Field(default=None, pattern="^(jobs|property|retail|marketplace)$")
+    context: str | None = Field(default=None, max_length=16000)   # what the user is looking at (a dashboard view)
 
 
 def visitor(req: Request) -> str:
@@ -192,6 +193,7 @@ def ask(body: Ask, req: Request):
                 db_url = cd.client_url(DB_URL, account["id"])
         except Exception as e:
             print(f"client data guide failed: {e.__class__.__name__}", flush=True)
+    s.view_context = (body.context or "").strip()
     if s.turns >= MAX_TURNS:
         raise HTTPException(429, "This conversation is long. Start a new one to keep going.")
 

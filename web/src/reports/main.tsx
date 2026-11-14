@@ -8,6 +8,8 @@ import { url } from "../site";
 import { readTheme } from "../charts";
 import { chartOption, fmt, type ChartArtifact, type ReportArtifact } from "../analyst/chart";
 import { DeckStyle, useDeckTheme } from "../analyst/DeckStyle";
+import { keyInsights, viewContext, DEFAULT_FILTERS } from "../dashboards/insights";
+import { AskBar, KeyInsights } from "../dashboards/view";
 import { ANALYSTS, latestPerAnalyst, loadIndex, loadReport, monthLabel, type ReportCard, type ReportFile } from "./data";
 
 const exporter = () => import("../analyst/export");
@@ -84,6 +86,7 @@ function Reader({ f, onBack }: { f: ReportFile; onBack: () => void }) {
           <div className="rp-boxes">
             {s.so_what && <div className="rp-box so"><b>So what</b><p>{s.so_what}</p></div>}
             {s.note && <div className="rp-box note"><b>How to read it</b><p>{s.note}</p></div>}
+            {(s.explainers || []).map((e, k) => <div key={"x" + k} className="rp-box note explain"><b>In plain words · {e.term}</b><p>{e.means}</p><p><i>Why it matters:</i> {e.why}</p></div>)}
           </div>
         </section>
       ))}
@@ -130,6 +133,10 @@ function Dashboards({ cards, files }: { cards: ReportCard[]; files: Record<numbe
           <div key={c.id} className="rp-board">
             <div className="rp-board-head"><h3>{ANALYSTS[c.industry]?.name}</h3><span className="muted small">{monthLabel(c.period, c.month_to_date)}</span>
               <a className="link" href={url(ANALYSTS[c.industry]?.ask || "/analyst/")}>Open in Ask AI →</a></div>
+            <KeyInsights items={keyInsights(charts, 4)} label={monthLabel(c.period, c.month_to_date)}
+              ask={<AskBar industry={c.industry} suggestions={["What stands out here?", "Is this good or bad news?", "What should I do about it?"]}
+                context={() => viewContext(`${ANALYSTS[c.industry]?.name} dashboard (${monthLabel(c.period, c.month_to_date)})`, DEFAULT_FILTERS,
+                  charts.map((ch) => ({ chart: ch, note: "", timed: true })), keyInsights(charts, 4))} />} />
             <div className="rp-tiles">{charts.map((ch) => <div key={ch.id} className="rp-tile"><h4>{ch.title}</h4><ChartBlock c={ch} height={230} /></div>)}</div>
           </div>
         );

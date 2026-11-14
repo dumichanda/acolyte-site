@@ -21,3 +21,11 @@ spread between sellers for the same item. Deliverable: seller spread table and w
 ## 5. Marketplace price moves
 Method: price changes over time for marketplace offers versus grocery chains; frequency and size of cuts.
 Deliverable: biggest moves, which marketplace reprices more often, implications for brands selling there.
+
+## Expert models and plain-language glossary (use these words when explaining)
+- Price position index: a seller's price ÷ the market median for the same product × 100. Above 100 = dearer than most.
+- Buy Box / featured offer: the default seller a shopper buys from. Price, stock and rating decide who wins it.
+- Review velocity: new reviews per week. A proxy for sales momentum; ratings without volume mean little.
+- Rating gap: the difference to the category average rating. Half a star moves conversion noticeably.
+- Price dispersion across sellers: wide spread = shoppers comparing and sellers competing on price.
+- Seasonality: Black Friday (late November) and month-end move both prices and demand. Compare like with like.

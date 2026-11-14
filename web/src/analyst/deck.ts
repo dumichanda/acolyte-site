@@ -289,16 +289,20 @@ export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): Sli
     const charts = s.chart_ids.map((id) => r.charts[id]).filter(Boolean);
     const bullets = s.bullets?.length ? s.bullets : (s.body || "").split(/\n+/).map((l) => l.replace(/^[-*•]\s*/, "")).filter(Boolean);
     const kpis = (s.kpis || []).slice(0, 3);
+    // Jargon busters join the "how to read it" box: the expert term, what it means, and why it matters here.
+    const ex = (s.explainers || []).filter((e) => e.term);
+    const noteText = [...ex.map((e) => `${clean(e.term)}: ${clean(e.means)} Why it matters: ${clean(e.why)}`), ...(s.note ? [clean(s.note)] : [])].join("\n");
+    const noteTitle = ex.length ? "In plain words" : "How to read it";
     const top = s.takeaway ? 1.68 : 1.3, bottom = 6.98;
     const side: { kind: "kpis" | "so_what" | "note" | "bullets"; weight: number }[] = [];
     if (kpis.length) side.push({ kind: "kpis", weight: 1.15 });
     if (s.so_what) side.push({ kind: "so_what", weight: 1.4 });
-    if (s.note) side.push({ kind: "note", weight: 1.15 });
+    if (noteText) side.push({ kind: "note", weight: 1.15 });
     if (bullets.length && charts.length) side.push({ kind: "bullets", weight: 1.3 });
 
     const drawSide = (x: number, w: number) => {
       const need = side.map((it) => it.kind === "kpis" ? 1.2
-        : boxNeed(it.kind === "so_what" ? s.so_what! : it.kind === "note" ? s.note! : bullets, w));
+        : boxNeed(it.kind === "so_what" ? s.so_what! : it.kind === "note" ? noteText : bullets, w));
       const avail = bottom - top - 0.15 * (side.length - 1), sum = need.reduce((a, b) => a + b, 0);
       const scale = sum > avail ? avail / sum : 1;
       let y = top;
@@ -308,7 +312,7 @@ export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): Sli
           const kw = (w - 0.12 * (kpis.length - 1)) / kpis.length;
           kpis.forEach((k, j) => kpiCard(p, k, x + j * (kw + 0.12), y, kw, h));
         } else if (it.kind === "so_what") box(p, "so_what", "So what", s.so_what!, x, y, w, h);
-        else if (it.kind === "note") box(p, "note", "How to read it", s.note!, x, y, w, h);
+        else if (it.kind === "note") box(p, "note", noteTitle, noteText, x, y, w, h);
         else box(p, "plain", "Detail", bullets, x, y, w, h);
         y += h + 0.15;
       });

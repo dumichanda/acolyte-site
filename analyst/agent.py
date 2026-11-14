@@ -77,6 +77,18 @@ How to work:
     points in trends, and annotate them on the chart.
   * State confidence: how many rows, listings, offers or days the finding rests on, and what would change it.
   * End with "so what" (implication for this reader) and "now what" (a concrete action or the next question to ask).
+- Expert depth, documentary clarity (apply to every answer, brief and report):
+  * Think like a senior specialist in this industry and use the models an expert would (see the skills and the guide):
+    e.g. gross rental yield vs the prime/bond rate, price-cut rate and stock change as market-pressure gauges,
+    price per m², unit price and the house-brand gap, price dispersion and promo depth, salary bands (P25/P50/P75) and
+    pay premiums, demand-to-supply ratios, concentration (top-3 share), seasonality, momentum (week-on-week and
+    month-on-month) and indexing to a base period. Name the model, show its inputs and result, and say what level
+    counts as good, normal or worrying in South Africa.
+  * Explain like a good documentary narrator: the first time a technical term or model appears, say in one plain
+    sentence what it means and why it matters to this reader (e.g. "Gross yield is a year's rent as a share of the
+    price: at 10.8% it beats the 10.5% you would pay on a bond, so the rent covers the cost of borrowing").
+    Keep the technical number and the method; add the explanation, never replace the analysis with it.
+  * In report packs, give each section 1-2 "explainers" (term, what it means in plain words, why it matters here).
 - Annotate charts like an analyst would: mark anomalies and records (point), events, targets, averages or the bond rate
   (line), and periods such as promotions or month-ends, or a normal range (band). Keep it to the 1-3 call-outs that carry
   the story, and mention them in your answer.
@@ -216,8 +228,14 @@ TOOLS = [
                             "kpis": {"type": "array", "items": KPI_SCHEMA, "description": "0-3 supporting figures shown as cards"},
                             "so_what": {"type": "string", "description": "Implication / recommendation (or empty)"},
                             "note": {"type": "string", "description": "Caveat or how to read the chart (or empty)"},
-                            "bullets": {"type": "array", "items": {"type": "string"}, "description": "0-4 short supporting points"}},
-                        "required": ["question", "title", "takeaway", "chart_ids", "kpis", "so_what", "note", "bullets"],
+                            "bullets": {"type": "array", "items": {"type": "string"}, "description": "0-4 short supporting points"},
+                            "explainers": {"type": "array", "description": "1-2 jargon busters for the expert terms used on this slide",
+                                           "items": {"type": "object", "properties": {
+                                               "term": {"type": "string", "description": "The term or model, e.g. Gross rental yield"},
+                                               "means": {"type": "string", "description": "What it means, in one plain sentence (with the formula if simple)"},
+                                               "why": {"type": "string", "description": "Why it matters to this reader, with this month's number"}},
+                                               "required": ["term", "means", "why"], "additionalProperties": False}}},
+                        "required": ["question", "title", "takeaway", "chart_ids", "kpis", "so_what", "note", "bullets", "explainers"],
                         "additionalProperties": False,
                     },
                 },
@@ -257,6 +275,16 @@ def clean(v):
     return v
 
 
+VIEW_INTRO = """# The dashboard the user is looking at
+The question comes from the user's dashboard. Below are its filters and the data currently on screen (tile by tile,
+rows already filtered). Answer about THIS view first: quote its numbers, respect its filters (period, area, category),
+and say when something is outside the view. Query the database only when the view does not hold the answer, using the
+same filters. Keep it short: a direct answer, the 2-3 numbers behind it, and what to do about it. Do not build a report
+pack unless asked.
+
+"""
+
+
 @dataclass
 class Session:
     id: str
@@ -267,6 +295,7 @@ class Session:
     account_id: int | None = None
     industry: str = "all"
     client_guide: str = ""          # the client's own uploaded tables (private), appended to the system prompt
+    view_context: str = ""          # the dashboard view the question is about (filters + the data on screen)
     ui_items: list = field(default_factory=list)       # what the chat panel shows (saved with the conversation)
     ui_artifacts: dict = field(default_factory=dict)
     turns: int = 0
@@ -456,6 +485,7 @@ def review_report(s: Session, a: dict, flagged: list[str]) -> list[str]:
     summ["kpis"] = Ls(summ.get("kpis"))
     for sec in a["sections"]:
         sec["kpis"] = Ls(sec.get("kpis"))
+        sec["explainers"] = Ls(sec.get("explainers"))
         sec["chart_ids"] = [c for c in sec.get("chart_ids") or [] if isinstance(c, str)]
         sec["bullets"] = [b for b in sec.get("bullets") or [] if isinstance(b, str)]
     L = lambda t, n: len(str(t or "")) > n  # noqa: E731
@@ -538,6 +568,8 @@ def write_report(s: Session, args: dict, db_url: str = "") -> tuple[str, dict | 
         sections.append({"question": sec.get("question", ""), "title": sec.get("title", ""), "takeaway": sec.get("takeaway", ""),
                          "chart_ids": ids, "kpis": kpis(sec.get("kpis"), 3), "so_what": sec.get("so_what", ""),
                          "note": sec.get("note", ""), "bullets": [str(b) for b in (sec.get("bullets") or [])[:4]],
+                         "explainers": [{k: str(e.get(k, ""))[:400] for k in ("term", "means", "why")}
+                                        for e in (sec.get("explainers") or [])[:2] if isinstance(e, dict) and e.get("term")],
                          # older viewers read heading/body
                          "heading": sec.get("title", ""), "body": "\n".join("- " + str(b) for b in (sec.get("bullets") or []))})
     summ = args.get("summary") if isinstance(args.get("summary"), dict) else {"title": "", "takeaway": str(args.get("summary") or "")}
@@ -626,7 +658,8 @@ def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode
                     max_tokens=16000,
                     # explicit breakpoint on the static prefix + automatic caching of the growing conversation
                     system=[{"type": "text", "text": system_for(s.industry), "cache_control": {"type": "ephemeral"}}]
-                           + ([{"type": "text", "text": s.client_guide}] if s.client_guide else []),
+                           + ([{"type": "text", "text": s.client_guide}] if s.client_guide else [])
+                           + ([{"type": "text", "text": VIEW_INTRO + s.view_context}] if s.view_context else []),
                     cache_control={"type": "ephemeral"},
                     tools=TOOLS,
                     messages=s.messages,

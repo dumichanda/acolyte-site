@@ -1,4 +1,4 @@
-import { StrictMode, useCallback, useEffect, useRef, useState } from "react";
+import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../index.css";
 import "./dashboards.css";
@@ -6,6 +6,8 @@ import ReactECharts from "../Chart";
 import PlatformNav from "../PlatformNav";
 import { SignIn, UsageCard } from "../Account";
 import { api, getToken, logout, type Me } from "../auth";
+import { applyFilters, DEFAULT_FILTERS, dimensions, filterLabel, keyInsights, viewContext, type Filtered, type Filters } from "./insights";
+import { AskBar, FilterBar, KeyInsights } from "./view";
 import { loadClientBrand } from "../analyst/DeckStyle";
 import { readTheme } from "../charts";
 import { url } from "../site";
@@ -19,10 +21,10 @@ const toChart = (t: Tile): ChartArtifact => ({ kind: "chart", id: `t${t.id}`, da
   subtitle: t.spec.subtitle || "", columns: t.columns || [], rows: t.rows || [] } as ChartArtifact);
 const when = (d: string) => new Date(d).toLocaleString("en-ZA", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
-function TileView({ t, onChange }: { t: Tile; onChange: (patch: { size?: string; move?: string; delete?: boolean }) => void }) {
+function TileView({ t, view, onChange }: { t: Tile; view?: Filtered; onChange: (patch: { size?: string; move?: string; delete?: boolean }) => void }) {
   const ref = useRef<any>(null);
   const theme = readTheme();
-  const c = toChart(t);
+  const c = view?.chart || toChart(t);
   let body;
   if (t.error) body = <div className="err">{t.error}</div>;
   else if (c.type === "kpi") {
@@ -55,7 +57,7 @@ function TileView({ t, onChange }: { t: Tile; onChange: (patch: { size?: string;
       </div>
       {body}
       <div className="tile-foot muted small">
-        {t.as_of && <>Data as of {when(t.as_of)}</>}
+        <span>{t.as_of && <>Data as of {when(t.as_of)}</>}{view?.note && <> · showing the {view.note}</>}</span>
         <details><summary>Query</summary><pre>{t.spec.sql}</pre></details>
       </div>
     </div>
@@ -75,6 +77,7 @@ function App() {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
 
   const loadBoards = useCallback(async () => {
     const r = await api<{ dashboards: Board[]; limit: number; templates?: string[] }>("/dashboards");
@@ -101,6 +104,20 @@ function App() {
     })();
   }, [loadBoards]);
   useEffect(() => { if (me) loadTiles(); }, [me, current, loadTiles]);
+
+  useEffect(() => setFilters(DEFAULT_FILTERS), [current]);
+  const charts = useMemo(() => tiles.filter((t) => !t.error).map(toChart), [tiles]);
+  const dims = useMemo(() => dimensions(charts), [charts]);
+  const views = useMemo(() => {
+    const m: Record<number, Filtered> = {};
+    tiles.forEach((t) => { if (!t.error) m[t.id] = applyFilters(toChart(t), filters); });
+    return m;
+  }, [tiles, filters]);
+  const insights = useMemo(() => keyInsights(Object.values(views).map((v) => v.chart)), [views]);
+  const suggestions = useMemo(() => {
+    const first = charts[0]?.title;
+    return ["What stands out on this dashboard?", ...(first ? [`Why is "${first}" moving like this?`] : []), "What should I do about this, this month?"];
+  }, [charts]);
 
   const tileChange = async (id: number, patch: { size?: string; move?: string; delete?: boolean }) => {
     await api(`/tiles/${id}`, { method: "PATCH", body: patch }).catch((e) => setErr(e.message));
@@ -167,7 +184,11 @@ function App() {
                 </header>
                 {err && <div className="banner">{err}</div>}
                 {!tiles.length && !loading && <div className="card empty">No charts yet. In <a href={url("/analyst/")}>Ask AI</a>, ask a question and click <b>Pin</b> on any chart.</div>}
-                <div className="tiles">{tiles.map((t) => <TileView key={t.id} t={t} onChange={(p) => tileChange(t.id, p)} />)}</div>
+                {tiles.length > 0 && <FilterBar f={filters} set={setFilters} dims={dims} />}
+                {tiles.length > 0 && <KeyInsights items={insights} label={filterLabel(filters)}
+                  ask={<AskBar industry={me.account.industry} suggestions={suggestions}
+                    context={() => viewContext(name, filters, Object.values(views), insights)} />} />}
+                <div className="tiles">{tiles.map((t) => <TileView key={t.id} t={t} view={views[t.id]} onChange={(p) => tileChange(t.id, p)} />)}</div>
               </>
             ) : (
               <div className="card empty">Create your first dashboard, then pin charts to it from <a href={url("/analyst/")}>Ask AI</a>.</div>
