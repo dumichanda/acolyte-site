@@ -1,0 +1,26 @@
+{
+ "images": [
+  {
+   "file": "property-01-jhb-skyline.jpg",
+   "tags": [
+    "property",
+    "gauteng",
+    "johannesburg",
+    "city"
+   ],
+   "prompt": "Johannesburg skyline at golden hour with Hillbrow Tower and Ponte City, suburbs and trees in the foreground",
+   "model": "google/gemini-2.5-flash-image"
+  },
+  {
+   "file": "property-02-cape-town.jpg",
+   "tags": [
+    "property",
+    "western-cape",
+    "cape-town",
+    "city"
+   ],
+   "prompt": "Cape Town apartment blocks and houses below Table Mountain, ocean on one side",
+   "model": "google/gemini-2.5-flash-image"
+  }
+ ]
+}
