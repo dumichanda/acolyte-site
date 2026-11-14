@@ -1,0 +1,40 @@
+name: Database login diagnostic
+on: workflow_dispatch
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ANALYST_DB_PASSWORD: ${{ secrets.ANALYST_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install "psycopg[binary]>=3.2"
+      - run: |
+          python - <<'PY'
+          import os, re, sys, psycopg
+          from psycopg import sql
+          sys.path.insert(0, "."); import analyst
+          own = os.environ["DATABASE_URL"]; pw = os.environ["ANALYST_DB_PASSWORD"]
+          def login(user):
+              url = re.sub(r"//[^:@/]+:[^@/]*@", f"//{user}:{pw}@", own, count=1)
+              try:
+                  psycopg.connect(url, connect_timeout=15).close(); return "OK"
+              except Exception as e:
+                  return "FAILED " + str(e).strip().splitlines()[-1][-120:]
+          with psycopg.connect(own, autocommit=True) as c:
+              print("server:", c.execute("show server_version").fetchone()[0], "| me:", c.execute("select current_user").fetchone()[0])
+              for r in c.execute("""select rolname, rolcanlogin, rolcreaterole, rolsuper, rolvaliduntil, rolconnlimit
+                                    from pg_roles where rolname in ('analyst_web','analyst_admin')"""):
+                  print("role:", r)
+              print("1 analyst_admin now:", login("analyst_admin"))
+              c.execute("ALTER ROLE analyst_admin NOCREATEROLE")
+              print("2 after NOCREATEROLE:", login("analyst_admin"))
+              c.execute(sql.SQL("ALTER ROLE analyst_admin WITH LOGIN PASSWORD {}").format(sql.Literal(pw)))
+              print("3 after password reset:", login("analyst_admin"))
+              c.execute("ALTER ROLE analyst_admin CREATEROLE")
+              print("4 after CREATEROLE again:", login("analyst_admin"))
+              c.execute(sql.SQL("ALTER ROLE analyst_admin WITH LOGIN PASSWORD {}").format(sql.Literal(pw)))
+              print("5 CREATEROLE + password reset:", login("analyst_admin"))
+          PY
