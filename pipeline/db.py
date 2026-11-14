@@ -71,6 +71,22 @@ def setup_analyst_role(conn: psycopg.Connection) -> None:
         print(f"Could not give analyst_admin CREATEROLE ({e.__class__.__name__}); client data uploads stay off.")
 
 
+def sync_login_passwords() -> None:
+    """Re-apply the analyst logins' passwords in their own committed statements, after the setup transaction.
+
+    Inside the long setup transaction (role grants, CREATEROLE, CREATE ON DATABASE) the analyst_admin password was
+    observed not to stick on Neon, which locked the Analyst server out. Setting it again on its own fixes that.
+    """
+    from psycopg import sql
+    pw = os.environ.get("ANALYST_DB_PASSWORD")
+    if not pw:
+        return
+    with psycopg.connect(os.environ.get("DATABASE_URL") or DEFAULT_URL, autocommit=True) as conn:
+        for user in ("analyst_web", "analyst_admin"):
+            if conn.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (user,)).fetchone():
+                conn.execute(sql.SQL("ALTER ROLE {} WITH LOGIN PASSWORD {}").format(sql.Identifier(user), sql.Literal(pw)))
+
+
 def init_db() -> None:
     """Create tables and views, and load salary defaults from the taxonomy."""
     from taxonomy import BY_NAME
@@ -93,6 +109,7 @@ def init_db() -> None:
                    ON CONFLICT (role_family) DO UPDATE SET annual_salary = EXCLUDED.annual_salary""",
                 [(name, f["salary"]) for name, f in BY_NAME.items()],
             )
+    sync_login_passwords()
     print("Database ready.")
 
 
