@@ -363,7 +363,8 @@ function Voice({ onText }: { onText: (t: string) => void }) {
 }
 
 interface DataCol { name: string; original: string; type: string; examples?: string[]; min?: string; max?: string; place?: boolean }
-interface DataTable { id: number; table_name: string; display_name: string; row_count: number; columns: DataCol[]; description: string | null }
+interface DataTable { id: number; table_name: string; display_name: string; row_count: number; columns: DataCol[]; description: string | null;
+  source?: string; source_url?: string | null; last_synced?: string | null; sync_error?: string | null }
 
 /** The client's own data: upload CSV/Excel into their private area, describe it, and ask across it and the market. */
 function YourData({ onAsk, onChange }: { onAsk: (q: string) => void; onChange: (n: number) => void }) {
@@ -376,8 +377,14 @@ function YourData({ onAsk, onChange }: { onAsk: (q: string) => void; onChange: (
   const [dup, setDup] = useState<File | null>(null);
   const [del, setDel] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [robot, setRobot] = useState<string | null>(null);
+  const [sheet, setSheet] = useState("");
+  const [showSheet, setShowSheet] = useState(false);
   const load = useCallback(async () => {
-    try { const r = await api<{ tables: DataTable[]; limit: number }>("/data"); setTables(r.tables); setLimit(r.limit); onChange(r.tables.length); }
+    try {
+      const r = await api<{ tables: DataTable[]; limit: number; sheets_email: string | null }>("/data");
+      setTables(r.tables); setLimit(r.limit); setRobot(r.sheets_email); onChange(r.tables.length);
+    }
     catch { /* signed out */ }
   }, [onChange]);
   useEffect(() => { if (me) load(); }, [me, load]);
@@ -396,6 +403,22 @@ function YourData({ onAsk, onChange }: { onAsk: (q: string) => void; onChange: (
     } catch (e) { setMsg((e as Error).message); }
     finally { setBusy(false); if (fileRef.current) fileRef.current.value = ""; }
   };
+  const connect = async (replace = false) => {
+    setBusy(true); setMsg(""); setDup(null);
+    try {
+      const d = await api<{ rows: number; name: string }>("/data/sheet", { body: { url: sheet.trim(), replace } });
+      setMsg(`Connected: ${d.rows.toLocaleString("en-ZA")} rows in ${d.name}. It re-syncs every morning.`); setSheet(""); setShowSheet(false);
+      await load();
+    } catch (e) {
+      const err = e as Error & { status?: number };
+      if (err.status === 409) { setMsg(err.message); setDup(new File([], "__sheet__")); } else setMsg(err.message);
+    } finally { setBusy(false); }
+  };
+  const sync = async (id: number) => {
+    setBusy(true); setMsg("");
+    try { const d = await api<{ rows: number }>(`/data/${id}/sync`, { method: "POST" }); setMsg(`Synced: ${d.rows.toLocaleString("en-ZA")} rows.`); await load(); }
+    catch (e) { setMsg((e as Error).message); await load(); } finally { setBusy(false); }
+  };
   return (
     <details className="your-data" open>
       <summary>Your data <span className="muted">({tables.length}/{limit})</span></summary>
@@ -405,13 +428,27 @@ function YourData({ onAsk, onChange }: { onAsk: (q: string) => void; onChange: (
         <input ref={fileRef} type="file" id="data-upload" accept=".csv,.txt,.xlsx,.xlsm" hidden disabled={busy}
           onChange={(e) => { const f = e.target.files?.[0]; if (f) send(f); }} />
       </label>
+      <button className="btn sm" onClick={() => setShowSheet(!showSheet)} disabled={busy}>Connect a Google Sheet</button>
+      {showSheet && (
+        <form className="sheet-form" onSubmit={(e) => { e.preventDefault(); if (sheet.trim()) connect(); }}>
+          <label htmlFor="sheet-url" className="small muted">Paste the sheet's link (the first tab is used, or the tab open in the link).</label>
+          <input id="sheet-url" value={sheet} onChange={(e) => setSheet(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/…" />
+          <p className="small muted">{robot
+            ? <>Share the sheet with <code className="robot">{robot}</code> as Viewer first. It stays private.</>
+            : <>Set the sheet's sharing to "Anyone with the link can view". Anyone with the link could then open it, so use this for non-sensitive data.</>}</p>
+          <button className="btn sm primary" disabled={busy || !sheet.trim()}>{busy ? "Connecting…" : "Connect"}</button>
+        </form>
+      )}
       {msg && <div className="small data-msg">{msg}
-        {dup && <div className="row"><button className="btn sm" onClick={() => send(dup, true)}>Replace it</button>
+        {dup && <div className="row"><button className="btn sm" onClick={() => (dup.name === "__sheet__" ? connect(true) : send(dup, true))}>Replace it</button>
           <button className="btn sm" onClick={() => { setDup(null); setMsg(""); }}>Cancel</button></div>}</div>}
       {tables.map((t) => (
         <div key={t.id} className="dt">
           <button className="dt-head" onClick={() => setOpen(open === t.id ? null : t.id)} aria-expanded={open === t.id}>
-            <b>{t.display_name}</b><em>{t.row_count.toLocaleString("en-ZA")} rows · {t.columns.length} columns</em>
+            <b>{t.source === "google_sheet" ? "▦ " : ""}{t.display_name}</b>
+            <em>{t.row_count.toLocaleString("en-ZA")} rows · {t.columns.length} columns
+              {t.source === "google_sheet" && t.last_synced ? ` · synced ${new Date(t.last_synced).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}` : ""}</em>
+            {t.sync_error && <em className="sync-err">Last sync failed: {t.sync_error}</em>}
           </button>
           {open === t.id && (
             <div className="dt-body">
@@ -422,6 +459,7 @@ function YourData({ onAsk, onChange }: { onAsk: (q: string) => void; onChange: (
               <div className="row">
                 <button className="btn sm primary" onClick={() => onAsk(`Give me an overview of my ${t.display_name} data: what's in it, the main totals and anything unusual.`)}>Explore it</button>
                 <button className="btn sm" onClick={() => onAsk(`Compare my ${t.display_name} data with the market data. Where do we stand?`)}>Compare with market</button>
+                {t.source === "google_sheet" && <button className="btn sm" disabled={busy} onClick={() => sync(t.id)}>Sync now</button>}
                 {del === t.id
                   ? <><button className="btn sm danger" onClick={async () => { await api(`/data/${t.id}`, { method: "DELETE" }).catch(() => {}); setDel(null); load(); }}>Yes, delete</button>
                       <button className="btn sm" onClick={() => setDel(null)}>Keep</button></>

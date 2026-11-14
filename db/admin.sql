@@ -129,3 +129,7 @@ CREATE TABLE IF NOT EXISTS admin.client_tables (
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (account_id, table_name)
 );
+ALTER TABLE admin.client_tables ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'upload';   -- upload | google_sheet
+ALTER TABLE admin.client_tables ADD COLUMN IF NOT EXISTS source_url TEXT;
+ALTER TABLE admin.client_tables ADD COLUMN IF NOT EXISTS last_synced TIMESTAMPTZ;
+ALTER TABLE admin.client_tables ADD COLUMN IF NOT EXISTS sync_error TEXT;

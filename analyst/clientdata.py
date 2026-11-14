@@ -177,6 +177,13 @@ def convert(v, typ):
 # ---------------------------------------------------------------- upload, list, describe, delete
 def upload(admin_db: str, account: dict, data: bytes, filename: str, display: str | None, replace: bool) -> dict:
     header, raw = read_file(data, filename)
+    table = safe_name(display or re.sub(r"\.[a-z0-9]+$", "", filename or "", flags=re.I), "my_data")
+    return load(admin_db, account, header, raw, table, display or filename or table, filename, replace)
+
+
+def load(admin_db: str, account: dict, header: list, raw: list, table: str, display: str, filename: str | None,
+         replace: bool, source: str = "upload", source_url: str | None = None) -> dict:
+    """Type, profile and store rows as client_<id>.<table> (used by file uploads and Google Sheets syncs)."""
     if not header or not any(str(h).strip() for h in header):
         raise Denied(400, "The first row must hold the column names.")
     if len(header) > MAX_COLS:
@@ -194,7 +201,6 @@ def upload(admin_db: str, account: dict, data: bytes, filename: str, display: st
     raw = [(list(r) + [None] * width)[:width] for r in raw]
     types = [infer([r[i] for r in raw]) for i in range(width)]
     rows = [[convert(r[i], types[i]) for i in range(width)] for r in raw]
-    table = safe_name(display or re.sub(r"\.[a-z0-9]+$", "", filename or "", flags=re.I), "my_data")
     aid, s = account["id"], role(account["id"])
 
     with psycopg.connect(admin_db) as conn:
@@ -227,19 +233,23 @@ def upload(admin_db: str, account: dict, data: bytes, filename: str, display: st
             for r in rows:
                 cp.write_row(r)
         conn.execute(sql.SQL("GRANT SELECT ON {} TO {}").format(ident, sql.Identifier(s)))
-        conn.execute("""INSERT INTO admin.client_tables (account_id, table_name, display_name, filename, row_count, columns)
-                        VALUES (%s,%s,%s,%s,%s,%s)
+        conn.execute("""INSERT INTO admin.client_tables (account_id, table_name, display_name, filename, row_count, columns,
+                            source, source_url, last_synced, sync_error)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,now(),NULL)
                         ON CONFLICT (account_id, table_name) DO UPDATE SET display_name = EXCLUDED.display_name,
                             filename = EXCLUDED.filename, row_count = EXCLUDED.row_count, columns = EXCLUDED.columns,
-                            updated_at = now()""",
-                     (aid, table, (display or filename or table)[:120], (filename or "")[:200], len(rows), json.dumps(profile)))
+                            source = EXCLUDED.source, source_url = EXCLUDED.source_url, last_synced = now(),
+                            sync_error = NULL, updated_at = now()""",
+                     (aid, table, (display or table)[:120], (filename or "")[:200], len(rows), json.dumps(profile),
+                      source, source_url))
     return {"table": f"{s}.{table}", "name": table, "rows": len(rows), "columns": profile}
 
 
 def list_tables(admin_db: str, account_id: int) -> list[dict]:
     with psycopg.connect(admin_db) as conn:
         return _jsonable(_rows(conn, """SELECT id, table_name, display_name, filename, row_count, columns, description,
-                                               created_at, updated_at FROM admin.client_tables WHERE account_id = %s
+                                               source, source_url, last_synced, sync_error, created_at, updated_at
+                                        FROM admin.client_tables WHERE account_id = %s
                                         ORDER BY updated_at DESC""", (account_id,)))
 
 
@@ -280,3 +290,134 @@ def guide(admin_db: str, account_id: int) -> str:
             hint = " (place: join to analyst.areas.area)" if c.get("place") else ""
             out.append(f"| {c['name']} | {c['type']}{hint} | {rng[:90]} |")
     return "\n".join(out)
+
+
+# ---------------------------------------------------------------- Google Sheets connector
+# Private sheets: the client shares the sheet (Viewer) with Acolyte's service account; the server reads it with the
+# Sheets API using GOOGLE_SERVICE_ACCOUNT_JSON. Without that, a sheet shared as "anyone with the link can view" is read
+# through Google's CSV export. Synced sheets are refreshed daily (POST /admin/data/sync) and on demand.
+SHEET_RX = re.compile(r"/spreadsheets/d/([a-zA-Z0-9_-]{20,})")
+
+
+def sheet_ids(url: str) -> tuple[str, str | None]:
+    m = SHEET_RX.search(url or "")
+    if not m:
+        raise Denied(400, "That doesn't look like a Google Sheets link. Copy the address of the sheet from your browser.")
+    g = re.search(r"[#&?]gid=(\d+)", url)
+    return m.group(1), (g.group(1) if g else None)
+
+
+def service_account() -> dict | None:
+    import os
+    raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        print("GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON", flush=True)
+        return None
+
+
+def robot_email() -> str | None:
+    sa = service_account()
+    return sa.get("client_email") if sa else None
+
+
+def _http_get(url: str, headers: dict | None = None) -> bytes:
+    import urllib.request
+    req = urllib.request.Request(url, headers={"User-Agent": "acolyte-analyst/1.0", **(headers or {})})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return r.read(MAX_BYTES + 1)
+
+
+def _sheets_api(sheet_id: str, gid: str | None) -> tuple[str, list, list]:
+    from google.oauth2 import service_account as sa_mod
+    from google.auth.transport.requests import Request
+    creds = sa_mod.Credentials.from_service_account_info(
+        service_account(), scopes=["https://www.googleapis.com/auth/spreadsheets.readonly"])
+    creds.refresh(Request())
+    auth = {"Authorization": f"Bearer {creds.token}"}
+    meta = json.loads(_http_get(f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}"
+                                "?fields=properties.title,sheets.properties", auth))
+    tabs = [t["properties"] for t in meta.get("sheets") or []]
+    tab = next((t for t in tabs if gid is not None and str(t.get("sheetId")) == gid), tabs[0] if tabs else None)
+    if not tab:
+        raise Denied(400, "That spreadsheet has no tabs.")
+    import urllib.parse
+    rng = urllib.parse.quote(f"'{tab['title']}'")
+    vals = json.loads(_http_get(f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{rng}"
+                                "?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING", auth))
+    rows = [r for r in vals.get("values") or [] if any(str(c).strip() for c in r)]
+    if not rows:
+        raise Denied(400, "That tab is empty.")
+    width = max(len(r) for r in rows)
+    rows = [list(r) + [None] * (width - len(r)) for r in rows]
+    return f"{meta.get('properties', {}).get('title', 'Sheet')} - {tab['title']}", rows[0], rows[1:]
+
+
+def fetch_sheet(url: str) -> tuple[str, list, list]:
+    """(title, header, rows) from a Google Sheets link."""
+    import urllib.error
+    sheet_id, gid = sheet_ids(url)
+    if service_account():
+        try:
+            return _sheets_api(sheet_id, gid)
+        except urllib.error.HTTPError as e:
+            if e.code not in (403, 404):
+                raise Denied(502, f"Google Sheets answered {e.code}. Try again shortly.")
+            # not shared with the robot: fall through to the public export
+    try:
+        data = _http_get(f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv" + (f"&gid={gid}" if gid else ""))
+    except urllib.error.HTTPError:
+        data = b""
+    if not data or data.lstrip()[:15].lower().startswith((b"<!doctype", b"<html")):
+        who = robot_email()
+        raise Denied(403, f"We can't open that sheet. Share it with {who} (Viewer)." if who else
+                     "We can't open that sheet. Set its sharing to 'Anyone with the link can view', or ask Acolyte to "
+                     "enable private sheet sharing.")
+    header, rows = read_file(data, "sheet.csv")
+    return "Google Sheet", header, rows
+
+
+def add_sheet(admin_db: str, account: dict, url: str, display: str | None, replace: bool = False) -> dict:
+    title, header, raw = fetch_sheet(url)
+    name = display or title
+    return load(admin_db, account, header, raw, safe_name(name, "google_sheet"), name, None, replace,
+                source="google_sheet", source_url=url.strip()[:1000])
+
+
+def sync_table(admin_db: str, account: dict, tid: int) -> dict:
+    with psycopg.connect(admin_db) as conn:
+        t = _rows(conn, "SELECT table_name, display_name, source_url FROM admin.client_tables WHERE id = %s AND account_id = %s "
+                        "AND source = 'google_sheet'", (tid, account["id"]))
+    if not t:
+        raise Denied(404, "That table isn't a synced Google Sheet.")
+    t = t[0]
+    try:
+        _, header, raw = fetch_sheet(t["source_url"])
+        return load(admin_db, account, header, raw, t["table_name"], t["display_name"], None, True,
+                    source="google_sheet", source_url=t["source_url"])
+    except Denied as e:
+        with psycopg.connect(admin_db) as conn:
+            conn.execute("UPDATE admin.client_tables SET sync_error = %s WHERE id = %s", (str(e)[:300], tid))
+        raise
+
+
+def sync_all(admin_db: str) -> dict:
+    """Re-sync every Google Sheet (daily, after the data refresh)."""
+    from .accounts import get_account
+    with psycopg.connect(admin_db) as conn:
+        todo = _rows(conn, "SELECT id, account_id FROM admin.client_tables WHERE source = 'google_sheet'")
+    ok, failed = 0, 0
+    for t in todo:
+        acct = get_account(admin_db, t["account_id"])
+        if not acct:
+            continue
+        try:
+            sync_table(admin_db, acct, t["id"])
+            ok += 1
+        except Exception as e:
+            failed += 1
+            print(f"[sheets] sync {t['id']} failed: {e}", flush=True)
+    return {"synced": ok, "failed": failed}

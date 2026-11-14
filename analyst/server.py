@@ -364,7 +364,31 @@ def dashboard_data(did: int, refresh: bool = False, account: dict = Depends(need
 @app.get("/data")
 def data_list(account: dict = Depends(need_account)):
     return {"tables": cd.list_tables(ADMIN_DB_URL, account["id"]), "limit": cd.TABLE_LIMIT.get(account["plan"], 10),
-            "schema": cd.role(account["id"])}
+            "schema": cd.role(account["id"]), "sheets_email": cd.robot_email()}
+
+
+class SheetIn(BaseModel):
+    url: str = Field(min_length=10, max_length=1000)
+    name: str | None = Field(default=None, max_length=80)
+    replace: bool = False
+
+
+@app.post("/data/sheet")
+def data_sheet(body: SheetIn, account: dict = Depends(need_account)):
+    """Connect a Google Sheet: synced now, then every morning after the data refresh."""
+    return guard(lambda: cd.add_sheet(ADMIN_DB_URL, account, body.url, (body.name or "").strip() or None, body.replace))
+
+
+@app.post("/data/{tid}/sync")
+def data_sync(tid: int, account: dict = Depends(need_account)):
+    return guard(lambda: cd.sync_table(ADMIN_DB_URL, account, tid))
+
+
+@app.post("/admin/data/sync")
+def data_sync_all(req: Request):
+    """Daily: re-sync every connected Google Sheet (called by the refresh workflow)."""
+    require_admin(req)
+    return cd.sync_all(ADMIN_DB_URL)
 
 
 @app.post("/data/upload")

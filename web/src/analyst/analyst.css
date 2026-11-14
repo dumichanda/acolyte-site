@@ -150,3 +150,9 @@
 .analyst .describe textarea { font: inherit; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; resize: vertical; }
 .analyst .btn.danger { border-color: #ff6a3d; color: #ff6a3d; }
 .analyst .starter.mine { border-color: var(--accent); }
+.analyst .sheet-form { display: grid; gap: 6px; }
+.analyst .sheet-form input { font: inherit; font-size: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; min-width: 0; }
+.analyst .sheet-form p { margin: 0; }
+.analyst .sheet-form .robot { user-select: all; word-break: break-all; }
+.analyst .your-data > .btn.sm { justify-self: start; }
+.analyst .dt-head .sync-err { color: #ff6a3d; }
