@@ -55,3 +55,23 @@ day, jobs, employers, recruiter_jobs, avg_score, automatable_value_zar. Short hi
 - "Hiring employers" / "direct employers" / prospects = analyst.employers WHERE NOT is_recruiter AND NOT is_foreign
   (in analyst.jobs: poster_type = 'direct employer'). Overseas firms hiring remote SA staff are context, not prospects.
 - Averages of automation_score are simple means over roles.
+
+## Extra job sources
+analyst.jobs.source: 'adzuna', 'job_scout' (agent web search), 'google_jobs' (Google Jobs SA) and 'linkedin'
+(LinkedIn SA). Ads already seen under the same title and company are not added twice. Google Jobs and LinkedIn ads
+have short descriptions, so tool and skill counts from them are lower.
+
+## analyst.salary_benchmarks — Glassdoor salary estimates (real reported salaries, not ad salaries)
+| column | meaning |
+|---|---|
+| job_title, role_family | title searched and the Acolyte role family it represents |
+| location, location_type | 'South Africa' (COUNTRY) or a province (STATE) |
+| monthly_p10 … monthly_p90, monthly_median | base pay percentiles in rand per month |
+| monthly_total_pay_median | base + additional pay, median |
+| annual_median | monthly_median × 12 |
+| salaries_count, confidence | how many salaries Glassdoor has; prefer confidence HIGH/VERY_HIGH and 20+ salaries |
+Use this, not analyst.jobs.salary_annual, for pay questions; jobs.salary_annual is often imputed.
+
+## analyst.employer_ratings — Glassdoor employer ratings for employers with the most open roles
+employer (matches analyst.employers.name and analyst.jobs.employer), glassdoor_name, rating (1-5), review_count,
+salary_count, url. Treat ratings with fewer than 20 reviews as indicative.

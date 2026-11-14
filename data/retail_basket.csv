@@ -1,0 +1,49 @@
+category,item,query,match
+Beverages,Coca-Cola 2L,Coca-Cola 2L,coca|2l
+Beverages,Coca-Cola 2L,Coca-Cola Original 2L,coca|2l
+Beverages,Five Roses tea 100 bags,Five Roses tea 100 bags,five roses|100
+Beverages,Joko tea 100 bags,Joko tea bags 100,joko|100
+Beverages,Ricoffy 750g,Ricoffy 750g,ricoffy|750g
+Beverages,Nescafe Classic 200g,Nescafe Classic instant coffee 200g,nescaf|classic|200g
+Beverages,Oros 2L,Oros orange squash 2L,oros|2l
+Dairy,Clover full cream milk 2L,Clover full cream milk 2L,clover|milk|2l
+Dairy,Lancewood cheddar 900g,Lancewood cheddar cheese 900g,lancewood|cheddar|900g
+Dairy,Stork Bake 500g,Stork Bake margarine 500g,stork|500g
+Dairy,Rama 500g,Rama original spread 500g,rama|500g
+Dairy,Danone Nutriday yoghurt 1kg,Danone Nutriday yoghurt 1kg,nutriday|1kg
+Bakery & breakfast,Albany white bread 700g,Albany Superior white bread 700g,albany|700g
+Bakery & breakfast,Jungle Oats 1kg,Jungle Oats 1kg,jungle|1kg
+Bakery & breakfast,Kellogg's Corn Flakes 1kg,Kellogg's Corn Flakes 1kg,corn flakes|1kg
+Bakery & breakfast,ProNutro original 500g,ProNutro original 500g,pronutro|500g
+Bakery & breakfast,Weet-Bix 900g,Bokomo Weet-Bix 900g,weet|900g
+Pantry,Tastic rice 2kg,Tastic rice 2kg,tastic|2kg
+Pantry,White Star maize meal 5kg,White Star super maize meal 5kg,white star|5kg
+Pantry,Iwisa maize meal 5kg,Iwisa super maize meal 5kg,iwisa|5kg
+Pantry,Selati white sugar 2.5kg,Selati white sugar 2.5kg,selati|2.5kg
+Pantry,Huletts white sugar 2.5kg,Huletts white sugar 2.5kg,huletts|2.5kg
+Pantry,Sasko cake flour 2.5kg,Sasko cake flour 2.5kg,sasko|flour|2.5kg
+Pantry,Sunfoil sunflower oil 2L,Sunfoil sunflower oil 2L,sunfoil|2l
+Pantry,Lucky Star pilchards 400g,Lucky Star pilchards tomato 400g,lucky star|400g
+Pantry,All Gold tomato sauce 700ml,All Gold tomato sauce 700ml,all gold|700ml
+Pantry,Koo baked beans 410g,Koo baked beans in tomato sauce 410g,koo|410g
+Pantry,Knorrox beef stock cubes 24,Knorrox beef stock cubes 24,knorrox|24
+Pantry,Black Cat peanut butter 400g,Black Cat smooth peanut butter 400g,black cat|400g
+Pantry,Royco soup 50g,Royco soup thickener 50g,royco
+Pantry,Fatti's & Moni's spaghetti 500g,Fatti's & Moni's spaghetti 500g,spaghetti|500g
+Snacks,Simba chips 120g,Simba chips 120g,simba|120g
+Snacks,Bakers Tennis biscuits 200g,Bakers Tennis biscuits 200g,tennis|200g
+Snacks,Cadbury Dairy Milk 80g,Cadbury Dairy Milk chocolate 80g,dairy milk|80g
+Household,Sunlight dishwashing liquid 750ml,Sunlight dishwashing liquid 750ml,sunlight|750ml
+Household,Omo washing powder 2kg,Omo auto washing powder 2kg,omo|2kg
+Household,Ariel washing powder 2kg,Ariel auto washing powder 2kg,ariel|2kg
+Household,Handy Andy cream 750ml,Handy Andy cream cleaner 750ml,handy andy|750ml
+Household,Domestos thick bleach 750ml,Domestos thick bleach 750ml,domestos|750ml
+Household,Baby Soft toilet paper 9 pack,Baby Soft 2 ply toilet paper 9 pack,baby soft|9
+Household,Doom insect spray 300ml,Doom multi insect killer 300ml,doom|300ml
+Personal care,Colgate toothpaste 100ml,Colgate Regular toothpaste 100ml,colgate|100ml
+Personal care,Lux soap 175g,Lux bar soap 175g,lux|175g
+Personal care,Dove body wash 750ml,Dove body wash 750ml,dove|750ml
+Personal care,Vaseline Intensive Care lotion 400ml,Vaseline Intensive Care lotion 400ml,vaseline|400ml
+Personal care,Shield roll-on 50ml,Shield roll-on deodorant 50ml,shield|50ml
+Baby,Huggies Gold size 4,Huggies Gold nappies size 4,huggies|4
+Baby,Pampers Active Baby size 4,Pampers Active Baby nappies size 4,pampers|4

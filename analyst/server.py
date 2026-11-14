@@ -67,7 +67,7 @@ class Ask(BaseModel):
     session_id: str | None = Field(default=None, max_length=64)
     question: str = Field(min_length=1, max_length=1500)
     mode: str = Field(default="auto", pattern="^(auto|fast|standard|deep)$")
-    industry: str | None = Field(default=None, pattern="^(jobs|property)$")
+    industry: str | None = Field(default=None, pattern="^(jobs|property|retail|marketplace)$")
 
 
 def visitor(req: Request) -> str:
@@ -261,7 +261,7 @@ def get_me(account: dict = Depends(need_account)):
 @app.get("/conversations")
 def conversations(industry: str | None = None, account: dict = Depends(need_account)):
     own = account.get("industry") or "all"
-    ind = own if own != "all" else (industry if industry in ("jobs", "property") else None)
+    ind = own if own != "all" else (industry if industry in INDUSTRIES and industry != "all" else None)
     return {"conversations": acc.list_conversations(ADMIN_DB_URL, account["id"], ind)}
 
 
@@ -299,18 +299,19 @@ class TilePatch(BaseModel):
 @app.get("/dashboards")
 def dashboards(account: dict = Depends(need_account)):
     boards = acc.list_dashboards(ADMIN_DB_URL, account["id"])
-    if not boards and account.get("industry") in ("property",):   # first visit: start with the industry's ready-made board
+    from .industries import DASHBOARDS
+    if not boards and account.get("industry") in DASHBOARDS:   # first visit: start with the industry's ready-made board
         try:
             acc.create_template_dashboard(ADMIN_DB_URL, account)
             boards = acc.list_dashboards(ADMIN_DB_URL, account["id"])
         except acc.Denied:
             pass
     return {"dashboards": boards, "limit": acc.PLANS[account["plan"]]["dashboards"],
-            "templates": [k for k in ("property",) if account.get("industry") in (k, "all")]}
+            "templates": [k for k in DASHBOARDS if account.get("industry") in (k, "all")]}
 
 
 class TemplateIn(BaseModel):
-    industry: str | None = Field(default=None, pattern="^(property)$")
+    industry: str | None = Field(default=None, pattern="^(property|retail|marketplace)$")
 
 
 @app.post("/dashboards/template")
@@ -496,7 +497,7 @@ class AccountIn(BaseModel):
     pin: str | None = Field(default=None, max_length=64)
     active: bool | None = None
     reset_pin: bool = False
-    industry: str | None = Field(default=None, pattern="^(all|jobs|property)$")
+    industry: str | None = Field(default=None, pattern="^(all|jobs|property|retail|marketplace)$")
 
 
 @app.get("/admin/accounts")

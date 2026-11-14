@@ -95,9 +95,9 @@ CREATE TABLE IF NOT EXISTS admin.dashboard_tiles (
 
 -- ---------------------------------------------------------------- industry workspaces and daily briefs
 ALTER TABLE admin.accounts ADD COLUMN IF NOT EXISTS industry TEXT NOT NULL DEFAULT 'all';
-DO $$ BEGIN
-    ALTER TABLE admin.accounts ADD CONSTRAINT accounts_industry_check CHECK (industry IN ('all', 'jobs', 'property'));
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+ALTER TABLE admin.accounts DROP CONSTRAINT IF EXISTS accounts_industry_check;
+ALTER TABLE admin.accounts ADD CONSTRAINT accounts_industry_check
+    CHECK (industry IN ('all', 'jobs', 'property', 'retail', 'marketplace'));
 
 CREATE TABLE IF NOT EXISTS admin.briefs (
     industry    TEXT NOT NULL,

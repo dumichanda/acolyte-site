@@ -257,6 +257,28 @@ function Bento({ s }: { s: Snapshot | null }) {
 
 /* ---------------- Your analyst ---------------- */
 
+const ROLES = ["data analyst.", "talent analyst.", "property analyst.", "pricing analyst.", "Amazon analyst."];
+
+/** The hero's job title cycles through the analysts Acolyte offers. */
+function RotatingRole() {
+  const [i, setI] = useState(0);
+  const [out, setOut] = useState(false);
+  useEffect(() => {
+    if (reduced) return;
+    let t2 = 0;
+    const t = window.setInterval(() => {
+      setOut(true);
+      t2 = window.setTimeout(() => { setI((n) => (n + 1) % ROLES.length); setOut(false); }, 380);
+    }, 2600);
+    return () => { clearInterval(t); clearTimeout(t2); };
+  }, []);
+  return (
+    <span className="rot" aria-label={ROLES.join(" ")}>
+      <em className={out ? "out" : ""} aria-hidden="true">{ROLES[i]}</em>
+    </span>
+  );
+}
+
 const ANALYSTS: { name: string; status: string; href?: string; cta?: string; text: string; points: string[] }[] = [
   { name: "Talent Analyst", status: "Live", href: "/analyst/?industry=jobs", cta: "Try the Talent Analyst",
     text: "For HR, recruitment, training and B2B sales teams. Knows every SA job ad we track.",
@@ -264,9 +286,12 @@ const ANALYSTS: { name: string; status: string; href?: string; cta?: string; tex
   { name: "Property Analyst", status: "Live", href: "/property/", cta: "See the Property Analyst",
     text: "For estate agencies, developers, banks and investors. Reads the whole SA listings market every morning.",
     points: ["A Daily Property Brief, ready at 07:00", "Stock, asking prices, rents and gross yields", "Agency share and price cuts by region"] },
-  { name: "Retail Analyst", status: "Coming next",
-    text: "For FMCG brands and retailers. Prices, promotions and shelf position across major SA retailers.",
-    points: ["Basket prices by retailer and region", "Promotion frequency and price position", "House brands against name brands"] },
+  { name: "Retail Pricing Analyst", status: "Live", href: "/analyst/?industry=retail", cta: "Try the Pricing Analyst",
+    text: "For FMCG brands, suppliers and category managers. Everyday-item prices across SA retailers, every morning.",
+    points: ["Price index and basket cost by retailer", "Price gaps by channel: grocery, wholesale, pharmacy", "Price moves and likely promotions"] },
+  { name: "Marketplace Analyst", status: "Live", href: "/analyst/?industry=marketplace", cta: "Try the Marketplace Analyst",
+    text: "For brands and sellers on Amazon.co.za and Takealot. Marketplace prices against the shops, every morning.",
+    points: ["Amazon.co.za vs Takealot head-to-head", "Marketplace vs cheapest store, by item", "Seller pricing, ratings and coverage"] },
 ];
 
 const LEVELS = [
@@ -287,7 +312,7 @@ const DOES = [
 const DATASETS = [
   { name: "SA jobs", live: true, text: "" },
   { name: "SA property", live: true, text: "Listings, asking prices, rents and stock across all 9 provinces and 48 regions, refreshed daily" },
-  { name: "SA retail products", live: false, text: "Top products and prices across groceries, tech and more, from major SA retailers" },
+  { name: "SA retail prices", live: true, text: "Everyday-item prices across SA grocery chains, wholesalers, pharmacies, Amazon.co.za and Takealot, daily" },
 ];
 
 const USE_CASES: { title: string; status: "Live" | "Proof of concept" | "Next" | "Retail data"; text: string; who: string; href?: string }[] = [
@@ -307,11 +332,13 @@ const USE_CASES: { title: string; status: "Live" | "Proof of concept" | "Next" |
     text: "Asking prices, rents and stock by province, region and suburb, with price cuts tracked daily.", who: "Agencies · developers · banks · investors" },
   { title: "Rental Yield Finder", status: "Live", href: "/analyst/?industry=property",
     text: "Where rents are high against asking prices, by region, property type and bedrooms.", who: "Buy-to-let investors · property funds" },
-  { title: "SA Basket Index", status: "Retail data",
+  { title: "SA Basket Index", status: "Next",
     text: "Monthly food inflation from real shelf prices, compared with Stats SA's CPI.", who: "Economists · banks · media · NGOs" },
-  { title: "Retailer Price Comparison", status: "Retail data",
+  { title: "Retailer Price Comparison", status: "Live", href: "/analyst/?industry=retail",
     text: "Who is cheapest for the same basket, by category and region, tracked daily.", who: "Retailers · consumers · FMCG brands" },
-  { title: "Promotions & Shelf Tracker", status: "Retail data",
+  { title: "Amazon.co.za vs Takealot", status: "Live", href: "/analyst/?industry=marketplace",
+    text: "Which marketplace is cheaper on everyday items, and how both compare with the shops.", who: "Brands · marketplace sellers" },
+  { title: "Promotions & Shelf Tracker", status: "Next",
     text: "Promotion frequency, price position, and house brands against name brands.", who: "FMCG brands · agencies" },
 ];
 
@@ -426,9 +453,9 @@ export default function Landing() {
         <div className="inner">
           <div>
             <span className="eyebrow reveal">AI data analyst · South Africa</span>
-            <h1 className="reveal d1">Your own AI<br /><em>data analyst.</em></h1>
+            <h1 className="reveal d1">Your own AI<br /><RotatingRole /></h1>
             <p className="lede reveal d2">
-              Hire an AI analyst for your industry, already trained on South African market data: talent, property, and soon retail.
+              Hire an AI analyst for your industry, already trained on South African market data: talent, property, retail pricing and marketplaces.
               Ask in plain English and get answers, charts, live dashboards and board-ready report packs in minutes.
             </p>
             <div className="actions reveal d3">
@@ -462,7 +489,7 @@ export default function Landing() {
           <h2 className="reveal d1">One analyst per industry, <em>yours from day one.</em></h2>
           <p className="lede reveal d2">Each analyst is a separate subscription, trained on its own South African market data. No hiring round,
             no onboarding: it queries the data, shows its working, and hands over the chart, dashboard or pack you asked for.</p>
-          <div className="roles2 three">
+          <div className="roles2 four">
             {ANALYSTS.map((a, k) => (
               <article key={a.name} className={`role reveal d${k} ${a.href ? "" : "soon"}`}>
                 <span className="lvl mono">{a.status}</span>

@@ -156,6 +156,7 @@ export type Variant = "standard" | "executive";
 /** Which Acolyte dataset(s) a report draws on, from its charts' SQL. */
 export function dataSource(r: ReportArtifact): { data: string; caveat: string } {
   const sql = Object.values(r.charts || {}).map((c) => c.sql || "").join(" ");
+  if (/retail_/.test(sql)) return { data: "online retail prices (Google Shopping South Africa)", caveat: "advertised online prices; not every retailer lists every item every day" };
   const property = /property_|bond_rate/.test(sql);
   const jobs = /\b(jobs|job_tools|job_skills|employers|daily_stats)\b/.test(sql);
   if (property && jobs) return { data: "public job ads and property listings", caveat: "public job ads and property listings; asking prices, not sale prices" };

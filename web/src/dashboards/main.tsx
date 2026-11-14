@@ -61,6 +61,8 @@ function TileView({ t, onChange }: { t: Tile; onChange: (patch: { size?: string;
   );
 }
 
+const TEMPLATE_LABEL: Record<string, string> = { property: "property", retail: "retail prices", marketplace: "marketplace" };
+
 function App() {
   const [me, setMe] = useState<Me | null>(null);
   const [checked, setChecked] = useState(false);
@@ -135,13 +137,13 @@ function App() {
               try { const d = await api<{ id: number }>("/dashboards", { body: { name: n } }); await loadBoards(); setCurrent(d.id); }
               catch (e) { setErr((e as Error).message); }
             }}>+ New dashboard</button>
-            {templates.includes("property") && (
-              <button className="btn sm" disabled={boards.length >= limit} title="Eight live charts on stock, prices, rents, yields, agencies and price cuts"
+            {templates.map((k) => (
+              <button key={k} className="btn sm" disabled={boards.length >= limit} title="A ready-made board of live charts"
                 onClick={async () => {
-                  try { const d = await api<{ id: number }>("/dashboards/template", { body: { industry: "property" } }); await loadBoards(); setCurrent(d.id); }
+                  try { const d = await api<{ id: number }>("/dashboards/template", { body: { industry: k } }); await loadBoards(); setCurrent(d.id); }
                   catch (e) { setErr((e as Error).message); }
-                }}>+ Ready-made property dashboard</button>
-            )}
+                }}>+ Ready-made {TEMPLATE_LABEL[k] || k} dashboard</button>
+            ))}
             <div className="side-account"><UsageCard me={me} onLogout={() => { logout(); setMe(null); setBoards([]); setTiles([]); }} /></div>
           </aside>
           <main>

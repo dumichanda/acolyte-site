@@ -1,7 +1,8 @@
 # Acolyte: AI analytics on South African market data
 
-Acolyte sells **one AI analyst per industry** (Talent Analyst on jobs data, Property Analyst on property data, Retail
-Analyst next). Each is a separate subscription: a client account is tied to one analyst (`admin.accounts.industry`), which
+Acolyte sells **one AI analyst per industry**: Talent Analyst (jobs, salaries, employer ratings), Property Analyst
+(property listings), Retail Pricing Analyst (FMCG shelf prices) and Marketplace Analyst (Amazon.co.za and Takealot).
+Each analyst has five expert skills (`analyst/skills/*.md`): standard deliverables an expert in that field produces. Each is a separate subscription: a client account is tied to one analyst (`admin.accounts.industry`), which
 scopes its data, prompt, starter questions, dashboards and daily brief (`analyst/industries.py`).
 Underneath, Acolyte collects South African market data every day, loads it into one platform, and builds **use cases** on top of it:
 dashboards, an AI analyst you can ask in plain English, and branded report packs. Every use case shares the same
@@ -13,7 +14,8 @@ pipeline, database, Acolyte Analyst, accounts, dashboards and exports, so a new 
 |---|---|---|
 | SA jobs | Live, refreshed daily | Job ads from Adzuna and verified web listings, employers (profiled by agents), skills and tools from ad text, role scores |
 | SA property | Live, refreshed daily | Private Property listings, asking prices, rents, agencies and full stock counts per province and region, via the Scrappa API (schema `property`) |
-| SA retail products | Next | Top products and prices across groceries, tech and other categories from major SA retailers |
+| SA retail prices | Live, refreshed daily | ~48-item FMCG basket on Google Shopping South Africa: prices by retailer and channel incl. Amazon.co.za and Takealot (schema `retail`) |
+| Talent extras | Live | Google Jobs and LinkedIn ads (into `jobs`), Glassdoor salary percentiles and employer ratings (schema `talent`) |
 
 ## Use cases
 

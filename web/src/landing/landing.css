@@ -288,6 +288,7 @@ body:has(.lp) { background: #0c0c0e; }
 .lp .hire .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 40px; }
 
 .lp .hire .roles2.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.lp .hire .roles2.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .lp .hire .role.soon { background: transparent; border-style: dashed; }
 .lp .hire .role.soon .lvl { color: var(--mute); }
 .lp .hire .role .go { margin-top: auto; padding-top: 10px; color: var(--signal); font-weight: 600; text-decoration: none; }
@@ -321,7 +322,7 @@ body:has(.lp) { background: #0c0c0e; }
 .lp .proof .more a { color: var(--paper-ink); font-weight: 600; }
 
 @media (max-width: 980px) {
-  .lp .hire .roles2, .lp .hire .roles2.three { grid-template-columns: 1fr; }
+  .lp .hire .roles2, .lp .hire .roles2.three, .lp .hire .roles2.four { grid-template-columns: 1fr; }
   .lp .hire .levels { grid-template-columns: 1fr; }
   .lp .hire .does { grid-template-columns: 1fr 1fr; row-gap: 18px; }
   .lp .hire .does div + div { border-left: none; padding-left: 0; }
@@ -350,3 +351,8 @@ body:has(.lp) { background: #0c0c0e; }
   .lp .spark path.line { stroke-dashoffset: 0; } .lp .spark path.area { opacity: 1; }
   .lp .sent .bar i { transform: none; }
 }
+
+/* Hero: rotating analyst title */
+.lp .hero h1 .rot { display: inline-block; }
+.lp .hero h1 .rot em { display: inline-block; transition: opacity .38s ease, transform .38s ease; }
+.lp .hero h1 .rot em.out { opacity: 0; transform: translateY(0.25em); }

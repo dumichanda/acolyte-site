@@ -63,7 +63,8 @@ function Kpi({ label, value, hint, tone }: { label: string; value: string; hint?
 interface AccountRow { id: number; name: string; plan: string; industry?: string; active: boolean; created_at: string; last_login: string | null;
                      questions_30d: number; cost_30d: string; reports_30d: number; dashboards: number }
 const PLAN_LABEL: Record<string, string> = { junior: "Junior Analyst (R30k)", senior: "Senior AI & Data Science (R50k)", owner: "Owner" };
-const INDUSTRY_LABEL: Record<string, string> = { jobs: "Talent Analyst", property: "Property Analyst", all: "All analysts (owner)" };
+const INDUSTRY_LABEL: Record<string, string> = { jobs: "Talent Analyst", property: "Property Analyst", retail: "Retail Pricing Analyst",
+  marketplace: "Marketplace Analyst", all: "All analysts (owner)" };
 
 function Accounts({ adminKey }: { adminKey: string }) {
   const [rows, setRows] = useState<AccountRow[]>([]);
@@ -104,6 +105,10 @@ function Accounts({ adminKey }: { adminKey: string }) {
           const d = await call("/admin/briefs/property/run", "POST");
           setBrief(d.started ? "Writing today's Daily Property Brief now (about 3 minutes)." : `Today's brief is ${d.status || "not started"}.`);
         })}>Run today's Daily Property Brief</button>
+        <button type="button" className="btn" onClick={() => act(async () => {
+          const d = await call("/admin/briefs/retail/run", "POST");
+          setBrief(d.started ? "Writing today's Daily Retail Price Brief now (about 3 minutes)." : `Today's retail brief is ${d.status || "not started"}.`);
+        })}>Run today's Retail Price Brief</button>
         {brief && <span className="small muted">{brief}</span>}
       </div>
       {notice && <div className="notice">{notice} <button className="link" onClick={() => setNotice("")}>Hide</button></div>}

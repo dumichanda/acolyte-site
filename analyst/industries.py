@@ -15,17 +15,32 @@ INDUSTRIES = {
     },
     "jobs": {
         "label": "Jobs & talent", "name": "Acolyte Talent Analyst",
-        "semantic": ["semantic.md"],
+        "semantic": ["semantic.md", "skills/jobs.md"],
         "intro": ("You work for HR, recruitment, training and B2B sales teams. Stay on the SA jobs data: hiring demand, "
                   "roles, skills, employers, salaries and automation potential."),
     },
     "property": {
         "label": "Property", "name": "Acolyte Property Analyst",
-        "semantic": ["semantic_property.md"],
+        "semantic": ["semantic_property.md", "skills/property.md"],
         "intro": ("You work for estate agencies, developers, banks and property investors in South Africa. Stay on the "
                   "SA property data: stock, asking prices, rents, yields, price cuts, agencies and areas. Use property "
                   "language (stock, mandates, asking price, days on market, gross yield). For an agency, frame findings "
                   "as where to list, how to price, and where competitors are gaining."),
+    },
+    "retail": {
+        "label": "Retail pricing", "name": "Acolyte Retail Pricing Analyst",
+        "semantic": ["semantic_retail.md", "skills/retail.md"],
+        "intro": ("You work for FMCG brands, suppliers and retailers in South Africa. Stay on the SA retail price data: "
+                  "shelf prices advertised online across grocery chains, wholesalers, pharmacies, quick commerce and "
+                  "online marketplaces. Use pricing language (price index, price gap, basket, price ladder, promotion). "
+                  "Always compare the same item on the same day and say how many items a comparison rests on."),
+    },
+    "marketplace": {
+        "label": "Marketplaces", "name": "Acolyte Marketplace Analyst",
+        "semantic": ["semantic_retail.md", "skills/marketplace.md"],
+        "intro": ("You work for brands and sellers on South Africa's online marketplaces, Amazon.co.za and Takealot. "
+                  "Focus on the 'online marketplace' channel and compare it with grocery chains and wholesale. "
+                  "Always compare the same item on the same day and say how many items a comparison rests on."),
     },
 }
 
@@ -86,7 +101,55 @@ WHERE active AND agency <> 'Private seller / not stated' GROUP BY agency ORDER B
 FROM property_listings WHERE price_change_pct < 0 AND active ORDER BY last_seen DESC, price_change_pct LIMIT 25"""},
 ]
 
-DASHBOARDS = {"property": ("Property market", PROPERTY_DASHBOARD)}
+_RLATEST = "(SELECT max(day) FROM retail_prices)"
+RETAIL_DASHBOARD = [
+    {"type": "hbar", "x": "Retailer", "y": ["Items where cheapest"], "value_format": "number",
+     "title": "Who is cheapest most often", "subtitle": "Basket items where each retailer had the lowest price, latest day",
+     "sql": f"""WITH p AS (SELECT item, retailer, price_zar, rank() OVER (PARTITION BY item ORDER BY price_zar) r
+           FROM retail_prices WHERE day = {_RLATEST})
+SELECT retailer AS "Retailer", count(*) AS "Items where cheapest" FROM p WHERE r = 1 GROUP BY 1 ORDER BY 2 DESC"""},
+    {"type": "bar", "x": "Channel", "y": ["Average gap to cheapest %"], "value_format": "number",
+     "title": "Average price gap to the cheapest, by channel", "subtitle": "Same item, same day; 0% = always cheapest",
+     "sql": f"""WITH p AS (SELECT item, channel, price_zar, min(price_zar) OVER (PARTITION BY item) AS cheapest
+           FROM retail_prices WHERE day = {_RLATEST})
+SELECT channel AS "Channel", round(avg(100.0 * (price_zar - cheapest) / cheapest), 1) AS "Average gap to cheapest %"
+FROM p GROUP BY 1 ORDER BY 2"""},
+    {"type": "hbar", "x": "Item", "y": ["Spread %"], "value_format": "number",
+     "title": "Widest price spreads", "subtitle": "Dearest vs cheapest retailer for the same item, latest day",
+     "sql": f"""SELECT item AS "Item", round(100.0 * (max(price_zar) - min(price_zar)) / min(price_zar)) AS "Spread %"
+FROM retail_prices WHERE day = {_RLATEST} GROUP BY item HAVING count(*) >= 2 ORDER BY 2 DESC LIMIT 15"""},
+    {"type": "bar", "x": "Category", "y": ["Retailers per item"], "value_format": "number",
+     "title": "Price coverage by category", "subtitle": "Average number of retailers pricing each item, latest day",
+     "sql": f"""SELECT category AS "Category", round(avg(n), 1) AS "Retailers per item" FROM
+  (SELECT category, item, count(*) n FROM retail_prices WHERE day = {_RLATEST} GROUP BY 1, 2) x GROUP BY 1 ORDER BY 2 DESC"""},
+    {"type": "table", "x": "Item", "y": ["Price"], "value_format": "rand",
+     "title": "Latest prices", "subtitle": "Lowest matching price per retailer",
+     "sql": f"""SELECT item AS "Item", retailer AS "Retailer", channel AS "Channel", price_zar AS "Price"
+FROM retail_prices WHERE day = {_RLATEST} ORDER BY item, price_zar"""},
+]
+MARKETPLACE_DASHBOARD = [
+    {"type": "bar", "x": "Item", "y": ["Amazon.co.za", "Takealot"], "value_format": "rand",
+     "title": "Amazon.co.za vs Takealot", "subtitle": "Items both priced on the latest day",
+     "sql": f"""SELECT item AS "Item", min(price_zar) FILTER (WHERE retailer = 'Amazon.co.za') AS "Amazon.co.za",
+       min(price_zar) FILTER (WHERE retailer = 'Takealot') AS "Takealot"
+FROM retail_prices WHERE day = {_RLATEST} GROUP BY item
+HAVING count(*) FILTER (WHERE retailer = 'Amazon.co.za') > 0 AND count(*) FILTER (WHERE retailer = 'Takealot') > 0
+ORDER BY 1"""},
+    {"type": "hbar", "x": "Retailer", "y": ["Index vs cheapest store (100 = parity)"], "value_format": "number",
+     "title": "Marketplaces vs the cheapest store", "subtitle": "Average of price ÷ cheapest grocery or wholesale price, same item",
+     "sql": f"""WITH s AS (SELECT item, min(price_zar) p FROM retail_prices WHERE day = {_RLATEST}
+           AND channel IN ('grocery chain', 'wholesale') GROUP BY item)
+SELECT r.retailer AS "Retailer", round(avg(100.0 * r.price_zar / s.p)) AS "Index vs cheapest store (100 = parity)"
+FROM retail_prices r JOIN s USING (item) WHERE r.day = {_RLATEST} AND r.channel = 'online marketplace' GROUP BY 1"""},
+    {"type": "table", "x": "Item", "y": ["Price"], "value_format": "rand",
+     "title": "Marketplace offers", "subtitle": "Matching offers on Amazon.co.za and Takealot, latest day",
+     "sql": f"""SELECT item AS "Item", seller AS "Seller", title AS "Title", price_zar AS "Price", rating AS "Rating",
+       reviews AS "Reviews" FROM retail_offers WHERE day = {_RLATEST} AND channel = 'online marketplace' AND matches_item
+ORDER BY item, price_zar"""},
+]
+
+DASHBOARDS = {"property": ("Property market", PROPERTY_DASHBOARD), "retail": ("Retail prices", RETAIL_DASHBOARD),
+              "marketplace": ("Marketplaces", MARKETPLACE_DASHBOARD)}
 
 # ---------------------------------------------------------------- daily briefs
 BRIEFS = {
@@ -97,4 +160,10 @@ BRIEFS = {
         "with indicative gross yields for 2-bedroom homes; (3) price reductions and listings with offers pending; "
         "(4) which agencies hold the most listings in the biggest regions; (5) the bond rate. Keep it to 4-6 sections. "
         "Actions should tell an agency where to focus listings and how to price."),
+    "retail": (
+        "Make me today's Daily Retail Price Brief as a report pack for an FMCG brand or category manager. Cover, in order "
+        "of importance: (1) which retailer is cheapest on a like-for-like basket today and by how much; (2) price index by "
+        "retailer and by channel; (3) the widest price spreads and biggest price moves since the earliest day (likely "
+        "promotions), or the current spread if there is one day of data; (4) Amazon.co.za and Takealot versus grocery. "
+        "Keep it to 4-6 sections, and state how many items each comparison rests on."),
 }

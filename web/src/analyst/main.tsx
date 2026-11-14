@@ -70,7 +70,8 @@ function PinButton({ c }: { c: ChartArtifact }) {
 
 /** Industry workspaces: what the analyst covers, how the page introduces it, and where to start. */
 type Analyst = Exclude<Industry, "all">;
-const WORKSPACES: Record<Analyst, { label: string; name: string; sub: string; placeholder: string; starters: string[] }> = {
+interface Skill { name: string; ask: string }
+const WORKSPACES: Record<Analyst, { label: string; name: string; sub: string; placeholder: string; starters: string[]; skills: Skill[]; brief?: string }> = {
   jobs: {
     label: "Jobs & talent", name: "Acolyte Talent Analyst", placeholder: "Ask about South Africa's job market…",
     sub: "Your AI analyst for SA hiring: roles, skills, employers, salaries and automation potential, from live job ads.",
@@ -80,6 +81,13 @@ const WORKSPACES: Record<Analyst, { label: string; name: string; sub: string; pl
       "Which skills and software do finance job ads ask for most?",
       "Which role types have the most automatable work, and where?",
       "Make me a report pack on the SA job market",
+    ],
+    skills: [
+      { name: "Labour market scan", ask: "Run a labour market scan for bookkeeping and accounts admin roles in South Africa." },
+      { name: "Salary benchmark", ask: "Benchmark salaries for creditors clerks: national and by province, with a recommended pay band." },
+      { name: "Skills & tools demand", ask: "Which skills and tools do payroll job ads ask for most? Split must-have from nice-to-have." },
+      { name: "Competitor hiring watch", ask: "Compare what the top 5 direct employers are hiring for, with their Glassdoor ratings." },
+      { name: "Location strategy", ask: "Where should we hire a 20-person finance admin team: Gauteng, Western Cape or KwaZulu-Natal?" },
     ],
   },
   property: {
@@ -91,6 +99,51 @@ const WORKSPACES: Record<Analyst, { label: string; name: string; sub: string; pl
       "Which agencies hold the most listings in Johannesburg, Cape Town and Durban?",
       "Where are sellers cutting asking prices?",
       "Make me a report pack on the Gauteng property market for an agency principal",
+    ],
+    skills: [
+      { name: "Market conditions", ask: "Run a market conditions report for Johannesburg: is it leaning buyer's or seller's?" },
+      { name: "CMA for a listing", ask: "Do a comparative market analysis for a 3-bedroom house in Centurion: what should it list for?" },
+      { name: "Rental yield screen", ask: "Screen regions for buy-to-let: where are 2-bedroom gross yields highest versus the bond rate?" },
+      { name: "Agency market share", ask: "Show agency market share in Cape Town, Durban and Pretoria." },
+      { name: "Price-cut watch", ask: "Where are sellers cutting asking prices most, and which listings had the biggest cuts?" },
+    ],
+    brief: "Daily Property Brief",
+  },
+  retail: {
+    label: "Retail pricing", name: "Acolyte Retail Pricing Analyst", placeholder: "Ask about SA shelf prices, retailers, baskets…",
+    sub: "Your AI pricing analyst for FMCG: everyday-item prices across SA grocery chains, wholesalers, pharmacies and marketplaces, checked every morning.",
+    starters: [
+      "Which retailer is cheapest for a like-for-like basket today?",
+      "Where are the widest price gaps between retailers for the same item?",
+      "Compare Makro, Woolworths and Checkers Sixty60 on pantry staples",
+      "Which channel is cheapest: grocery, wholesale, pharmacy or online?",
+      "Make me a retail pricing report pack for a category manager",
+    ],
+    skills: [
+      { name: "Price index", ask: "Build a price index for each retailer versus Makro on the items they both price." },
+      { name: "Basket comparison", ask: "Compare the cost of a like-for-like basket across retailers today." },
+      { name: "Price ladder", ask: "Show the price ladder for household cleaning items across retailers." },
+      { name: "Promotion watch", ask: "Which retailers moved prices the most, and which moves look like promotions?" },
+      { name: "Channel gaps", ask: "How do prices differ by channel: wholesale, grocery, pharmacy, quick commerce and marketplaces?" },
+    ],
+    brief: "Daily Retail Price Brief",
+  },
+  marketplace: {
+    label: "Marketplaces", name: "Acolyte Marketplace Analyst", placeholder: "Ask about Amazon.co.za and Takealot prices…",
+    sub: "Your AI analyst for SA online marketplaces: Amazon.co.za and Takealot prices, sellers and reviews against grocery and wholesale, every morning.",
+    starters: [
+      "Is Amazon.co.za or Takealot cheaper on everyday items?",
+      "How do marketplace prices compare with the cheapest grocery store?",
+      "Which basket items are missing on Amazon.co.za or Takealot?",
+      "Which marketplace sellers price above the rest?",
+      "Make me a report pack on Amazon.co.za vs Takealot pricing",
+    ],
+    skills: [
+      { name: "Head-to-head", ask: "Run an Amazon.co.za vs Takealot head-to-head on items both list." },
+      { name: "Marketplace vs stores", ask: "Index marketplace prices against the cheapest grocery or wholesale price for the same item." },
+      { name: "Assortment & coverage", ask: "Which basket items does each marketplace list, with ratings and review counts?" },
+      { name: "Seller pricing", ask: "Where do third-party marketplace sellers price above the marketplace itself?" },
+      { name: "Price moves", ask: "How often do marketplace prices move compared with grocery chains?" },
     ],
   },
 };
@@ -113,7 +166,7 @@ function BriefCard({ industry, onOpen }: { industry: Analyst; onOpen: (r: Report
   const [b, setB] = useState<BriefResp | null>(null);
   const [err, setErr] = useState("");
   useEffect(() => {
-    if (!me || industry !== "property") return;
+    if (!me || !WORKSPACES[industry].brief) return;
     let stop = false, timer = 0;
     const load = () => api<BriefResp>(`/briefs/${industry}`).then((r) => {
       if (stop) return;
@@ -123,14 +176,15 @@ function BriefCard({ industry, onOpen }: { industry: Analyst; onOpen: (r: Report
     load();
     return () => { stop = true; clearTimeout(timer); };
   }, [me, industry]);
-  if (industry !== "property") return null;
-  if (!me) return <div className="brief-card"><b>Daily Property Brief</b><p className="muted small">Sign in to get a fresh property market brief every morning, ready as a 5-slide PowerPoint.</p></div>;
+  const title = WORKSPACES[industry].brief;
+  if (!title) return null;
+  if (!me) return <div className="brief-card"><b>{title}</b><p className="muted small">Sign in to get a fresh brief every morning, ready as a 5-slide PowerPoint.</p></div>;
   if (err) return null;
   const r = b?.brief?.status === "ready" ? b.brief.report : null;
   const isToday = b?.brief?.day === b?.today;
   return (
     <div className="brief-card">
-      <div className="brief-head"><b>Daily Property Brief</b>
+      <div className="brief-head"><b>{title}</b>
         {b?.today_status === "running" && <span className="pill run">Preparing today's brief…</span>}
         {r && <span className="pill">{isToday ? "Today" : new Date(b!.brief!.day).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}</span>}
       </div>
@@ -284,7 +338,8 @@ function ReportView({ r, actions = true }: { r: ReportArtifact; actions?: boolea
 
 function dataSourceLabel(r: ReportArtifact) {
   const sql = Object.values(r.charts || {}).map((c) => c.sql || "").join(" ");
-  const p = /property_|bond_rate/.test(sql), j = /\b(jobs|job_tools|job_skills|employers|daily_stats)\b/.test(sql);
+  if (/retail_/.test(sql)) return "SA retail price dataset (Google Shopping South Africa)";
+  const p = /property_|bond_rate/.test(sql), j = /\b(jobs|job_tools|job_skills|employers|daily_stats|salary_benchmarks)\b/.test(sql);
   return p && j ? "SA jobs and property datasets" : p ? "SA property dataset (Private Property listings)" : "SA jobs dataset (public job ads)";
 }
 
@@ -487,7 +542,9 @@ function App() {
             {items.length === 0 && <BriefCard industry={ws} onOpen={openReport} />}
             {items.length === 0 && (
               <div className="starters">
-                <div className="muted small">Try one of these</div>
+                <div className="muted small">Expert skills</div>
+                <div className="skills">{W.skills.map((k) => <button key={k.name} className="skill" disabled={!ready} title={k.ask} onClick={() => ask(k.ask)}>{k.name}</button>)}</div>
+                <div className="muted small">Or try one of these</div>
                 {W.starters.map((s) => <button key={s} className="starter" disabled={!ready} onClick={() => ask(s)}>{s}</button>)}
               </div>
             )}
@@ -539,7 +596,7 @@ function App() {
               <button className="btn primary" disabled={!ready || busy || !q.trim()}>{busy ? "Thinking…" : "Ask"}</button>
             </div>
           </form>
-          <p className="muted small">Built on public {ws === "property" ? "property listings" : "job ads"}. Answers can be wrong; check the queries. <a href={url("/#contact")}>Want this on your own data?</a></p>
+          <p className="muted small">Built on public {ws === "property" ? "property listings" : ws === "jobs" ? "job ads" : "online retail prices"}. Answers can be wrong; check the queries. <a href={url("/#contact")}>Want this on your own data?</a></p>
         </section>
 
         <section className="canvas">

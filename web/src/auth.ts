@@ -13,7 +13,7 @@ const TOKEN = "acolyteSession";
 export const getToken = () => { try { return localStorage.getItem(TOKEN) || ""; } catch { return ""; } };
 export const setToken = (t: string) => { try { t ? localStorage.setItem(TOKEN, t) : localStorage.removeItem(TOKEN); } catch { /* storage blocked */ } };
 
-export type Industry = "all" | "jobs" | "property";
+export type Industry = "all" | "jobs" | "property" | "retail" | "marketplace";
 
 export interface Me {
   account: { id: number; name: string; plan: string; plan_label: string; industry?: Industry; industry_label?: string; analyst_name?: string };
