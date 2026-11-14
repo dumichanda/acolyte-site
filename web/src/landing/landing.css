@@ -271,6 +271,22 @@ body:has(.lp) { background: #0c0c0e; }
 .lp .doc p { color: #c9c8c2; }
 .lp .doc .muted { color: var(--mute); }
 
+/* Your analyst */
+.lp .hire .roles2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 56px; }
+.lp .hire .role { padding: 30px; border-radius: 20px; background: var(--ink-2); border: 1px solid var(--line-2); display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.lp .hire .role.senior { background: linear-gradient(160deg, #1d2410, var(--ink-2) 60%); border-color: #c8f13544; }
+.lp .hire .role .lvl { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--signal); }
+.lp .hire .role h3 { font-size: clamp(26px, 3vw, 36px); }
+.lp .hire .role p { color: var(--mute); margin: 0; font-size: 16px; }
+.lp .hire .role ul { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 10px; }
+.lp .hire .role li { display: flex; gap: 10px; align-items: baseline; font-size: 15px; }
+.lp .hire .role li::before { content: ""; width: 7px; height: 7px; border-radius: 2px; background: var(--signal); flex-shrink: 0; transform: translateY(-1px); }
+.lp .hire .does { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; margin-top: 40px; border-top: 1px solid var(--line-2); }
+.lp .hire .does div { padding: 20px 18px 0 0; display: grid; gap: 4px; align-content: start; font-size: 14px; color: var(--mute); }
+.lp .hire .does div + div { border-left: 1px solid var(--line); padding-left: 18px; }
+.lp .hire .does b { color: var(--text); font-weight: 600; }
+.lp .hire .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 40px; }
+
 /* Use cases */
 .lp .proof .datasets { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 48px; }
 .lp .proof .ds { display: grid; gap: 4px; padding: 16px 18px; border: 1px dashed #16140f33; border-radius: 14px; color: #5f5a4c; font-size: 14px; }
@@ -294,6 +310,9 @@ body:has(.lp) { background: #0c0c0e; }
 .lp .proof .more a { color: var(--paper-ink); font-weight: 600; }
 
 @media (max-width: 980px) {
+  .lp .hire .roles2 { grid-template-columns: 1fr; }
+  .lp .hire .does { grid-template-columns: 1fr 1fr; row-gap: 18px; }
+  .lp .hire .does div + div { border-left: none; padding-left: 0; }
   .lp .proof .uses { grid-template-columns: 1fr 1fr; }
   .lp section { padding: 88px 0; }
   .lp .hero { padding-top: 120px; min-height: auto; }

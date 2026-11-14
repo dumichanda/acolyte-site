@@ -255,6 +255,25 @@ function Bento({ s }: { s: Snapshot | null }) {
   );
 }
 
+/* ---------------- Your analyst ---------------- */
+
+const HIRES = [
+  { level: "Everyday answers", title: "AI Data Analyst",
+    text: "For teams that need numbers, charts and a weekly pack without waiting on anyone.",
+    points: ["Up to 150 questions a day", "2 report packs a day, 8 a week", "3 live dashboards", "Fast models for lookups, deeper ones for packs"] },
+  { level: "Strategy and research", title: "AI Data Scientist",
+    text: "For leadership, strategy and client work: deeper reasoning, more packs, more dashboards.",
+    points: ["Up to 400 questions a day", "6 report packs a day, 25 a week", "10 live dashboards", "Our most capable model on every question"] },
+];
+
+const DOES = [
+  { t: "Answers in plain English", x: "and shows the SQL behind every number" },
+  { t: "Charts on request", x: "ranked, trended, mapped, compared" },
+  { t: "Live dashboards", x: "pin any chart; it refreshes itself" },
+  { t: "Report packs", x: "5-slide executive brief or full PowerPoint pack" },
+  { t: "Checks its own work", x: "every figure traced back to the data" },
+];
+
 /* ---------------- Datasets and use cases ---------------- */
 
 const DATASETS = [
@@ -380,7 +399,7 @@ export default function Landing() {
         <div className="inner">
           <a className="logo" href={url("/")}><img src={url("/favicon.svg")} alt="" />acolyte</a>
           <div className="pill links">
-            <a href="#analytics">AI analytics</a>
+            <a href="#analyst">Your analyst</a>
             <a href="#use-cases">Use cases</a>
             <a href={url("/analyst/")}>Ask AI</a>
             <a href="#automation">Automation</a>
@@ -393,18 +412,18 @@ export default function Landing() {
         <div className="glow" />
         <div className="inner">
           <div>
-            <span className="eyebrow reveal">AI analytics · South African market data</span>
-            <h1 className="reveal d1">Your data,<br /><em>talking back.</em></h1>
+            <span className="eyebrow reveal">AI data analyst · South Africa</span>
+            <h1 className="reveal d1">Your own AI<br /><em>data analyst.</em></h1>
             <p className="lede reveal d2">
-              Acolyte turns South African market data into answers. Live datasets on jobs today and retail prices next,
-              an AI analyst your team can simply ask, and dashboards and report packs that build themselves. On our data or yours.
+              Hire an AI analyst or data scientist that already knows South African market data. Ask in plain English and get
+              answers, charts, live dashboards and board-ready report packs in minutes, on our datasets or your own.
             </p>
             <div className="actions reveal d3">
               <a className="btn-signal" href="#contact">Book a free data session <span className="arr">→</span></a>
-              <a className="btn-line" href={url("/analyst/")}>Ask the data yourself</a>
+              <a className="btn-line" href={url("/analyst/")}>Try your analyst now</a>
             </div>
             <div className="meta mono reveal d3">
-              <span><b>Daily</b> refresh</span><span><b>WhatsApp</b> ready</span><span><b>POPIA</b>-aware</span>
+              <span><b>Answers</b> in seconds</span><span><b>PowerPoint</b> packs</span><span><b>Live</b> dashboards</span><span><b>POPIA</b>-aware</span>
             </div>
           </div>
           <AskConsole s={s} />
@@ -421,6 +440,32 @@ export default function Landing() {
           <h2 className="reveal d1">Analytics that <em>works for you</em>, not the other way round.</h2>
           <p className="lede reveal d2">Most businesses already have the data. It's stuck in Sage, spreadsheets, reviews and inboxes. We connect it, let AI read it, and put the answers where your team already works.</p>
           <Bento s={s} />
+        </div>
+      </section>
+
+      <section id="analyst" className="hire">
+        <div className="inner">
+          <span className="eyebrow reveal">Meet your analyst</span>
+          <h2 className="reveal d1">An analyst on your team, <em>from day one.</em></h2>
+          <p className="lede reveal d2">No hiring round, no onboarding, no waiting for the monthly report. Your AI analyst queries the data, shows its working,
+            and hands over the chart, dashboard or pack you asked for.</p>
+          <div className="roles2">
+            {HIRES.map((h, k) => (
+              <article key={h.title} className={`role reveal d${k + 1} ${k ? "senior" : ""}`}>
+                <span className="lvl mono">{h.level}</span>
+                <h3>{h.title}</h3>
+                <p>{h.text}</p>
+                <ul>{h.points.map((x) => <li key={x}>{x}</li>)}</ul>
+              </article>
+            ))}
+          </div>
+          <div className="does reveal">
+            {DOES.map((d) => <div key={d.t}><b>{d.t}</b><span>{d.x}</span></div>)}
+          </div>
+          <div className="actions reveal">
+            <a className="btn-signal" href="#contact">Hire your analyst <span className="arr">→</span></a>
+            <a className="btn-line" href={url("/analyst/")}>Ask it a question first</a>
+          </div>
         </div>
       </section>
 
