@@ -575,7 +575,7 @@ def report_run(industry: str, req: Request, month: str | None = None, force: boo
         return _report_start(industry, period, mtd, force)
     except Exception as e:   # admin-only endpoint: show the cause
         print(f"[report] run failed: {e.__class__.__name__}: {e}", flush=True)
-        raise HTTPException(500, f"{e.__class__.__name__}: {str(e)[:300]}")
+        raise HTTPException(500, f"{e.__class__.__name__}: {str(e)[-700:]}")
 
 
 def _report_start(industry: str, period, mtd: bool, force: bool) -> dict:
@@ -598,7 +598,7 @@ def report_admin_status(industry: str, req: Request, month: str | None = None):
     try:
         return {"period": str(period), "status": acc.report_status(ADMIN_DB_URL, industry, period)}
     except Exception as e:
-        raise HTTPException(500, f"{e.__class__.__name__}: {str(e)[:300]}")
+        raise HTTPException(500, f"{e.__class__.__name__}: {str(e)[-700:]}")
 
 
 @app.get("/reports")
