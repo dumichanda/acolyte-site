@@ -270,19 +270,19 @@ function Dashboard({ s }: { s: Stats }) {
   );
 }
 
-interface Credit { since: string; balance_usd: number; spent_usd: number; left_usd: number; alert_usd: number; low: boolean }
+interface Credit { since: string; balance_usd: number; spent_usd: number; left_usd: number; used_pct: number; step_pct: number; next_alert_pct: number }
 interface AlertRow { id: number; at: string; kind: string; ref: string | null; message: string; notified: boolean; resolved: boolean }
-const ALERT_LABEL: Record<string, string> = { ai_credit: "AI credit exhausted", low_credit: "AI credit low", ai_error: "AI service error" };
+const ALERT_LABEL: Record<string, string> = { ai_credit: "AI credit exhausted", low_credit: "AI credit milestone", ai_error: "AI service error" };
 
 /** AI credit: the owner enters the Anthropic Console balance after a top-up; spend since then is subtracted live. */
 function CreditCard({ adminKey }: { adminKey: string }) {
   const [c, setC] = useState<Credit | null>(null), [alerts, setAlerts] = useState<AlertRow[]>([]);
-  const [bal, setBal] = useState(""), [th, setTh] = useState("39"), [err, setErr] = useState(""), [busy, setBusy] = useState(false);
+  const [bal, setBal] = useState(""), [th, setTh] = useState("10"), [err, setErr] = useState(""), [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
     try {
       const r = await fetch(`${API}/admin/credit`, { headers: { Authorization: `Bearer ${adminKey}` } });
       const d = await r.json(); if (!r.ok) throw new Error(d.detail || r.statusText);
-      setC(d.credit); setAlerts(d.alerts || []); if (d.credit) setTh(String(d.credit.alert_usd));
+      setC(d.credit); setAlerts(d.alerts || []); if (d.credit) setTh(String(d.credit.step_pct));
     } catch (e) { setErr((e as Error).message); }
   }, [adminKey]);
   useEffect(() => { load(); }, [load]);
@@ -290,7 +290,7 @@ function CreditCard({ adminKey }: { adminKey: string }) {
     setBusy(true); setErr("");
     try {
       const r = await fetch(`${API}/admin/credit`, { method: "POST", headers: { Authorization: `Bearer ${adminKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ balance_usd: Number(bal), alert_usd: Number(th) }) });
+        body: JSON.stringify({ balance_usd: Number(bal), step_pct: Number(th) }) });
       const d = await r.json(); if (!r.ok) throw new Error(d.detail || r.statusText);
       setBal(""); await load();
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
@@ -299,15 +299,15 @@ function CreditCard({ adminKey }: { adminKey: string }) {
   return (
     <section className="card accounts">
       <h2>AI credit and alerts</h2>
-      <p className="desc">After you top up in the Anthropic Console, enter the balance it shows. The estimate below subtracts everything the analyst has spent since. When it reaches your alert level, or the credit runs out, a GitHub issue is opened within the hour and GitHub emails you.</p>
+      <p className="desc">After you top up in the Anthropic Console, enter the balance it shows. The estimate below subtracts everything the analyst has spent since. Each time another step of the top-up is used (every 10% by default), and at once if the credit runs out, a GitHub issue is opened within the hour and GitHub emails you.</p>
       {c ? <div className="kpis">
-        <Kpi label="Estimated credit left" value={`$${c.left_usd.toFixed(2)}`} hint={`alert at $${c.alert_usd}`} tone={c.low ? "warn" : undefined} />
+        <Kpi label="Estimated credit left" value={`$${c.left_usd.toFixed(2)}`} hint={`${c.used_pct}% used · next alert at ${c.next_alert_pct}%`} tone={c.used_pct >= 80 ? "warn" : undefined} />
         <Kpi label="Balance entered" value={`$${c.balance_usd.toFixed(2)}`} hint={new Date(c.since).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })} />
         <Kpi label="Spent since" value={`$${c.spent_usd.toFixed(2)}`} />
       </div> : <p className="muted">No balance entered yet.</p>}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "end" }}>
         <label className="small">Balance now (US$)<br /><input id="credit-balance" type="number" min="0" step="0.01" value={bal} onChange={(e) => setBal(e.target.value)} placeholder="e.g. 100" /></label>
-        <label className="small">Alert when it falls to (US$)<br /><input id="credit-alert" type="number" min="0" step="1" value={th} onChange={(e) => setTh(e.target.value)} /></label>
+        <label className="small">Alert every (% used)<br /><input id="credit-step" type="number" min="1" max="50" step="1" value={th} onChange={(e) => setTh(e.target.value)} /></label>
         <button className="btn" disabled={busy || bal === ""} onClick={save}>{busy ? "Saving…" : "Save balance"}</button>
       </div>
       {err && <div className="banner">{err}</div>}

@@ -538,33 +538,40 @@ def add_alert(db: str, kind: str, message: str, ref: str | None = None) -> None:
 def credit_status(db: str) -> dict | None:
     """Estimated AI credit left: the last balance the owner entered, minus what the analyst has spent since."""
     with psycopg.connect(db) as conn:
-        r = conn.execute("SELECT at, balance_usd, alert_usd FROM admin.credit ORDER BY at DESC LIMIT 1").fetchone()
+        r = conn.execute("SELECT id, at, balance_usd, step_pct, alerted_pct FROM admin.credit ORDER BY at DESC LIMIT 1").fetchone()
         if not r:
             return None
-        spent = conn.execute("SELECT coalesce(sum(cost_usd), 0) FROM admin.analyst_usage WHERE at >= %s", (r[0],)).fetchone()[0]
-    left = float(r[1]) - float(spent)
-    return {"since": r[0].isoformat(), "balance_usd": float(r[1]), "spent_usd": round(float(spent), 2),
-            "left_usd": round(left, 2), "alert_usd": float(r[2]), "low": left <= float(r[2])}
+        spent = conn.execute("SELECT coalesce(sum(cost_usd), 0) FROM admin.analyst_usage WHERE at >= %s", (r[1],)).fetchone()[0]
+    bal, spent = float(r[2]), float(spent)
+    used_pct = 100.0 * spent / bal if bal else 100.0
+    step = max(1, int(r[3]))
+    return {"id": r[0], "since": r[1].isoformat(), "balance_usd": bal, "spent_usd": round(spent, 2),
+            "left_usd": round(bal - spent, 2), "used_pct": round(used_pct, 1), "step_pct": step,
+            "alerted_pct": int(r[4]), "next_alert_pct": min(100, (int(used_pct) // step + 1) * step)}
 
 
-def set_credit(db: str, balance_usd: float, alert_usd: float) -> dict:
+def set_credit(db: str, balance_usd: float, step_pct: int = 10) -> dict:
     with psycopg.connect(db) as conn:
-        conn.execute("INSERT INTO admin.credit (balance_usd, alert_usd) VALUES (%s, %s)", (balance_usd, alert_usd))
+        conn.execute("INSERT INTO admin.credit (balance_usd, step_pct) VALUES (%s, %s)", (balance_usd, step_pct))
         conn.execute("UPDATE admin.alerts SET resolved = TRUE WHERE kind IN ('ai_credit', 'low_credit') AND NOT resolved")
     return credit_status(db) or {}
 
 
 def pending_alerts(db: str) -> list[dict]:
-    """Alerts not yet sent to the owner, including a low-credit alert when the estimate crosses the threshold."""
-    c = None
+    """Alerts not yet sent to the owner, including one each time another step (e.g. 10%) of the top-up is used."""
     try:
         c = credit_status(db)
-    except Exception:
-        pass
-    if c and c["low"]:
-        add_alert(db, "low_credit", f"Estimated AI credit left: ${c['left_usd']:.2f} (alert at ${c['alert_usd']:.0f}). "
-                                    f"Balance ${c['balance_usd']:.2f} entered {c['since'][:16]}, spent ${c['spent_usd']:.2f} since. "
-                                    "Top up in the Anthropic Console, then enter the new balance on the admin page.")
+        if c:
+            reached = min(100, int(c["used_pct"]) // c["step_pct"] * c["step_pct"])
+            if reached > c["alerted_pct"]:
+                with psycopg.connect(db) as conn:
+                    conn.execute("UPDATE admin.credit SET alerted_pct = %s WHERE id = %s", (reached, c["id"]))
+                    conn.execute("INSERT INTO admin.alerts (kind, message) VALUES ('low_credit', %s)",
+                                 (f"{reached}% of the ${c['balance_usd']:.0f} AI credit used: about ${c['left_usd']:.2f} left "
+                                  f"(spent ${c['spent_usd']:.2f} since {c['since'][:16]} UTC). "
+                                  "When you top up, record the new balance (admin page or the Owner alerts workflow).",))
+    except Exception as e:
+        print(f"[alert] credit check failed: {e.__class__.__name__}: {e}", flush=True)
     with psycopg.connect(db) as conn:
         return _jsonable(_rows(conn, "SELECT id, at, kind, ref, message FROM admin.alerts WHERE NOT notified ORDER BY at"))
 

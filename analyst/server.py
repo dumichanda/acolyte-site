@@ -655,8 +655,8 @@ def require_admin(req: Request) -> None:
 
 
 class CreditIn(BaseModel):
-    balance_usd: float = Field(ge=0, le=100000)
-    alert_usd: float = Field(default=39, ge=0, le=100000)
+    balance_usd: float = Field(gt=0, le=100000)
+    step_pct: int = Field(default=10, ge=1, le=50)   # alert at every N% of the top-up used
 
 
 @app.get("/admin/credit")
@@ -669,7 +669,7 @@ def admin_credit(req: Request):
 def admin_set_credit(body: CreditIn, req: Request):
     """The owner records the balance shown in the Anthropic Console after a top-up, and the alert threshold."""
     require_admin(req)
-    return acc.set_credit(ADMIN_DB_URL, body.balance_usd, body.alert_usd)
+    return acc.set_credit(ADMIN_DB_URL, body.balance_usd, body.step_pct)
 
 
 @app.get("/admin/alerts/pending")

@@ -170,5 +170,7 @@ CREATE TABLE IF NOT EXISTS admin.credit (
     id          SERIAL PRIMARY KEY,
     at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     balance_usd NUMERIC NOT NULL,         -- balance shown in the Anthropic Console at this moment
-    alert_usd   NUMERIC NOT NULL DEFAULT 39   -- alert when the estimated balance falls to this
+    alert_usd   NUMERIC NOT NULL DEFAULT 0    -- (legacy) alert when the estimated balance falls to this
 );
+ALTER TABLE admin.credit ADD COLUMN IF NOT EXISTS step_pct INT NOT NULL DEFAULT 10;   -- alert at every N% of the top-up used
+ALTER TABLE admin.credit ADD COLUMN IF NOT EXISTS alerted_pct INT NOT NULL DEFAULT 0; -- highest % used already alerted

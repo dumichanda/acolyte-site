@@ -11,10 +11,10 @@ on:
         description: "After a top-up: the balance shown in the Anthropic Console (US$). Leave empty to only check alerts."
         required: false
         default: ""
-      alert_usd:
-        description: "Alert when the estimated balance falls to (US$)"
+      step_pct:
+        description: "Alert every time this % of the top-up has been used"
         required: false
-        default: "39"
+        default: "10"
 
 permissions:
   issues: write
@@ -32,11 +32,11 @@ jobs:
         if: ${{ inputs.balance_usd != '' && inputs.balance_usd != null }}
         env:
           BAL: ${{ inputs.balance_usd }}
-          TH: ${{ inputs.alert_usd }}
+          TH: ${{ inputs.step_pct }}
         run: |
           for i in 1 2 3 4 5 6; do code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$API/health") || true; [ "$code" = "200" ] && break; sleep 20; done
           curl -sS --fail-with-body --max-time 60 -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-            -d "{\"balance_usd\": $BAL, \"alert_usd\": ${TH:-39}}" "$API/admin/credit"; echo
+            -d "{\"balance_usd\": $BAL, \"step_pct\": ${TH:-10}}" "$API/admin/credit"; echo
 
       - name: Send new alerts
         run: |
@@ -54,7 +54,7 @@ jobs:
           alerts = data.get("alerts") or []
           print(f"{len(alerts)} new alert(s)")
           titles = {"ai_credit": "AI credit exhausted: the analyst cannot answer",
-                    "low_credit": "AI credit is running low",
+                    "low_credit": "AI credit usage milestone",
                     "ai_error": "AI service error"}
           sent = []
           for a in alerts:
