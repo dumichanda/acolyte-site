@@ -442,7 +442,7 @@ def write_pack(industry: str, prompt: str, sid: str, label: str) -> tuple[dict |
     rec_queries = []
     try:
         for ev in answer(client(), s, prompt, DB_URL, Budget(float(os.environ.get("BRIEF_MAX_USD", "3"))), "deep", "deep",
-                         max_steps=18):
+                         max_steps=18 if label != "monthly-report" else 28):
             t = ev.get("type")
             if t == "text":
                 text += ev["text"]
