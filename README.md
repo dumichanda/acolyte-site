@@ -18,6 +18,7 @@ pipeline, database, Acolyte Analyst, accounts, dashboards and exports, so a new 
 | Property24 | Live, daily | Newest listings + full stock counts for 26 main cities (portal `property24` in schema `property`) |
 | Demand signals | Live, weekly | Google Trends search interest in SA for property, jobs, retail and marketplace terms (schema `signals`) |
 | Area crosswalk | Live | Suburb → region/city → metro → province across all datasets (`geo.metros`, `analyst.areas`) |
+| Client data (private) | Live | CSV/Excel uploads per client account into schema `client_<id>`, readable only by that client's own read-only login (`analyst/clientdata.py`) |
 | Talent extras | Live | Google Jobs and LinkedIn ads (into `jobs`), Glassdoor salary percentiles and employer ratings (schema `talent`) |
 
 ## Use cases

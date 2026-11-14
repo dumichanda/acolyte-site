@@ -22,7 +22,7 @@ from psycopg import sql
 from .accounts import Denied, _rows, _jsonable, _secret
 
 MAX_BYTES = 25 * 1024 * 1024
-MAX_ROWS = 250_000
+MAX_ROWS = 100_000   # fits the Render server's memory; raise on a bigger server
 MAX_COLS = 120
 TABLE_LIMIT = {"junior": 10, "senior": 30, "owner": 100}
 GEO_HINTS = ("province", "city", "town", "suburb", "region", "area", "metro", "branch", "store", "location")
