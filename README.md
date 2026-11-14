@@ -9,6 +9,7 @@ pipeline, database, Acolyte Analyst, accounts, dashboards and exports, so a new 
 | Dataset | Status | What it holds |
 |---|---|---|
 | SA jobs | Live, refreshed daily | Job ads from Adzuna and verified web listings, employers (profiled by agents), skills and tools from ad text, role scores |
+| SA property | Live, refreshed daily | Private Property listings, asking prices, rents, agencies and full stock counts per province and region, via the Scrappa API (schema `property`) |
 | SA retail products | Next | Top products and prices across groceries, tech and other categories from major SA retailers |
 
 ## Use cases
@@ -21,6 +22,9 @@ pipeline, database, Acolyte Analyst, accounts, dashboards and exports, so a new 
 | Skills & Tools Demand | Jobs | Live | `/tools/` |
 | Hiring Signals for Sales | Jobs | Next | private CRM today |
 | Regional Hiring Pulse | Jobs | Next | |
+| Property Market Pulse | Property | Live | `/analyst/` |
+| Rental Yield Finder | Property | Live | `/analyst/` |
+| Jobs & Housing | Jobs + property | Live | `/analyst/` |
 | SA Basket Index | Retail | Planned | |
 | Retailer Price Comparison | Retail | Planned | |
 | Promotions & Shelf Tracker | Retail | Planned | |

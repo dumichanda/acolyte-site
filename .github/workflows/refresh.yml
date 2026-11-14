@@ -42,6 +42,10 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}   # agent harness (Job Scout, Company Researcher)
+      SCRAPPA_API_KEY: ${{ secrets.SCRAPPA_API_KEY }}         # SA property dataset (Private Property via Scrappa)
+      SCRAPPA_MAX_CALLS_PER_RUN: ${{ vars.SCRAPPA_MAX_CALLS_PER_RUN || '400' }}
+      SCRAPPA_MONTHLY_BUDGET: ${{ vars.SCRAPPA_MONTHLY_BUDGET || '15000' }}
+      PROPERTY_PAGES: ${{ vars.PROPERTY_PAGES || '3' }}
       AGENT_MODEL: ${{ vars.AGENT_MODEL }}                  # blank = auto (Claude Opus 5.5 if ANTHROPIC_API_KEY, else an OpenRouter model)
       SEARCH_MODEL: ${{ vars.SEARCH_MODEL }}                # model used for OpenRouter web search (blank = AGENT_MODEL)
       AGENT_MAX_COST: ${{ vars.AGENT_MAX_COST || '0.40' }}  # USD cap per agent run

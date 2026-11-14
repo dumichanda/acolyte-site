@@ -278,6 +278,7 @@ const DOES = [
 
 const DATASETS = [
   { name: "SA jobs", live: true, text: "" },
+  { name: "SA property", live: true, text: "Listings, asking prices, rents and stock across all 9 provinces and 48 regions, refreshed daily" },
   { name: "SA retail products", live: false, text: "Top products and prices across groceries, tech and more, from major SA retailers" },
 ];
 
@@ -294,6 +295,12 @@ const USE_CASES: { title: string; status: "Live" | "Proof of concept" | "Next" |
     text: "Companies whose hiring points to a buying need, delivered as a weekly prospect list.", who: "Software vendors · consultancies · banks" },
   { title: "Regional Hiring Pulse", status: "Next",
     text: "Hiring momentum by province and metro, as an early read on local economic activity.", who: "Investors · property · municipalities" },
+  { title: "Property Market Pulse", status: "Live", href: "/analyst/",
+    text: "Asking prices, rents and stock by province, region and suburb, with price cuts tracked daily.", who: "Agencies · developers · banks · investors" },
+  { title: "Rental Yield Finder", status: "Live", href: "/analyst/",
+    text: "Where rents are high against asking prices, by region, property type and bedrooms.", who: "Buy-to-let investors · property funds" },
+  { title: "Jobs & Housing", status: "Live", href: "/analyst/",
+    text: "Hiring next to rents and stock in each metro: where people can afford to take the jobs.", who: "Employers · relocation · municipalities" },
   { title: "SA Basket Index", status: "Retail data",
     text: "Monthly food inflation from real shelf prices, compared with Stats SA's CPI.", who: "Economists · banks · media · NGOs" },
   { title: "Retailer Price Comparison", status: "Retail data",
@@ -484,7 +491,7 @@ export default function Landing() {
               <div key={d.name} className={`ds ${d.live ? "live" : ""}`}>
                 <span className="st mono">{d.live ? "Live dataset" : "Coming next"}</span>
                 <b>{d.name}</b>
-                <span>{d.live && s ? `${s.kpis.jobs.toLocaleString("en-ZA")} job ads · ${s.kpis.companies.toLocaleString("en-ZA")} employers · refreshed daily` : d.text}</span>
+                <span>{d.name === "SA jobs" && s ? `${s.kpis.jobs.toLocaleString("en-ZA")} job ads · ${s.kpis.companies.toLocaleString("en-ZA")} employers · refreshed daily` : d.text}</span>
               </div>
             ))}
           </div>

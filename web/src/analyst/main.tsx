@@ -71,7 +71,7 @@ function PinButton({ c }: { c: ChartArtifact }) {
 const STARTERS = [
   "Which roles are SA employers hiring for most this month?",
   "Compare Gauteng and Western Cape: roles, salaries and hiring trend",
-  "Which skills and software do finance job ads ask for most?",
+  "Median rent vs asking price by region: where are gross yields highest?",
   "Which role types have the most automatable work, and where?",
   "Make me a report pack on the SA job market",
 ];

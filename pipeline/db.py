@@ -68,6 +68,7 @@ def init_db() -> None:
         conn.execute((ROOT / "db" / "analyst.sql").read_text())
         conn.execute((ROOT / "db" / "agents.sql").read_text())
         conn.execute((ROOT / "db" / "admin.sql").read_text())
+        conn.execute((ROOT / "db" / "property.sql").read_text())
         setup_analyst_role(conn)
         with conn.cursor() as cur:
             cur.executemany(

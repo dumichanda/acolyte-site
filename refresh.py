@@ -46,6 +46,8 @@ else:
     run("fetch_adzuna.py", *(["--max-calls", a.max_calls] if a.max_calls else []))
     if not a.no_web:
         agent("job_scout")  # agentic web job search (OpenRouter or Claude); skips itself without a key
+if not a.demo:
+    run("fetch_property.py", optional=True)  # SA property dataset (Scrappa); skips itself without SCRAPPA_API_KEY
 run("classify.py", *claude)
 run("companies.py")
 if not a.demo and not a.no_enrich:
