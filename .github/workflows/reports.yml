@@ -52,12 +52,12 @@ jobs:
             code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$API/health"); echo "health: $code"; [ "$code" = "200" ] && break; sleep 15
           done
           for ind in property retail marketplace jobs; do
-            curl -fsS --max-time 90 -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/reports/$ind/run?month=$MONTH&force=$FORCE"; echo
+            echo "$ind: $(curl -sS --max-time 90 -w ' [HTTP %{http_code}]' -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/reports/$ind/run?month=$MONTH&force=$FORCE")"
           done
           for i in $(seq 1 75); do
             pending=0
             for ind in property retail marketplace jobs; do
-              st=$(curl -fsS --max-time 60 -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/reports/$ind?month=$MONTH" | python3 -c "import json,sys;print(json.load(sys.stdin).get('status'))" || echo unknown)
+              st=$(curl -sS --max-time 60 -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/reports/$ind?month=$MONTH" | python3 -c "import json,sys;print(json.load(sys.stdin).get('status'))" || echo unknown)
               [ "$st" = "running" ] && pending=$((pending+1))
             done
             echo "still writing: $pending"
@@ -65,7 +65,7 @@ jobs:
             sleep 20
           done
           for ind in property retail marketplace jobs; do
-            echo "$ind: $(curl -fsS --max-time 60 -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/reports/$ind?month=$MONTH")"
+            echo "$ind: $(curl -sS --max-time 60 -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/reports/$ind?month=$MONTH")"
           done
 
       - name: Publish to the site
