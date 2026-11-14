@@ -1,0 +1,42 @@
+name: Image assets
+
+# Builds the report image library with an image model on OpenRouter (see pipeline/generate_assets.py).
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "list (show image models), test (2 images) or all (every missing image)"
+        default: list
+      model:
+        description: "Image model id (blank = first Gemini image model)"
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      IMAGE_MODEL: ${{ inputs.model }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install requests pillow
+      - name: Image models on OpenRouter
+        run: python pipeline/generate_assets.py --list
+      - name: Generate
+        if: ${{ inputs.mode != 'list' }}
+        run: python pipeline/generate_assets.py ${{ inputs.mode == 'test' && '--limit 2' || '' }}
+      - name: Commit images
+        if: ${{ inputs.mode != 'list' }}
+        run: |
+          git config user.name "acolyte-bot"; git config user.email "acolyte-bot@users.noreply.github.com"
+          git add web/public/assets/library
+          if git diff --cached --quiet; then echo "No new images."; else
+            git commit -m "Image assets $(date -u +%Y-%m-%d)"
+            for i in 1 2 3 4; do git pull --rebase origin main && git push && break; sleep $((i * 10)); done
+          fi

@@ -1,0 +1,51 @@
+id,file,tags,prompt
+1,property-01-jhb-skyline.jpg,"property,gauteng,johannesburg,city","Johannesburg skyline at golden hour with Hillbrow Tower and Ponte City, suburbs and trees in the foreground"
+2,property-02-cape-town.jpg,"property,western-cape,cape-town,city","Cape Town apartment blocks and houses below Table Mountain, ocean on one side"
+3,property-03-durban-beachfront.jpg,"property,kzn,durban,city",Durban beachfront high-rises and promenade with palm trees and the Indian Ocean
+4,property-04-pretoria-jacarandas.jpg,"property,gauteng,pretoria,suburb",Pretoria suburban street lined with purple jacaranda trees and family homes
+5,property-05-security-estate.jpg,"property,townhouse,estate,security","Modern townhouse complex behind a security gate with a guardhouse, neat gardens"
+6,property-06-for-sale-house.jpg,"property,for-sale,listings",Family home with a blank estate-agent sale board on the lawn (board has no text)
+7,property-07-agent-viewing.jpg,"property,agency,viewing",Estate agent showing a young South African couple around a bright living room
+8,property-08-keys-handover.jpg,"property,sale,bond","Close-up of house keys being handed over between two hands, new home in soft focus"
+9,property-09-price-up.jpg,"property,prices-up,trend","Concept: small houses standing on rising bar-chart columns, upward arrow in lime"
+10,property-10-price-down.jpg,"property,prices-down,price-cuts","Concept: small houses on falling bar-chart columns, downward arrow, calm not alarming"
+11,property-11-rent-vs-buy.jpg,"property,rent,yield,buy-vs-rent",Concept: a balance scale with a key on one side and a stack of rent receipts (blank) on the other
+12,property-12-moving-boxes.jpg,"property,moving,semigration","South African family carrying moving boxes into a new home, happy, daytime"
+13,property-13-construction.jpg,"property,development,supply",New residential development with cranes and half-built apartment blocks
+14,property-14-bond-rate.jpg,"property,bond-rate,interest",Concept: house inside a percentage symbol with a calculator and rand coins
+15,retail-01-supermarket-aisle.jpg,"retail,grocery,shelf","Bright South African supermarket aisle with shelves of everyday groceries, a shopper with a trolley"
+16,retail-02-staples-trolley.jpg,"retail,basket,staples","Shopping trolley holding maize meal, cooking oil, bread, milk and tea (no brand names visible)"
+17,retail-03-price-tags.jpg,"retail,prices,specials","Close-up of shelf price tags and ""special"" labels (no readable text), lime highlights"
+18,retail-04-receipt.jpg,"retail,basket-cost,inflation","A long till slip curling out of a register, coins and notes beside it (no readable text)"
+19,retail-05-house-vs-name-brand.jpg,"retail,house-brand,name-brand","Two similar products side by side, one plain packaging and one premium packaging, balance scale between"
+20,retail-06-spaza-shop.jpg,"retail,informal,township",Colourful township spaza shop with a shopkeeper and customers
+21,retail-07-month-end.jpg,"retail,month-end,payday","Busy month-end shopping scene at a mall entrance, people with bags"
+22,retail-08-shrinkflation.jpg,"retail,inflation,shrinkflation",Concept: a product pack getting smaller in three steps while the price tag stays the same
+23,retail-09-delivery-scooter.jpg,"retail,quick-commerce,delivery","On-demand grocery delivery rider on a scooter with a delivery box, suburban street"
+24,retail-10-wholesale.jpg,"retail,wholesale,bulk",Wholesale warehouse store with bulk goods on high shelves and a flatbed trolley
+25,retail-11-pharmacy.jpg,"retail,pharmacy,personal-care",Pharmacy aisle with personal-care products and a pharmacist at the counter
+26,retail-12-food-inflation.jpg,"retail,inflation,cpi","Concept: a shopping basket on a rising line chart, rand coins, lime arrow"
+27,market-01-parcel-door.jpg,"marketplace,delivery,parcel",Courier handing a parcel to a smiling customer at a suburban front door
+28,market-02-phone-shopping.jpg,"marketplace,online,mobile","Person shopping on a smartphone on a couch, product cards floating above the screen"
+29,market-03-fulfilment.jpg,"marketplace,warehouse,logistics",Large fulfilment warehouse with conveyor belts and parcels
+30,market-04-compare-phones.jpg,"marketplace,comparison,price","Two phones side by side showing two product listings, one with a lower price badge (no text)"
+31,market-05-black-friday.jpg,"marketplace,black-friday,promotions","Excited crowd and shopping bags, dramatic lime and charcoal lighting"
+32,market-06-delivery-van.jpg,"marketplace,delivery,van",Delivery van in a South African suburb with a driver checking a handheld scanner
+33,market-07-seller.jpg,"marketplace,seller,sme",Small business owner packing orders at home with boxes and a laptop
+34,market-08-reviews.jpg,"marketplace,reviews,ratings",Concept: floating star ratings and speech bubbles above a parcel
+35,talent-01-job-seeker.jpg,"talent,jobs,youth","Young South African job seeker holding a CV, city in the background, hopeful"
+36,talent-02-office-team.jpg,"talent,hiring,office",Diverse South African office team in a meeting around a table with laptops
+37,talent-03-call-centre.jpg,"talent,call-centre,customer-service",Call-centre agents with headsets at bright workstations
+38,talent-04-bookkeeper.jpg,"talent,finance,bookkeeping","Bookkeeper at a desk with spreadsheets, invoices and a calculator"
+39,talent-05-graduates.jpg,"talent,graduates,learnerships","Graduates in gowns throwing caps, campus in the background"
+40,talent-06-interview.jpg,"talent,interview,recruitment","Job interview across a desk, friendly, modern office"
+41,talent-07-remote-work.jpg,"talent,remote,hybrid","Person working from a home office with a laptop and a plant, Highveld view"
+42,talent-08-ai-assistant.jpg,"talent,automation,ai",Office worker with a friendly abstract AI helper (glowing lime shapes) taking over paperwork
+43,talent-09-salary.jpg,"talent,salaries,pay",Concept: payslip (no readable text) with a rising bar chart and rand coins
+44,talent-10-logistics.jpg,"talent,logistics,operations",Warehouse and logistics workers with a forklift and stock shelves
+45,general-01-sa-map.jpg,"general,map,provinces","Stylised map of South Africa's nine provinces as raised tiles, Gauteng highlighted in lime"
+46,general-02-good-or-bad.jpg,"general,verdict,explainer","Concept: a large thumbs-up and thumbs-down on a balance, question mark between them"
+47,general-03-search-trends.jpg,"general,search,trends","Concept: a search bar with rising line chart and magnifying glass, lime accents"
+48,general-04-rand-economy.jpg,"general,economy,rand","Rand coins and notes stacked like a bar chart, upward lime arrow"
+49,general-05-analyst.jpg,"general,analytics,dashboard","Analyst at a large screen of charts and maps in a dark room, lime glow"
+50,general-06-gauteng-vs-cape.jpg,"general,comparison,gauteng,cape-town","Split scene: Johannesburg skyline on the left, Cape Town and Table Mountain on the right, a ""vs"" divide in lime"
