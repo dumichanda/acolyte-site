@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-14T22:05",
+ "updated": "2026-11-14T22:40",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -363,6 +363,21 @@
     "OPS": 1,
     "QA": 0.5
    }
+  },
+  {
+   "at": "2026-11-14T22:25",
+   "title": "Sales CRM for the analysts",
+   "what": "Prospect scoring for four analysts from our datasets, private sales schema, admin API, pipeline board, deal panel, AI email drafts, opt-outs, daily re-ranking.",
+   "days": {
+    "PM": 1.5,
+    "DS": 2,
+    "BE": 3,
+    "FE": 4,
+    "AI": 1,
+    "UX": 1.5,
+    "SEC": 0.5,
+    "QA": 1
+   }
   }
  ],
  "decisions": [
@@ -532,7 +547,7 @@
    "decision": "Company research, domains and contacts feed a private CRM for the employers in the data.",
    "why": "Keeps outreach relevant and the data lawful.",
    "alternatives": "Buy generic lead lists.",
-   "note": ""
+   "note": "The job-automation CRM was replaced on 14 Nov by the sales CRM for the industry analysts."
   },
   {
    "id": "D15",
@@ -1037,6 +1052,42 @@
    "why": "The Anthropic balance can't be read by the app, so spend since the top-up is tracked from Acolyte's own cost log.",
    "alternatives": "A fixed dollar threshold; checking the Console by hand.",
    "note": "Changed from a single $39 threshold to 10% steps at your request."
+  },
+  {
+   "id": "D57",
+   "at": "2026-11-14T22:20",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "Our own sales CRM, built into the platform",
+   "decision": "Replace the old local CRM (job-ad automation pitches) with a CRM for selling the industry analysts: prospects ranked from our own datasets, a pipeline board, notes, activity log and AI email drafts.",
+   "why": "The data that powers each analyst also shows who needs it most; the old CRM needed a server on your computer.",
+   "alternatives": "Keep the local CRM; buy HubSpot or Pipedrive.",
+   "note": "Supersedes the job-automation CRM from 13 Nov."
+  },
+  {
+   "id": "D58",
+   "at": "2026-11-14T22:25",
+   "kind": "Data",
+   "by": "Both",
+   "status": "Active",
+   "title": "Rank prospects by what each analyst can prove to them",
+   "decision": "Agencies by stock, spread, price-cut pressure and new listings; retailers by basket coverage and price position; SA online stores by catalogue overlap, price position and reviews; employers and recruiters by hiring volume and employer rating.",
+   "why": "Every reason in a pitch is a real number from our data, which makes the first email credible.",
+   "alternatives": "Buy lead lists; rank by company size only.",
+   "note": "Foreign online stores excluded from the marketplace list."
+  },
+  {
+   "id": "D59",
+   "at": "2026-11-14T22:25",
+   "kind": "Security",
+   "by": "Both",
+   "status": "Active",
+   "title": "CRM in a private sales schema on Neon",
+   "decision": "Prospects, activities and opt-outs live in their own schema, readable only with the admin key; the AI analyst and clients cannot see it. Prospects are businesses; contacts are added by you from business sources, and opt-outs block drafting.",
+   "why": "POPIA and keeping sales data out of the public site and the analyst's reach.",
+   "alternatives": "Store CRM data in the analyst schema.",
+   "note": ""
   }
  ]
 }
