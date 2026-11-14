@@ -435,6 +435,17 @@ def brief_run(industry: str, req: Request):
     return {"started": started, "status": acc.brief_status(ADMIN_DB_URL, industry, sast_now().date())}
 
 
+@app.get("/admin/briefs/{industry}")
+def brief_admin(industry: str, req: Request):
+    """Latest brief for an industry (admin token): used by the brief workflow and the admin page."""
+    require_admin(req)
+    if industry not in BRIEFS:
+        raise HTTPException(404, "No daily brief for that industry.")
+    today = sast_now().date()
+    return {"today": str(today), "today_status": acc.brief_status(ADMIN_DB_URL, industry, today),
+            "brief": acc.get_brief(ADMIN_DB_URL, industry, str(today))}
+
+
 def require_admin(req: Request) -> None:
     token = (req.headers.get("authorization") or "").removeprefix("Bearer ").strip()
     if not ADMIN_TOKEN or not hmac.compare_digest(token, ADMIN_TOKEN):

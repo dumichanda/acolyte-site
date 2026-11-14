@@ -1,0 +1,57 @@
+name: Run daily brief
+
+# Starts today's industry brief on the Analyst server (Render), waits for it and prints it in the log.
+on:
+  workflow_dispatch:
+    inputs:
+      industry:
+        description: "property or retail"
+        default: property
+
+jobs:
+  brief:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+      API: https://acolyte-site.onrender.com
+      IND: ${{ inputs.industry }}
+    steps:
+      - name: Wait for the server (and the deploy with the brief endpoint)
+        run: |
+          [ -n "$ADMIN_TOKEN" ] || { echo "::error::ADMIN_TOKEN secret is not set"; exit 1; }
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/briefs/$IND")
+            echo "attempt $i: HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            [ "$code" = "401" ] && { echo "::error::ADMIN_TOKEN does not match the one on Render"; exit 1; }
+            sleep 20
+          done
+          exit 1
+      - name: Start the brief
+        run: curl -fsS --max-time 90 -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/briefs/$IND/run"; echo
+      - name: Wait for it and print it
+        run: |
+          for i in $(seq 1 40); do
+            curl -fsS --max-time 90 -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/briefs/$IND" -o brief.json || true
+            st=$(python3 -c "import json;print(json.load(open('brief.json')).get('today_status'))" 2>/dev/null)
+            echo "status: $st"
+            [ "$st" = "ready" ] || [ "$st" = "failed" ] && break
+            sleep 20
+          done
+          python3 - <<'PY'
+          import json
+          d = json.load(open("brief.json")); b = d.get("brief") or {}; r = b.get("report") or {}
+          print("=" * 70); print("STATUS:", b.get("status"), "| cost $", b.get("cost_usd"), "| error:", b.get("error"))
+          print("TITLE:", r.get("title")); print("SCOPE:", r.get("scope"))
+          ex = r.get("exec") or {}
+          print("\nSUMMARY:", ex.get("title")); print(ex.get("takeaway")); print("So what:", ex.get("so_what"))
+          for k in ex.get("kpis") or []: print(f"  KPI  {k.get('value')}  {k.get('label')}  ({k.get('context')})")
+          for i, s in enumerate(r.get("sections") or [], 1):
+              print(f"\n{i}. {s.get('title')}"); print("   ", s.get("takeaway")); print("    So what:", s.get("so_what"))
+              for k in s.get("kpis") or []: print(f"    KPI {k.get('value')} {k.get('label')}")
+          c = r.get("conclusions") or {}
+          print("\nACTIONS:"); [print("  -", a) for a in c.get("actions") or []]
+          print("\nWATCH-OUTS:"); [print("  -", a) for a in c.get("risks") or []]
+          print("\nANALYST NOTE:", (b.get("summary") or "")[:1500])
+          PY
