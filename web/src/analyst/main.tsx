@@ -238,13 +238,19 @@ type Item =
   | { kind: "user"; text: string }
   | { kind: "assistant"; text: string; status: string[]; queries: Dataset[]; artifacts: string[]; error?: string; done: boolean; usage?: Usage };
 
+type Style = "formal" | "balanced" | "creative";
+const STYLE_HELP: Record<Style, string> = {
+  formal: "Formal: consultant-style, numbers first, our data only (web only when you ask for sources)",
+  balanced: "Balanced: expert analysis with plain-language explanations; web context when it helps",
+  creative: "Creative: story-led and vivid, explains every term, researches the web and quotes sources",
+};
 interface Usage { tier: string; models: string[]; cost_usd: number; tokens: { input: number; cache_read: number; cache_write: number; output: number } }
-const MODEL_NAME: Record<string, string> = { "claude-haiku-5-5": "Haiku 5.5", "claude-sonnet-5-5": "Sonnet 5.5", "claude-opus-5-5": "Opus 5.5" };
+const TIER_LABEL: Record<string, string> = { fast: "Quick", standard: "Balanced", deep: "Deep thinking" };
 function UsageLine({ u }: { u: Usage }) {
   const t = u.tokens, total = t.input + t.cache_read + t.cache_write + t.output;
   const cost = u.cost_usd < 0.01 ? `${(u.cost_usd * 100).toFixed(2)} US cents` : `$${u.cost_usd.toFixed(3)}`;
   return <div className="usage" title={`input ${t.input} / cached ${t.cache_read} / cache write ${t.cache_write} / output ${t.output} tokens`}>
-    {u.models.map((m) => MODEL_NAME[m] ?? m).join(" then ")} · {cost} · {(total / 1000).toFixed(1)}k tokens ({Math.round(100 * t.cache_read / Math.max(total, 1))}% cached)
+    {TIER_LABEL[u.tier] ?? "Analyst"} · {cost} · {(total / 1000).toFixed(1)}k tokens ({Math.round(100 * t.cache_read / Math.max(total, 1))}% cached)
   </div>;
 }
 
@@ -539,6 +545,8 @@ function App() {
   const [health, setHealth] = useState<"checking" | "ok" | "down" | "unconfigured">(API ? "checking" : "unconfigured");
   const [speak, setSpeak] = useState(false);
   const [mode, setMode] = useState<"auto" | "fast" | "standard" | "deep">("auto");
+  const [style, setStyleState] = useState<Style>(() => { try { return (localStorage.getItem("analystStyle") as Style) || "balanced"; } catch { return "balanced"; } });
+  const setStyle = (v: Style) => { setStyleState(v); try { localStorage.setItem("analystStyle", v); } catch { /* storage blocked */ } };
   const session = useRef<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const [me, setMe] = useState<Me | null>(null);
@@ -620,7 +628,7 @@ function App() {
       const token = getToken();
       const r = await fetch(`${API}/ask`, { method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ session_id: session.current, question, mode, industry: ws }) });
+        body: JSON.stringify({ session_id: session.current, question, mode, style, industry: ws }) });
       if (!r.ok || !r.body) {
         const err = await r.json().catch(() => ({ detail: r.statusText }));
         throw new Error(err.detail || "The analyst is unavailable.");
@@ -762,9 +770,12 @@ function App() {
             <div className="row">
               <Voice onText={(t) => ask(t)} />
               <label className="speak"><input type="checkbox" checked={speak} onChange={(e) => setSpeak(e.target.checked)} /> Read aloud</label>
-              <select className="mode" value={mode} onChange={(e) => setMode(e.target.value as typeof mode)} title="Which AI model answers">
-                <option value="auto">Auto model</option><option value="fast">Fast (Haiku)</option>
-                <option value="standard">Balanced (Sonnet)</option><option value="deep">Deep (Opus)</option>
+              <select className="mode" value={style} onChange={(e) => setStyle(e.target.value as Style)} title={STYLE_HELP[style]} aria-label="Style">
+                <option value="formal">Style: Formal</option><option value="balanced">Style: Balanced</option><option value="creative">Style: Creative</option>
+              </select>
+              <select className="mode" value={mode} onChange={(e) => setMode(e.target.value as typeof mode)} title="How hard the analyst thinks" aria-label="Thinking">
+                <option value="auto">Thinking: Auto</option><option value="fast">Thinking: Quick</option>
+                <option value="standard">Thinking: Balanced</option><option value="deep">Thinking: Deep</option>
               </select>
               <span style={{ flex: 1 }} />
               {items.length > 0 && <button type="button" className="btn sm" onClick={reset}>New chat</button>}

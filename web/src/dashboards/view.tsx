@@ -44,6 +44,7 @@ export function AskBar({ context, industry, suggestions }: { context: () => stri
       const r = await fetch(`${API}/ask`, { method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ session_id: session.current, question, mode: "auto", context: context(),
+          style: (() => { try { return localStorage.getItem("analystStyle") || "balanced"; } catch { return "balanced"; } })(),
           ...(industry && industry !== "all" ? { industry } : {}) }) });
       if (!r.ok || !r.body) throw new Error((await r.json().catch(() => ({}))).detail || "Acolyte AI is unavailable.");
       const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";

@@ -295,6 +295,22 @@ def clean(v):
     return v
 
 
+STYLES = {
+    "formal": """# Style: Formal
+Write like a strategy consultant for a board: numbers first, precise and concise, no metaphors or storytelling.
+Define a technical term only when the reader would not know it. Use our data only; search the web only when the user
+asks for news, sources or outside context.""",
+    "balanced": "",
+    "creative": """# Style: Creative
+Write like a great explainer documentary while keeping every number and the method: open with a hook or a question
+("Is Gauteng getting cheaper?"), use plain words, a vivid comparison or two, and give a clear verdict (good news / watch
+out / worth knowing). Explain every technical term in one plain sentence and why it matters. Research the web for the
+"why" behind the numbers and quote 1-3 reputable sources word for word. In report packs, write titles and takeaways
+that would work as a social post or a video script line, and fill the explainers and sources.""",
+}
+WEB_EXPLICIT = re.compile(r"\b(research|news|headline|article|sources?|online|internet|the web|according to|quote)\b", re.I)
+
+
 VIEW_INTRO = """# The dashboard the user is looking at
 The question comes from the user's dashboard. Below are its filters and the data currently on screen (tile by tile,
 rows already filtered). Answer about THIS view first: quote its numbers, respect its filters (period, area, category),
@@ -316,6 +332,7 @@ class Session:
     industry: str = "all"
     client_guide: str = ""          # the client's own uploaded tables (private), appended to the system prompt
     view_context: str = ""          # the dashboard view the question is about (filters + the data on screen)
+    style: str = "balanced"         # creative range chosen by the user: formal | balanced | creative
     web: bool | None = None         # web research: None = decide per question, True/False = forced
     web_urls: set = field(default_factory=set)         # pages web_search returned (sources must come from these)
     ui_items: list = field(default_factory=list)       # what the chat panel shows (saved with the conversation)
@@ -681,7 +698,14 @@ def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode
     s.updated = time.time()
     s.messages.append({"role": "user", "content": question})
     tier = route(question, mode)
-    web = s.web if s.web is not None else bool(WEB_RX.search(question)) and not s.view_context
+    if s.web is not None:
+        web = s.web
+    elif s.style == "creative":
+        web = True
+    elif s.style == "formal":
+        web = bool(WEB_EXPLICIT.search(question))
+    else:
+        web = bool(WEB_RX.search(question)) and not s.view_context
     if web and tier == "fast":   # web search needs Sonnet or Opus
         tier = "standard"
     budget.count(tier)
@@ -706,6 +730,7 @@ def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode
                     # explicit breakpoint on the static prefix + automatic caching of the growing conversation
                     system=[{"type": "text", "text": system_for(s.industry), "cache_control": {"type": "ephemeral"}}]
                            + ([{"type": "text", "text": s.client_guide}] if s.client_guide else [])
+                           + ([{"type": "text", "text": STYLES[s.style]}] if STYLES.get(s.style) else [])
                            + ([{"type": "text", "text": VIEW_INTRO + s.view_context}] if s.view_context else []),
                     cache_control={"type": "ephemeral"},
                     tools=TOOLS + ([{"type": "web_search_20260209", "name": "web_search", "max_uses": 5,
@@ -790,7 +815,7 @@ def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode
             if tool_errors >= 2 and ORDER.index(tier) < ORDER.index(max_tier) and mode == "auto":
                 tier = ORDER[ORDER.index(tier) + 1]
                 tool_errors = 0
-                yield {"type": "status", "text": f"Switching to a stronger model ({TIERS[tier]['model']})"}
+                yield {"type": "status", "text": "Thinking harder about this one"}
         yield usage_event(True)   # still report what was spent
         yield {"type": "error", "text": "That took too many steps. Please ask a more specific question."}
     finally:
