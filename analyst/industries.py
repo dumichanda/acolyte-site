@@ -7,10 +7,11 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 INDUSTRIES = {
+    # 'all' is an account setting only (the owner can use every analyst); questions always go to one analyst.
     "all": {
-        "label": "All datasets", "name": "Acolyte Analyst",
+        "label": "All analysts (owner)", "name": "Acolyte Analyst",
         "semantic": ["semantic.md", "semantic_property.md"],
-        "intro": "You cover every Acolyte dataset: SA jobs and SA property. Combine them when the question needs both.",
+        "intro": "You cover every Acolyte dataset.",
     },
     "jobs": {
         "label": "Jobs & talent", "name": "Acolyte Talent Analyst",

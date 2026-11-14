@@ -184,10 +184,11 @@ def dump_state(s) -> dict:
     return {"messages": msgs, "datasets": datasets, "charts": charts}
 
 
-def list_conversations(db: str, account_id: int) -> list[dict]:
+def list_conversations(db: str, account_id: int, industry: str | None = None) -> list[dict]:
     with psycopg.connect(db) as conn:
-        return _jsonable(_rows(conn, """SELECT id, title, updated_at FROM admin.conversations WHERE account_id = %s
-                                        ORDER BY updated_at DESC LIMIT 100""", (account_id,)))
+        return _jsonable(_rows(conn, """SELECT id, title, industry, updated_at FROM admin.conversations WHERE account_id = %s
+                                        AND (%s::text IS NULL OR industry = %s) ORDER BY updated_at DESC LIMIT 100""",
+                               (account_id, industry, industry)))
 
 
 def get_conversation(db: str, account_id: int, cid: str, with_state=False) -> dict | None:
@@ -200,13 +201,13 @@ def get_conversation(db: str, account_id: int, cid: str, with_state=False) -> di
 def save_conversation(db: str, account_id: int, s, title: str, items: list, artifacts: dict) -> None:
     try:
         with psycopg.connect(db) as conn:
-            conn.execute("""INSERT INTO admin.conversations (id, account_id, title, items, artifacts, state)
-                            VALUES (%s, %s, %s, %s, %s, %s)
+            conn.execute("""INSERT INTO admin.conversations (id, account_id, title, items, artifacts, state, industry)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
                             ON CONFLICT (id) DO UPDATE SET items = EXCLUDED.items, artifacts = EXCLUDED.artifacts,
                                 state = EXCLUDED.state, updated_at = now()
                             WHERE admin.conversations.account_id = EXCLUDED.account_id""",
                          (s.id, account_id, title[:120], json.dumps(items, default=str), json.dumps(artifacts, default=str),
-                          json.dumps(dump_state(s), default=str)))
+                          json.dumps(dump_state(s), default=str), getattr(s, "industry", "jobs") or "jobs"))
     except Exception as e:  # saving history must never break an answer
         print(f"conversation save failed: {e.__class__.__name__}: {e}", flush=True)
 

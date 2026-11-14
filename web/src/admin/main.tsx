@@ -63,7 +63,7 @@ function Kpi({ label, value, hint, tone }: { label: string; value: string; hint?
 interface AccountRow { id: number; name: string; plan: string; industry?: string; active: boolean; created_at: string; last_login: string | null;
                      questions_30d: number; cost_30d: string; reports_30d: number; dashboards: number }
 const PLAN_LABEL: Record<string, string> = { junior: "Junior Analyst (R30k)", senior: "Senior AI & Data Science (R50k)", owner: "Owner" };
-const INDUSTRY_LABEL: Record<string, string> = { all: "All datasets", jobs: "Jobs & talent", property: "Property" };
+const INDUSTRY_LABEL: Record<string, string> = { jobs: "Talent Analyst", property: "Property Analyst", all: "All analysts (owner)" };
 
 function Accounts({ adminKey }: { adminKey: string }) {
   const [rows, setRows] = useState<AccountRow[]>([]);
@@ -110,7 +110,7 @@ function Accounts({ adminKey }: { adminKey: string }) {
       {err && <div className="err">{err}</div>}
       <div className="table-scroll">
         <table>
-          <thead><tr><th>Client</th><th>Workspace</th><th>Plan</th><th className="num">Questions 30d</th><th className="num">Reports 30d</th><th className="num">AI cost 30d</th>
+          <thead><tr><th>Client</th><th>Analyst</th><th>Plan</th><th className="num">Questions 30d</th><th className="num">Reports 30d</th><th className="num">AI cost 30d</th>
             <th className="num">Dashboards</th><th>Last sign-in</th><th>Status</th><th /></tr></thead>
           <tbody>{rows.map((a) => (
             <tr key={a.id} className={a.active ? "" : "inactive"}>

@@ -257,13 +257,21 @@ function Bento({ s }: { s: Snapshot | null }) {
 
 /* ---------------- Your analyst ---------------- */
 
-const HIRES = [
-  { level: "Everyday answers", title: "AI Data Analyst",
-    text: "For teams that need numbers, charts and a weekly pack without waiting on anyone.",
-    points: ["Up to 150 questions a day", "2 report packs a day, 8 a week", "3 live dashboards", "Fast models for lookups, deeper ones for packs"] },
-  { level: "Strategy and research", title: "AI Data Scientist",
-    text: "For leadership, strategy and client work: deeper reasoning, more packs, more dashboards.",
-    points: ["Up to 400 questions a day", "6 report packs a day, 25 a week", "10 live dashboards", "Our most capable model on every question"] },
+const ANALYSTS: { name: string; status: string; href?: string; cta?: string; text: string; points: string[] }[] = [
+  { name: "Talent Analyst", status: "Live", href: "/analyst/?industry=jobs", cta: "Try the Talent Analyst",
+    text: "For HR, recruitment, training and B2B sales teams. Knows every SA job ad we track.",
+    points: ["Hiring demand by role, sector and region", "Skills, tools and salaries employers ask for", "Who's hiring, and automation potential by role"] },
+  { name: "Property Analyst", status: "Live", href: "/property/", cta: "See the Property Analyst",
+    text: "For estate agencies, developers, banks and investors. Reads the whole SA listings market every morning.",
+    points: ["A Daily Property Brief, ready at 07:00", "Stock, asking prices, rents and gross yields", "Agency share and price cuts by region"] },
+  { name: "Retail Analyst", status: "Coming next",
+    text: "For FMCG brands and retailers. Prices, promotions and shelf position across major SA retailers.",
+    points: ["Basket prices by retailer and region", "Promotion frequency and price position", "House brands against name brands"] },
+];
+
+const LEVELS = [
+  { level: "Analyst", text: "Everyday answers", points: ["150 questions a day", "2 report packs a day, 8 a week", "3 live dashboards"] },
+  { level: "Data Scientist", text: "Strategy and research", points: ["400 questions a day", "6 report packs a day, 25 a week", "10 live dashboards, our most capable model"] },
 ];
 
 const DOES = [
@@ -283,7 +291,7 @@ const DATASETS = [
 ];
 
 const USE_CASES: { title: string; status: "Live" | "Proof of concept" | "Next" | "Retail data"; text: string; who: string; href?: string }[] = [
-  { title: "SA Job Market Analysis", status: "Live", href: "/analyst/",
+  { title: "SA Job Market Analysis", status: "Live", href: "/analyst/?industry=jobs",
     text: "Which roles, sectors and cities are hiring, and how demand is moving week to week.", who: "HR leaders · recruiters · investors · media" },
   { title: "Automation Opportunity Index", status: "Proof of concept", href: "/automation-index/",
     text: "How much of each advertised role AI could take on, and what that work is worth in rand a year.", who: "COOs · finance and operations leads" },
@@ -297,10 +305,8 @@ const USE_CASES: { title: string; status: "Live" | "Proof of concept" | "Next" |
     text: "Hiring momentum by province and metro, as an early read on local economic activity.", who: "Investors · property · municipalities" },
   { title: "Property Market Pulse", status: "Live", href: "/property/",
     text: "Asking prices, rents and stock by province, region and suburb, with price cuts tracked daily.", who: "Agencies · developers · banks · investors" },
-  { title: "Rental Yield Finder", status: "Live", href: "/analyst/",
+  { title: "Rental Yield Finder", status: "Live", href: "/analyst/?industry=property",
     text: "Where rents are high against asking prices, by region, property type and bedrooms.", who: "Buy-to-let investors · property funds" },
-  { title: "Jobs & Housing", status: "Live", href: "/analyst/",
-    text: "Hiring next to rents and stock in each metro: where people can afford to take the jobs.", who: "Employers · relocation · municipalities" },
   { title: "SA Basket Index", status: "Retail data",
     text: "Monthly food inflation from real shelf prices, compared with Stats SA's CPI.", who: "Economists · banks · media · NGOs" },
   { title: "Retailer Price Comparison", status: "Retail data",
@@ -422,8 +428,8 @@ export default function Landing() {
             <span className="eyebrow reveal">AI data analyst · South Africa</span>
             <h1 className="reveal d1">Your own AI<br /><em>data analyst.</em></h1>
             <p className="lede reveal d2">
-              Hire an AI analyst or data scientist that already knows South African market data. Ask in plain English and get
-              answers, charts, live dashboards and board-ready report packs in minutes, on our datasets or your own.
+              Hire an AI analyst for your industry, already trained on South African market data: talent, property, and soon retail.
+              Ask in plain English and get answers, charts, live dashboards and board-ready report packs in minutes.
             </p>
             <div className="actions reveal d3">
               <a className="btn-signal" href="#contact">Book a free data session <span className="arr">→</span></a>
@@ -452,19 +458,25 @@ export default function Landing() {
 
       <section id="analyst" className="hire">
         <div className="inner">
-          <span className="eyebrow reveal">Meet your analyst</span>
-          <h2 className="reveal d1">An analyst on your team, <em>from day one.</em></h2>
-          <p className="lede reveal d2">No hiring round, no onboarding, no waiting for the monthly report. Your AI analyst queries the data, shows its working,
-            and hands over the chart, dashboard or pack you asked for.</p>
-          <div className="roles2">
-            {HIRES.map((h, k) => (
-              <article key={h.title} className={`role reveal d${k + 1} ${k ? "senior" : ""}`}>
-                <span className="lvl mono">{h.level}</span>
-                <h3>{h.title}</h3>
-                <p>{h.text}</p>
-                <ul>{h.points.map((x) => <li key={x}>{x}</li>)}</ul>
+          <span className="eyebrow reveal">Pick your analyst</span>
+          <h2 className="reveal d1">One analyst per industry, <em>yours from day one.</em></h2>
+          <p className="lede reveal d2">Each analyst is a separate subscription, trained on its own South African market data. No hiring round,
+            no onboarding: it queries the data, shows its working, and hands over the chart, dashboard or pack you asked for.</p>
+          <div className="roles2 three">
+            {ANALYSTS.map((a, k) => (
+              <article key={a.name} className={`role reveal d${k} ${a.href ? "" : "soon"}`}>
+                <span className="lvl mono">{a.status}</span>
+                <h3>{a.name}</h3>
+                <p>{a.text}</p>
+                <ul>{a.points.map((x) => <li key={x}>{x}</li>)}</ul>
+                {a.href ? <a className="go" href={url(a.href)}>{a.cta} <span className="arr">→</span></a>
+                  : <a className="go" href="#contact">Join the waiting list <span className="arr">→</span></a>}
               </article>
             ))}
+          </div>
+          <div className="levels reveal">
+            <span className="mono">Every analyst comes in two levels</span>
+            {LEVELS.map((l) => <div key={l.level}><b>{l.level}</b><em>{l.text}</em><span>{l.points.join(" · ")}</span></div>)}
           </div>
           <div className="does reveal">
             {DOES.map((d) => <div key={d.t}><b>{d.t}</b><span>{d.x}</span></div>)}

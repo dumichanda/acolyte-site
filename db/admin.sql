@@ -111,3 +111,5 @@ CREATE TABLE IF NOT EXISTS admin.briefs (
     finished_at TIMESTAMPTZ,
     PRIMARY KEY (industry, day)
 );
+-- Each conversation belongs to one analyst (jobs or property); history is shown per analyst.
+ALTER TABLE admin.conversations ADD COLUMN IF NOT EXISTS industry TEXT NOT NULL DEFAULT 'jobs';

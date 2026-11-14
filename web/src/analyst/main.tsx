@@ -24,7 +24,7 @@ import { SignIn, UsageCard } from "../Account";
 /** Signed-in account (null = anonymous demo visitor). */
 const AuthCtx = createContext<Me | null>(null);
 
-interface Conv { id: string; title: string; updated_at: string; items?: unknown[]; artifacts?: Record<string, unknown> }
+interface Conv { id: string; title: string; updated_at: string; industry?: string; items?: unknown[]; artifacts?: Record<string, unknown> }
 const LOCAL_HISTORY = "analystHistory";
 const readLocal = (): Conv[] => { try { return JSON.parse(localStorage.getItem(LOCAL_HISTORY) || "[]"); } catch { return []; } };
 const writeLocal = (xs: Conv[]) => {
@@ -69,18 +69,8 @@ function PinButton({ c }: { c: ChartArtifact }) {
 }
 
 /** Industry workspaces: what the analyst covers, how the page introduces it, and where to start. */
-const WORKSPACES: Record<Industry, { label: string; name: string; sub: string; placeholder: string; starters: string[] }> = {
-  all: {
-    label: "All data", name: "Acolyte Analyst", placeholder: "Ask about SA jobs or property…",
-    sub: "Your AI analyst queries live South African jobs and property data, draws the charts and writes the report. Every number comes from a real query you can inspect.",
-    starters: [
-      "Which roles are SA employers hiring for most this month?",
-      "Median rent vs asking price by region: where are gross yields highest?",
-      "Jobs and housing: compare hiring with rents in Johannesburg, Cape Town and Durban",
-      "Which role types have the most automatable work, and where?",
-      "Make me a report pack on the SA job market",
-    ],
-  },
+type Analyst = Exclude<Industry, "all">;
+const WORKSPACES: Record<Analyst, { label: string; name: string; sub: string; placeholder: string; starters: string[] }> = {
   jobs: {
     label: "Jobs & talent", name: "Acolyte Talent Analyst", placeholder: "Ask about South Africa's job market…",
     sub: "Your AI analyst for SA hiring: roles, skills, employers, salaries and automation potential, from live job ads.",
@@ -105,20 +95,20 @@ const WORKSPACES: Record<Industry, { label: string; name: string; sub: string; p
   },
 };
 const WS_KEY = "analystWorkspace";
-const initialWorkspace = (): Industry => {
+const initialWorkspace = (): Analyst => {
   try {
-    const q = new URLSearchParams(location.search).get("industry") as Industry | null;
+    const q = new URLSearchParams(location.search).get("industry") as Analyst | null;
     if (q && q in WORKSPACES) { localStorage.setItem(WS_KEY, q); return q; }
-    const v = localStorage.getItem(WS_KEY) as Industry | null;
-    return v && v in WORKSPACES ? v : "all";
-  } catch { return "all"; }
+    const v = localStorage.getItem(WS_KEY) as Analyst | null;
+    return v && v in WORKSPACES ? v : "jobs";
+  } catch { return "jobs"; }
 };
 
 interface Brief { day: string; status: string; report: ReportArtifact | null; summary: string | null; finished_at: string | null }
 interface BriefResp { today: string; today_status: string | null; brief: Brief | null; history: { day: string; status: string; title: string | null }[] }
 
 /** Today's industry brief for signed-in workspaces: opens in the canvas, downloads as the 5-slide executive pack. */
-function BriefCard({ industry, onOpen }: { industry: Industry; onOpen: (r: ReportArtifact) => void }) {
+function BriefCard({ industry, onOpen }: { industry: Analyst; onOpen: (r: ReportArtifact) => void }) {
   const me = useContext(AuthCtx);
   const [b, setB] = useState<BriefResp | null>(null);
   const [err, setErr] = useState("");
@@ -328,31 +318,37 @@ function App() {
   const [me, setMe] = useState<Me | null>(null);
   const [history, setHistory] = useState<Conv[]>([]);
   const [sideOpen, setSideOpen] = useState(false);
-  const [pick, setPick] = useState<Industry>(initialWorkspace);
-  const locked = me?.account.industry && me.account.industry !== "all" ? me.account.industry : null;
-  const ws: Industry = locked || pick;
+  const [pick, setPick] = useState<Analyst>(initialWorkspace);
+  const own = me?.account.industry;
+  const locked: Analyst | null = own && own !== "all" && own in WORKSPACES ? (own as Analyst) : null;
+  const ws: Analyst = locked || pick;
   const W = WORKSPACES[ws];
-  const choose = (v: Industry) => { setPick(v); try { localStorage.setItem(WS_KEY, v); } catch { /* storage blocked */ } reset(); };
+  const wsRef = useRef(ws); wsRef.current = ws;
+  const choose = (v: Analyst) => { setPick(v); try { localStorage.setItem(WS_KEY, v); } catch { /* storage blocked */ } reset(); };
   const openReport = (r: ReportArtifact) => {
     setArtifacts((m) => ({ ...m, [r.id]: r })); setOrder((o) => [r.id, ...o.filter((x) => x !== r.id)]); setActive(r.id);
   };
 
+  const localFor = (a: Analyst) => readLocal().filter((c) => (c.industry || "jobs") === a);
   const refreshAccount = useCallback(async () => {
-    if (!getToken()) { setMe(null); setHistory(readLocal()); return; }
+    const a = wsRef.current;
+    if (!getToken()) { setMe(null); setHistory(localFor(a)); return; }
     try {
-      setMe(await api<Me>("/me"));
-      setHistory((await api<{ conversations: Conv[] }>("/conversations")).conversations);
-    } catch { setMe(null); setHistory(readLocal()); }
-  }, []);
-  useEffect(() => { refreshAccount(); }, [refreshAccount]);
+      const m = await api<Me>("/me");
+      setMe(m);
+      const own = m.account.industry && m.account.industry !== "all" ? m.account.industry : a;
+      setHistory((await api<{ conversations: Conv[] }>(`/conversations?industry=${own}`)).conversations);
+    } catch { setMe(null); setHistory(localFor(a)); }
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { refreshAccount(); }, [refreshAccount, ws]);
 
   // Anonymous visitors: keep chats in this browser.
   useEffect(() => {
     if (busy || me || !session.current || !items.length) return;
     const first = items.find((i) => i.kind === "user") as { text: string } | undefined;
-    const entry: Conv = { id: session.current, title: first?.text ?? "Chat", updated_at: new Date().toISOString(), items, artifacts };
+    const entry: Conv = { id: session.current, title: first?.text ?? "Chat", updated_at: new Date().toISOString(), industry: ws, items, artifacts };
     const next = [entry, ...readLocal().filter((c) => c.id !== entry.id)].slice(0, 25);
-    writeLocal(next); setHistory(next);
+    writeLocal(next); setHistory(next.filter((c) => (c.industry || "jobs") === ws));
   }, [busy]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const openConversation = async (id: string) => {
@@ -473,14 +469,15 @@ function App() {
         </aside>
         <section className="chat">
           <header>
-            <div className="ws-row">
-              <h1>{me?.account.analyst_name && locked ? me.account.analyst_name : W.name}</h1>
-              {!locked && (
-                <select className="ws" value={pick} onChange={(e) => choose(e.target.value as Industry)} disabled={busy} aria-label="Which data">
-                  {(Object.keys(WORKSPACES) as Industry[]).map((k) => <option key={k} value={k}>{WORKSPACES[k].label}</option>)}
-                </select>
-              )}
-            </div>
+            {!locked && (
+              <div className="ws-tabs" role="tablist" aria-label="Choose an analyst">
+                {(Object.keys(WORKSPACES) as Analyst[]).map((k) => (
+                  <button key={k} role="tab" aria-selected={k === ws} className={k === ws ? "on" : ""} disabled={busy} onClick={() => k !== ws && choose(k)}>
+                    {WORKSPACES[k].name.replace("Acolyte ", "")}</button>
+                ))}
+              </div>
+            )}
+            <h1>{W.name}</h1>
             <p className="sub">{W.sub}</p>
           </header>
           {health === "unconfigured" && <div className="banner">The analyst service isn't connected yet. It runs as a small server (see <code>analyst/</code> in the repo). Once it's deployed, its address goes in <code>site.ts → analystApi</code>.</div>}
@@ -542,7 +539,7 @@ function App() {
               <button className="btn primary" disabled={!ready || busy || !q.trim()}>{busy ? "Thinking…" : "Ask"}</button>
             </div>
           </form>
-          <p className="muted small">Built on public {ws === "property" ? "property listings" : ws === "jobs" ? "job ads" : "job ads and property listings"}. Answers can be wrong; check the queries. <a href={url("/#contact")}>Want this on your own data?</a></p>
+          <p className="muted small">Built on public {ws === "property" ? "property listings" : "job ads"}. Answers can be wrong; check the queries. <a href={url("/#contact")}>Want this on your own data?</a></p>
         </section>
 
         <section className="canvas">

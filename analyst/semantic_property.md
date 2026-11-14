@@ -14,7 +14,7 @@ Two kinds of data, use the right one:
 | portal | 'privateproperty' (Property24 may be added later) |
 | deal_type | 'sale' or 'rent' |
 | category | 'residential', 'commercial' or 'farm' |
-| province, region, suburb | location. Province names match analyst.jobs (e.g. 'KwaZulu-Natal'); region = portal region such as 'Cape Town', 'Johannesburg', 'East Rand', 'Durban' |
+| province, region, suburb | location. Province names use the standard spelling (e.g. 'KwaZulu-Natal'); region = portal region such as 'Cape Town', 'Johannesburg', 'East Rand', 'Durban' |
 | property_type | House, Apartment, Townhouse, Land, Flat, Simplex, ... |
 | price_zar | asking price in rand; for rentals the monthly rent (see price_type). NULL = price on application |
 | beds, baths, garages, parking | counts (may be NULL) |
@@ -39,5 +39,3 @@ Two kinds of data, use the right one:
 Useful derived measures:
 - Gross rental yield for an area ≈ 12 × median monthly rent / median sale price, comparing like with like
   (same region, property_type and beds). State that it is an indicative asking-price yield.
-- Jobs vs housing: join on province (or match region to jobs city, e.g. Johannesburg, Cape Town, Durban, Pretoria)
-  to compare hiring and rents.

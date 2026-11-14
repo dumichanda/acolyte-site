@@ -1,6 +1,9 @@
 # Acolyte: AI analytics on South African market data
 
-Acolyte collects South African market data every day, loads it into one platform, and builds **use cases** on top of it:
+Acolyte sells **one AI analyst per industry** (Talent Analyst on jobs data, Property Analyst on property data, Retail
+Analyst next). Each is a separate subscription: a client account is tied to one analyst (`admin.accounts.industry`), which
+scopes its data, prompt, starter questions, dashboards and daily brief (`analyst/industries.py`).
+Underneath, Acolyte collects South African market data every day, loads it into one platform, and builds **use cases** on top of it:
 dashboards, an AI analyst you can ask in plain English, and branded report packs. Every use case shares the same
 pipeline, database, Acolyte Analyst, accounts, dashboards and exports, so a new dataset or use case plugs in without a rebuild.
 
@@ -24,7 +27,6 @@ pipeline, database, Acolyte Analyst, accounts, dashboards and exports, so a new 
 | Regional Hiring Pulse | Jobs | Next | |
 | Property Market Pulse | Property | Live | `/analyst/` |
 | Rental Yield Finder | Property | Live | `/analyst/` |
-| Jobs & Housing | Jobs + property | Live | `/analyst/` |
 | SA Basket Index | Retail | Planned | |
 | Retailer Price Comparison | Retail | Planned | |
 | Promotions & Shelf Tracker | Retail | Planned | |

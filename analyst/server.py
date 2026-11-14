@@ -67,7 +67,7 @@ class Ask(BaseModel):
     session_id: str | None = Field(default=None, max_length=64)
     question: str = Field(min_length=1, max_length=1500)
     mode: str = Field(default="auto", pattern="^(auto|fast|standard|deep)$")
-    industry: str | None = Field(default=None, pattern="^(all|jobs|property)$")
+    industry: str | None = Field(default=None, pattern="^(jobs|property)$")
 
 
 def visitor(req: Request) -> str:
@@ -161,10 +161,11 @@ def ask(body: Ask, req: Request):
         max_tier = "deep" if is_report else plan["max_tier"]
         mode = tier if (body.mode != "auto" or tier != route(question, "auto")) else "auto"
 
-    # Industry workspace: a scoped account always gets its own industry; 'all' accounts and visitors may pick one.
+    # One analyst per subscription: a client account always gets its own analyst; the owner ('all') and demo
+    # visitors pick one. Questions never mix datasets.
     industry = (account or {}).get("industry") or "all"
-    if industry == "all" and body.industry:
-        industry = body.industry
+    if industry == "all":
+        industry = body.industry or "jobs"
 
     with lock:
         s = sessions.get(body.session_id or "")
@@ -258,8 +259,10 @@ def get_me(account: dict = Depends(need_account)):
 
 
 @app.get("/conversations")
-def conversations(account: dict = Depends(need_account)):
-    return {"conversations": acc.list_conversations(ADMIN_DB_URL, account["id"])}
+def conversations(industry: str | None = None, account: dict = Depends(need_account)):
+    own = account.get("industry") or "all"
+    ind = own if own != "all" else (industry if industry in ("jobs", "property") else None)
+    return {"conversations": acc.list_conversations(ADMIN_DB_URL, account["id"], ind)}
 
 
 @app.get("/conversations/{cid}")
