@@ -151,12 +151,17 @@ export function tableLayout(c: ChartArtifact, w: number, h: number): TableLayout
 }
 
 // ------------------------------------------------------------------ slides
-export function buildDeck(r: ReportArtifact): SlideSpec[] {
+export type Variant = "standard" | "executive";
+
+/** standard = the full pack (~12 slides); executive = 5 slides: cover, summary, top-2 findings, recommendations. */
+export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): SlideSpec[] {
   const slides: SlideSpec[] = [];
+  const full = variant === "standard";
+  const sections = full ? r.sections : r.sections.slice(0, 2);   // the AI orders findings by importance
   const date = fmtDate(r.generated || new Date().toISOString());
   const footer = `Acolyte · SA Automation Opportunity Index${r.scope ? " · " + clean(r.scope) : ""} · ${date}`;
   const exec = r.exec;
-  const questions = r.questions?.length ? r.questions : r.sections.map((s) => s.question || s.title || s.heading).filter(Boolean);
+  const questions = full && r.questions?.length ? r.questions : sections.map((s) => s.question || s.title || s.heading).filter(Boolean);
 
   // 1. Cover
   {
@@ -164,14 +169,14 @@ export function buildDeck(r: ReportArtifact): SlideSpec[] {
     p.push({ t: "logo", x: 0.6, y: 0.5, s: 0.34 });
     p.push({ t: "text", x: 1.05, y: 0.5, w: 3, h: 0.34, text: "ACOLYTE", size: 12, bold: true, color: C.white, valign: "middle", spacing: 3 });
     p.push({ t: "rect", x: 6.0, y: 0.5, w: 1.7, h: 0.32, fill: C.lime, radius: 0.16 });
-    p.push({ t: "text", x: 6.0, y: 0.5, w: 1.7, h: 0.32, text: "LIVE DATA PACK", size: 8, bold: true, color: C.ink, align: "center", valign: "middle" });
+    p.push({ t: "text", x: 6.0, y: 0.5, w: 1.7, h: 0.32, text: full ? "LIVE DATA PACK" : "EXECUTIVE BRIEF", size: 8, bold: true, color: C.ink, align: "center", valign: "middle" });
     p.push({ t: "rect", x: 0.6, y: 1.55, w: 0.9, h: 0.07, fill: C.lime });
     p.push({ t: "text", x: 0.6, y: 1.75, w: 7.3, h: 1.7, text: clean(r.title), size: 32, min: 20, bold: true, color: C.white, valign: "top" });
     if (r.scope) p.push({ t: "text", x: 0.6, y: 3.5, w: 7.3, h: 0.5, text: clean(r.scope), size: 12, min: 9, bold: true, color: C.lime });
     const ks = (r.cover_kpis?.length ? r.cover_kpis : exec?.kpis || []).slice(0, 3);
     ks.forEach((k, i) => kpiCard(p, k, 0.6 + i * 2.48, 4.35, 2.32, 1.55, true));
     p.push({ t: "rect", x: 8.35, y: 0.5, w: 4.4, h: 6.1, fill: C.darkCard, radius: 0.08 });
-    p.push({ t: "text", x: 8.6, y: 0.7, w: 4, h: 0.3, text: "QUESTIONS THIS PACK ANSWERS", size: 9, bold: true, color: C.lime, spacing: 1 });
+    p.push({ t: "text", x: 8.6, y: 0.7, w: 4, h: 0.3, text: full ? "QUESTIONS THIS PACK ANSWERS" : "IN THIS BRIEF", size: 9, bold: true, color: C.lime, spacing: 1 });
     p.push({ t: "list", x: 8.6, y: 1.1, w: 3.95, h: 5.3, items: questions.map((q, i) => `Q${i + 1}  ${clean(q)}`), size: 11, min: 8, color: C.white, marker: "" });
     p.push({ t: "text", x: 0.6, y: 6.75, w: 7.5, h: 0.3, text: `${date} · Prepared with Acolyte Analyst · public job-ad data, not a census of employment`, size: 8, color: C.darkMuted });
     slides.push({ bg: C.ink, prims: p });
@@ -202,7 +207,7 @@ export function buildDeck(r: ReportArtifact): SlideSpec[] {
   }
 
   // 3. One slide per question / section
-  r.sections.forEach((s, i) => {
+  sections.forEach((s, i) => {
     const p: Prim[] = [];
     const label = clean(s.question || s.heading || s.title || "").split(/\s+/).slice(0, 5).join(" ");
     chrome(p, label, slides.length + 1, footer);
@@ -252,7 +257,7 @@ export function buildDeck(r: ReportArtifact): SlideSpec[] {
   });
 
   // 4. Executive Q&A
-  if (r.qa?.length) {
+  if (full && r.qa?.length) {
     const p: Prim[] = [];
     chrome(p, "Executive Q&A", slides.length + 1, footer);
     heading(p, "Executive Q&A", "The questions we expect, with the numbers behind the answers.");
@@ -272,7 +277,7 @@ export function buildDeck(r: ReportArtifact): SlideSpec[] {
 
   // 5. Conclusions & recommended actions
   const co = r.conclusions || {};
-  if (co.findings?.length || co.actions?.length) {
+  if (full && (co.findings?.length || co.actions?.length)) {
     const p: Prim[] = [];
     chrome(p, "Conclusions", slides.length + 1, footer);
     heading(p, "Conclusions and recommended actions", exec?.title || "");
@@ -288,7 +293,7 @@ export function buildDeck(r: ReportArtifact): SlideSpec[] {
 
   // 6. Method & limits
   const me = r.method || {};
-  if (me.steps?.length || me.limits?.length) {
+  if (full && (me.steps?.length || me.limits?.length)) {
     const p: Prim[] = [];
     chrome(p, "Method and limits", slides.length + 1, footer);
     heading(p, "How this was built, what to trust, and what is estimated", "Every figure comes from live SQL over public job ads; the queries are shown in Acolyte Analyst.");
@@ -307,8 +312,38 @@ export function buildDeck(r: ReportArtifact): SlideSpec[] {
     slides.push({ bg: C.white, prims: p });
   }
 
-  // 7. Close
-  {
+  // Executive brief: one closing slide with actions, findings, watch-outs, method note and the call to action.
+  if (!full) {
+    const p: Prim[] = [];
+    chrome(p, "Recommendations", slides.length + 1, footer);
+    heading(p, "Recommendations and next steps", exec?.so_what || exec?.title || "");
+    const actions = co.actions?.length ? co.actions : sections.map((x) => x.so_what || "").filter(Boolean);
+    const findings = co.findings?.length ? co.findings : sections.map((x) => x.takeaway || x.title || "").filter(Boolean);
+    const risks = co.risks?.length ? co.risks : exec?.catch ? [exec.catch] : [];
+    const top = 1.72, lw = 6.9, rx = M + lw + 0.25, rw = W - M - rx;
+    const actNeed = 0.75 + actions.slice(0, 5).reduce((a, t) => a + textHeight(clean(t), lw - 0.7, 13) + 0.1, 0);
+    const sideNeed = boxNeed(findings.slice(0, 4), rw) + 0.15 + boxNeed(risks.slice(0, 3), rw);
+    const bottom = Math.min(6.0, top + Math.max(actNeed, sideNeed, 2.6));
+    p.push({ t: "rect", x: M, y: top, w: lw, h: bottom - top, fill: C.ink, radius: 0.06 });
+    p.push({ t: "text", x: M + 0.2, y: top + 0.14, w: lw - 0.4, h: 0.3, text: "Recommended actions", size: 11, bold: true, color: C.lime });
+    p.push({ t: "list", x: M + 0.2, y: top + 0.55, w: lw - 0.4, h: bottom - top - 0.7, items: actions.slice(0, 5).map(clean), numbered: true, size: 13, min: 8, color: C.white });
+    const fh = Math.min((bottom - top - 0.15) * 0.6, Math.max(boxNeed(findings.slice(0, 4), rw), 1.1));
+    box(p, "plain", "What the data says", findings.slice(0, 4), rx, top, rw, fh);
+    box(p, "note", "Watch-outs", risks.slice(0, 3), rx, top + fh + 0.15, rw, bottom - top - fh - 0.15);
+    const how = (me.steps || []).slice(0, 2).map(clean).join(" ");
+    const sy = bottom + 0.25;
+    p.push({ t: "rect", x: M, y: sy, w: W - 2 * M, h: 0.72, fill: C.paper, radius: 0.06 });
+    p.push({ t: "text", x: M + 0.2, y: sy + 0.04, w: W - 2 * M - 3.6, h: 0.64,
+             text: `How this was built: ${how || "live SQL over public job ads; every figure is traceable in Acolyte Analyst."} The full pack has the detail, Q&A and method.`,
+             size: 9, min: 7, color: C.neutral, valign: "middle" });
+    p.push({ t: "rect", x: W - M - 3.2, y: sy + 0.14, w: 3.0, h: 0.44, fill: C.lime, radius: 0.22 });
+    p.push({ t: "text", x: W - M - 3.2, y: sy + 0.14, w: 3.0, h: 0.44, text: "Talk to Acolyte →", size: 11, bold: true, color: C.ink, align: "center", valign: "middle" });
+    p.push({ t: "link", x: W - M - 3.2, y: sy + 0.14, w: 3.0, h: 0.44, url: "https://dumichanda.github.io/acolyte-site/#contact" });
+    slides.push({ bg: C.white, prims: p });
+  }
+
+  // 7. Close (full pack only)
+  if (full) {
     const p: Prim[] = [];
     p.push({ t: "logo", x: 0.6, y: 0.5, s: 0.34 });
     p.push({ t: "text", x: 1.05, y: 0.5, w: 3, h: 0.34, text: "ACOLYTE", size: 12, bold: true, color: C.white, valign: "middle", spacing: 3 });

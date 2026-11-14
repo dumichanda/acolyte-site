@@ -163,6 +163,11 @@ function KpiCards({ items }: { items?: { value: string; label: string; context: 
     <div key={i} className={"kcard t-" + k.tone}><span>{k.label}</span><b>{k.value}</b><em>{k.context}</em></div>))}</div>;
 }
 
+/** Slide count of the full pack (mirrors deck.ts buildDeck). */
+const fullSlides = (r: ReportArtifact) => 1 + (r.exec?.takeaway || r.exec?.kpis?.length || r.summary ? 1 : 0) + r.sections.length
+  + (r.qa?.length ? 1 : 0) + (r.conclusions?.findings?.length || r.conclusions?.actions?.length ? 1 : 0)
+  + (r.method?.steps?.length || r.method?.limits?.length ? 1 : 0) + 1;
+
 function ReportView({ r, actions = true }: { r: ReportArtifact; actions?: boolean }) {
   const ex = r.exec;
   return (
@@ -170,9 +175,13 @@ function ReportView({ r, actions = true }: { r: ReportArtifact; actions?: boolea
       <div className="art-head">
         <div><span className="tag">Report pack</span><h2>{r.title}</h2>
           <div className="muted small">{r.scope ? r.scope + " · " : ""}Acolyte Analyst · {new Date(r.generated).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</div></div>
-        {actions && <div className="art-actions">
-          <ExportBtn label="PowerPoint" primary run={async () => (await exporter()).reportToPptx(r)} />
-          <ExportBtn label="PDF" run={async () => (await exporter()).reportToPdf(r)} />
+        {actions && <div className="dl-groups">
+          <div className="dl"><span>Executive · {Math.min(2, r.sections.length) + 3} slides</span>
+            <ExportBtn label="PowerPoint" primary run={async () => (await exporter()).reportToPptx(r, "executive")} />
+            <ExportBtn label="PDF" run={async () => (await exporter()).reportToPdf(r, "executive")} /></div>
+          <div className="dl"><span>Full pack · {fullSlides(r)} slides</span>
+            <ExportBtn label="PowerPoint" run={async () => (await exporter()).reportToPptx(r, "standard")} />
+            <ExportBtn label="PDF" run={async () => (await exporter()).reportToPdf(r, "standard")} /></div>
         </div>}
       </div>
       {ex?.takeaway ? (<>

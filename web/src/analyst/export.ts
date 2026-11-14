@@ -9,7 +9,7 @@ import * as echarts from "echarts";
 import { url } from "../site";
 import { CATEGORICAL, registerThemes } from "../viz";
 import { chartOption, fmt, type ChartArtifact, type ReportArtifact } from "./chart";
-import { approxWidth, buildDeck, C, chartsDeck, fitSize, H, tableLayout, W, type Prim, type SlideSpec } from "./deck";
+import { approxWidth, buildDeck, C, chartsDeck, fitSize, H, tableLayout, W, type Prim, type SlideSpec, type Variant } from "./deck";
 
 const PALETTE = CATEGORICAL.light.map((c) => c.replace("#", "").toUpperCase());
 const FONT = "Poppins";   // brand font: embedded in PDFs; PowerPoint shows it where Poppins is installed (free, Google Fonts)
@@ -168,7 +168,7 @@ function drawPptx(pptx: Pptx, spec: SlideSpec, logo: string | null) {
   }
 }
 
-async function toPptx(r: ReportArtifact) {
+async function toPptx(r: ReportArtifact, variant: Variant = "standard") {
   const { default: PptxGenJS } = await import("pptxgenjs");
   const pptx = new PptxGenJS();
   pptx.defineLayout({ name: "ACOLYTE_16x9", width: W, height: H });
@@ -176,16 +176,16 @@ async function toPptx(r: ReportArtifact) {
   pptx.author = "Acolyte Analyst"; pptx.company = "Acolyte"; pptx.title = r.title;
   pptx.theme = { headFontFace: FONT, bodyFontFace: FONT };
   const logo = await logoPng();
-  for (const spec of buildDeck(r)) drawPptx(pptx, spec, logo);
-  await pptx.writeFile({ fileName: `${slug(r.title)}.pptx` });
+  for (const spec of buildDeck(r, variant)) drawPptx(pptx, spec, logo);
+  await pptx.writeFile({ fileName: `${slug(r.title)}${variant === "executive" ? "-executive" : ""}.pptx` });
 }
 
-export const reportToPptx = (r: ReportArtifact) => toPptx(r);
+export const reportToPptx = (r: ReportArtifact, variant: Variant = "standard") => toPptx(r, variant);
 export const chartsToPptx = (charts: ChartArtifact[], title = "Acolyte Analyst charts") =>
   toPptx(chartsDeck(charts, charts.length === 1 ? charts[0].title : title));
 
 // ---------------------------------------------------------------- PDF renderer (same slides, 16:9 pages)
-export async function reportToPdf(r: ReportArtifact) {
+export async function reportToPdf(r: ReportArtifact, variant: Variant = "standard") {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "landscape", unit: "in", format: [W, H], compress: true });
   await loadWebPoppins();
@@ -228,7 +228,7 @@ export async function reportToPdf(r: ReportArtifact) {
     });
   };
 
-  buildDeck(r).forEach((spec, n) => {
+  buildDeck(r, variant).forEach((spec, n) => {
     if (n) doc.addPage([W, H], "landscape");
     doc.setFillColor(...hex(spec.bg)); doc.rect(0, 0, W, H, "F");
     for (const p of spec.prims as Prim[]) {
@@ -267,5 +267,5 @@ export async function reportToPdf(r: ReportArtifact) {
       else if (p.t === "link") doc.link(p.x, p.y, p.w, p.h, { url: p.url });
     }
   });
-  doc.save(`${slug(r.title)}.pdf`);
+  doc.save(`${slug(r.title)}${variant === "executive" ? "-executive" : ""}.pdf`);
 }

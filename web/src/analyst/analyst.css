@@ -108,3 +108,7 @@
   .analyst .side { display: none; position: static; max-height: none; }
   .analyst .side.open { display: flex; }
 }
+
+.report-art .dl-groups { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; flex-shrink: 0; }
+.report-art .dl { display: flex; gap: 6px; align-items: center; }
+.report-art .dl span { font-size: 11px; color: var(--muted); margin-right: 2px; white-space: nowrap; }
