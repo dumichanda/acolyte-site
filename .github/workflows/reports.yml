@@ -47,7 +47,9 @@ jobs:
           python pipeline/db.py
           python - <<'PY'
           import os, psycopg
-          import re
+          import re, sys
+          sys.path.insert(0, ".")
+          import analyst   # prefer IPv4, as the server does
           for user in ("analyst_web", "analyst_admin"):
               url = re.sub(r"//[^:@/]+:[^@/]*@", f"//{user}:{os.environ['ANALYST_DB_PASSWORD']}@", os.environ["DATABASE_URL"], count=1)
               try:
