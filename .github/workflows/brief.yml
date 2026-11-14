@@ -29,7 +29,8 @@ jobs:
           done
           exit 1
       - name: Start the brief
-        run: curl -fsS --max-time 90 -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/briefs/$IND/run"; echo
+        run: |
+          curl -fsS --max-time 90 -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/briefs/$IND/run"; echo
       - name: Wait for it and print it
         run: |
           for i in $(seq 1 40); do
