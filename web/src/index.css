@@ -143,3 +143,12 @@ footer { color: var(--muted); font-size: 12px; margin-top: 18px; display: flex; 
 .btn.primary { background: var(--accent); color: #0c0c0e; border-color: var(--accent); font-weight: 600; }
 .btn:disabled { opacity: .45; cursor: default; }
 .small { font-size: 12px; }
+
+/* Slide style picker for downloads */
+.deck-style { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.deck-style button { font: inherit; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); cursor: pointer; }
+.deck-style button.on { border-color: var(--accent); color: var(--ink); }
+.deck-style .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid var(--line); }
+.deck-style .sw.light { background: #ffffff; }
+.deck-style .sw.dark { background: #141417; }
+.deck-style .sw.alternate { background: linear-gradient(135deg, #141417 50%, #f2f6e6 50%); }

@@ -15,7 +15,7 @@ export const C = {
 export const TONE: Record<string, string> = { brand: C.olive, positive: C.pos, negative: C.neg, neutral: C.neutral };
 
 export type Prim =
-  | { t: "rect"; x: number; y: number; w: number; h: number; fill: string; radius?: number }
+  | { t: "rect"; x: number; y: number; w: number; h: number; fill: string; radius?: number; shadow?: boolean }
   | { t: "text"; x: number; y: number; w: number; h: number; text: string; size: number; color: string; bold?: boolean;
       align?: "left" | "center" | "right"; valign?: "top" | "middle" | "bottom"; min?: number; spacing?: number }
   | { t: "list"; x: number; y: number; w: number; h: number; items: string[]; size: number; color: string; numbered?: boolean;
@@ -105,6 +105,9 @@ function box(prims: Prim[], kind: "so_what" | "note" | "plain", title: string, t
 }
 
 function chartBlock(prims: Prim[], c: ChartArtifact, x: number, y: number, w: number, h: number) {
+  // Every chart sits on a raised, rounded tile (title included).
+  prims.push({ t: "rect", x, y, w, h, fill: C.white, radius: 0.16, shadow: true });
+  x += 0.16; y += 0.12; w -= 0.32; h -= 0.22;
   const title = clean(c.title), sub = clean(c.subtitle);
   const th = Math.min(textHeight(title, w, 10.5, true), 0.62) + 0.04;
   prims.push({ t: "text", x, y, w, h: th, text: title, size: 10.5, min: 8.5, bold: true, color: C.ink });
@@ -379,7 +382,13 @@ export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): Sli
       if ("h" in p && p.y < 7.0 && p.y + p.h > 7.02) p.h = Math.max(0.1, 7.02 - p.y);
     }
   }
-  return slides;
+  return raise(slides);
+}
+
+/** 3D-like tiles: rounded corners and a soft shadow on every card and panel (not on rules, pills or full-bleed bars). */
+function raise(slides: SlideSpec[]): SlideSpec[] {
+  return slides.map((sl) => ({ ...sl, prims: sl.prims.map((p) =>
+    p.t === "rect" && p.radius !== undefined && p.w >= 0.9 && p.h >= 0.5 ? { ...p, radius: Math.max(p.radius, 0.14), shadow: true } : p) }));
 }
 
 /** Deck for loose charts (no report): cover + one chart slide each + close. */
@@ -389,4 +398,44 @@ export function chartsDeck(charts: ChartArtifact[], title: string): ReportArtifa
     sections: charts.map((c) => ({ heading: c.title, title: c.title, takeaway: c.subtitle, body: "", chart_ids: [c.id] })),
     charts: Object.fromEntries(charts.map((c) => [c.id, c])),
   };
+}
+
+
+// ---------------------------------------------------------------- dark theme
+export type DeckTheme = "light" | "dark" | "alternate";
+/** Dark slides: content slides move to near-black with light text and lime accents; dark cover/close slides stay. */
+const DARK_MAP: Record<string, string> = {
+  [C.white]: "1C1D22", [C.paper]: "1C1D22", [C.note]: "23271A", [C.line]: "2B2D32", "FAF8F3": "16171A",
+  [C.ink]: "ECEBE6", [C.muted]: "A9A8B0", [C.neutral]: "C9C8C2", [C.olive]: C.lime, [C.neg]: "FF6A3D", [C.pos]: "3FB950",
+};
+const DARK_FILL: Record<string, string> = { ...DARK_MAP, [C.ink]: "0B0B0D", [C.olive]: "3F5306" };
+export const DARK_BG = "141417";
+
+export function toDark(slides: SlideSpec[]): SlideSpec[] {
+  return slides.map((sl) => {
+    if (sl.bg !== C.white) return sl;   // cover and close are already dark
+    return { bg: DARK_BG, prims: sl.prims.map((p) => {
+      if (p.t === "rect") return { ...p, fill: DARK_FILL[p.fill] ?? p.fill };
+      if (p.t === "text" || p.t === "list") return { ...p, color: p.color === C.white ? p.color : DARK_MAP[p.color] ?? p.color };
+      return p;
+    }) };
+  });
+}
+
+/** Soft green off-white for the light slides of the alternating style. */
+export const MINT_BG = "F2F6E6";
+
+/** Alternating style: content slides switch between dark and a soft green off-white (cover and close stay dark). */
+export function toAlternate(slides: SlideSpec[]): SlideSpec[] {
+  const dark = toDark(slides);
+  let k = 0;
+  return slides.map((sl, i) => {
+    if (sl.bg !== C.white) return sl;
+    return k++ % 2 === 0 ? dark[i] : { bg: MINT_BG, prims: sl.prims.map((p) =>
+      p.t === "rect" && p.fill === C.white ? { ...p, fill: "FBFDF5" } : p.t === "rect" && p.fill === C.paper ? { ...p, fill: "FFFFFF" } : p) };
+  });
+}
+
+export function themed(slides: SlideSpec[], theme: DeckTheme): SlideSpec[] {
+  return theme === "dark" ? toDark(slides) : theme === "alternate" ? toAlternate(slides) : slides;
 }

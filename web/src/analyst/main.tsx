@@ -21,6 +21,7 @@ function ExportBtn({ label, run, primary }: { label: string; run: () => Promise<
 import { API, api, getToken, logout, type Industry, type Me } from "../auth";
 import { SignIn, UsageCard } from "../Account";
 import { loadIndex, loadReport, monthLabel, type ReportCard } from "../reports/data";
+import { DeckStyle, getDeckTheme, useDeckTheme } from "./DeckStyle";
 
 /** Fills the empty canvas: this analyst's latest monthly reports, opened straight into the canvas. */
 function LatestReports({ industry, onOpen }: { industry: string; onOpen: (r: ReportArtifact) => void }) {
@@ -225,7 +226,7 @@ function BriefCard({ industry, onOpen }: { industry: Analyst; onOpen: (r: Report
       {r ? <>
         <p>{r.exec?.takeaway || r.summary || r.title}</p>
         <div className="row"><button className="btn primary sm" onClick={() => onOpen(r)}>Open the brief</button>
-          <ExportBtn label="Executive PowerPoint" run={async () => (await exporter()).reportToPptx(r, "executive")} /></div>
+          <ExportBtn label="Executive PowerPoint" run={async () => (await exporter()).reportToPptx(r, "executive", getDeckTheme())} /></div>
       </> : <p className="muted small">{b?.today_status === "running" ? "Your analyst is writing this morning's brief from today's data. It takes about three minutes; this card updates itself."
         : "The first brief is written after the morning data refresh (from 07:00)."}</p>}
     </div>
@@ -326,18 +327,20 @@ const fullSlides = (r: ReportArtifact) => 1 + (r.exec?.takeaway || r.exec?.kpis?
 
 function ReportView({ r, actions = true }: { r: ReportArtifact; actions?: boolean }) {
   const ex = r.exec;
+  const [deckTheme, setDeckTheme] = useDeckTheme();
   return (
     <div className="report-art">
       <div className="art-head">
         <div><span className="tag">Report pack</span><h2>{r.title}</h2>
           <div className="muted small">{r.scope ? r.scope + " · " : ""}Acolyte Analyst · {new Date(r.generated).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</div></div>
         {actions && <div className="dl-groups">
+          <DeckStyle value={deckTheme} onChange={setDeckTheme} />
           <div className="dl"><span>Executive · {Math.min(2, r.sections.length) + 3} slides</span>
-            <ExportBtn label="PowerPoint" primary run={async () => (await exporter()).reportToPptx(r, "executive")} />
-            <ExportBtn label="PDF" run={async () => (await exporter()).reportToPdf(r, "executive")} /></div>
+            <ExportBtn label="PowerPoint" primary run={async () => (await exporter()).reportToPptx(r, "executive", deckTheme)} />
+            <ExportBtn label="PDF" run={async () => (await exporter()).reportToPdf(r, "executive", deckTheme)} /></div>
           <div className="dl"><span>Full pack · {fullSlides(r)} slides</span>
-            <ExportBtn label="PowerPoint" run={async () => (await exporter()).reportToPptx(r, "standard")} />
-            <ExportBtn label="PDF" run={async () => (await exporter()).reportToPdf(r, "standard")} /></div>
+            <ExportBtn label="PowerPoint" run={async () => (await exporter()).reportToPptx(r, "standard", deckTheme)} />
+            <ExportBtn label="PDF" run={async () => (await exporter()).reportToPdf(r, "standard", deckTheme)} /></div>
         </div>}
       </div>
       {ex?.takeaway ? (<>

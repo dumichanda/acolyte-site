@@ -9,7 +9,7 @@ import * as echarts from "echarts";
 import { url } from "../site";
 import { CATEGORICAL, registerThemes } from "../viz";
 import { chartOption, fmt, type ChartArtifact, type ReportArtifact } from "./chart";
-import { approxWidth, buildDeck, C, chartsDeck, fitSize, H, tableLayout, W, type Prim, type SlideSpec, type Variant } from "./deck";
+import { approxWidth, buildDeck, C, chartsDeck, DARK_BG, fitSize, H, tableLayout, themed, W, type DeckTheme, type Prim, type SlideSpec, type Variant } from "./deck";
 
 const PALETTE = CATEGORICAL.light.map((c) => c.replace("#", "").toUpperCase());
 const FONT = "Poppins";   // brand font: embedded in PDFs; PowerPoint shows it where Poppins is installed (free, Google Fonts)
@@ -59,7 +59,17 @@ async function logoPng(size = 256): Promise<string | null> {
   }
 }
 
-/** Render a chart artifact off-screen in the light theme and return a JPEG data URL. */
+/** Chart and table colours for the current export theme. */
+let THEME: "light" | "dark" = "light";
+let SLIDE_BG = "FFFFFF";
+const slideTheme = (bg: string) => { SLIDE_BG = bg; THEME = bg === DARK_BG ? "dark" : "light"; };
+const K = () => THEME === "dark"
+  ? { label: "C9C8C2", muted: "A9A8B0", grid: "2B2D32", ink: "ECEBE6", accent: C.lime, head: "0B0B0D", headText: C.lime,
+      row: "1C1D22", rowAlt: "16171A", bg: DARK_BG }
+  : { label: C.neutral, muted: C.muted, grid: C.line, ink: C.ink, accent: C.olive, head: C.ink, headText: C.white,
+      row: C.white, rowAlt: "FAF8F3", bg: SLIDE_BG };
+
+/** Render a chart artifact off-screen in the export theme and return a JPEG data URL. */
 function chartImage(c: ChartArtifact, w = 880, h = 480): string | null {
   if (c.type === "table" || c.type === "kpi") return null;
   registerThemes();
@@ -67,11 +77,13 @@ function chartImage(c: ChartArtifact, w = 880, h = 480): string | null {
   div.style.cssText = `position:fixed;left:-10000px;top:0;width:${w}px;height:${h}px`;
   document.body.appendChild(div);
   try {
-    const inst = echarts.init(div, "acolyte-light", { renderer: "canvas", width: w, height: h });
-    inst.setOption({ ...chartOption(c, { ink: "#16140f", muted: "#6b6656", line: "#e7e2d6", panel: "#ffffff" }, true),
-      textStyle: { fontFamily: "Poppins, Arial, sans-serif", color: "#16140f" } });
+    const dark = THEME === "dark";
+    const inst = echarts.init(div, dark ? "acolyte-dark" : "acolyte-light", { renderer: "canvas", width: w, height: h });
+    const pal = dark ? { ink: "#ECEBE6", muted: "#A9A8B0", line: "#2B2D32", panel: "#1C1D22" } : { ink: "#16140f", muted: "#6b6656", line: "#e7e2d6", panel: "#ffffff" };
+    inst.setOption({ ...chartOption(c, pal, !dark), animation: false,
+      textStyle: { fontFamily: "Poppins, Arial, sans-serif", color: pal.ink } });
     // JPEG keeps PDFs small (a 2x PNG chart is several MB inside a PDF)
-    const data = inst.getDataURL({ type: "jpeg", pixelRatio: 3, backgroundColor: "#ffffff" });
+    const data = inst.getDataURL({ type: "jpeg", pixelRatio: 3, backgroundColor: "#" + SLIDE_BG });
     inst.dispose();
     return data;
   } finally {
@@ -101,17 +113,17 @@ function nativeChart(s: Slide, c: ChartArtifact, x: number, y: number, w: number
   const yi = c.y.map((col) => c.columns.indexOf(col)).filter((i) => i >= 0);
   const rows = c.rows.slice(0, c.type === "table" ? 16 : 30);
   if (c.type === "kpi") {
-    s.addText(fmt(rows[0]?.[yi[0]], c.value_format), { x, y, w, h: h * 0.6, fontFace: FONT, fontSize: 60, bold: true, color: C.olive, align: "center", valign: "bottom" });
-    s.addText(c.y[0], { x, y: y + h * 0.6, w, h: 0.4, fontFace: FONT, fontSize: 13, color: C.muted, align: "center" });
+    s.addText(fmt(rows[0]?.[yi[0]], c.value_format), { x, y, w, h: h * 0.6, fontFace: FONT, fontSize: 60, bold: true, color: K().accent, align: "center", valign: "bottom" });
+    s.addText(c.y[0], { x, y: y + h * 0.6, w, h: 0.4, fontFace: FONT, fontSize: 13, color: K().muted, align: "center" });
     return;
   }
   if (c.type === "table") {
     const tl = tableLayout(c, w, h);
-    const head = tl.cols.map((t) => ({ text: t, options: { bold: true, color: C.white, fill: { color: C.ink }, valign: "bottom" as const } }));
+    const head = tl.cols.map((t) => ({ text: t, options: { bold: true, color: K().headText, fill: { color: K().head }, valign: "bottom" as const } }));
     const body = tl.rows.map((r, k) => r.map((t, j) => ({ text: t,
-      options: { align: (tl.numeric[j] ? "right" : "left") as "right" | "left", fill: { color: k % 2 ? "FAF8F3" : C.white } } })));
+      options: { align: (tl.numeric[j] ? "right" : "left") as "right" | "left", fill: { color: k % 2 ? K().rowAlt : K().row } } })));
     s.addTable([head, ...body], { x, y, w, colW: tl.widths, rowH: [tl.headH, ...tl.rows.map(() => tl.rowH)], fontFace: FONT, fontSize: tl.pt,
-      color: C.ink, border: { type: "solid", pt: 0.5, color: C.line }, autoPage: false, margin: [0.02, 0.05, 0.02, 0.05] });
+      color: K().ink, border: { type: "solid", pt: 0.5, color: K().grid }, autoPage: false, margin: [0.02, 0.05, 0.02, 0.05] });
     return;
   }
   const labels = rows.map((r) => String(r[xi] ?? "—"));
@@ -119,15 +131,15 @@ function nativeChart(s: Slide, c: ChartArtifact, x: number, y: number, w: number
   const many = rows.length > 20;
   const common = {
     x, y, w, h, fontFace: FONT,
-    chartColors: yi.length === 1 && c.type !== "pie" ? [C.olive] : PALETTE,
-    catAxisLabelColor: C.neutral, valAxisLabelColor: C.muted, catAxisLabelFontSize: 9, valAxisLabelFontSize: 8,
+    chartColors: yi.length === 1 && c.type !== "pie" ? [K().accent] : PALETTE,
+    catAxisLabelColor: K().label, valAxisLabelColor: K().muted, catAxisLabelFontSize: 9, valAxisLabelFontSize: 8,
     catAxisLabelFontFace: FONT, valAxisLabelFontFace: FONT,
     valAxisLabelFormatCode: formatCode(c), dataLabelFormatCode: formatCode(c),
-    valGridLine: { color: C.line, size: 0.5 }, catGridLine: { style: "none" as const },
-    catAxisLineShow: true, valAxisLineShow: false, catAxisLineColor: C.line,
+    valGridLine: { color: K().grid, size: 0.5 }, catGridLine: { style: "none" as const },
+    catAxisLineShow: true, valAxisLineShow: false, catAxisLineColor: K().grid,
     showLegend: yi.length > 1 || c.type === "pie", legendPos: c.type === "pie" ? ("r" as const) : ("b" as const),
-    legendFontFace: FONT, legendFontSize: 9, legendColor: C.ink,
-    showValue: !many && c.type !== "line" && c.type !== "area", dataLabelColor: C.ink, dataLabelFontSize: 8, dataLabelFontFace: FONT,
+    legendFontFace: FONT, legendFontSize: 9, legendColor: K().ink,
+    showValue: !many && c.type !== "line" && c.type !== "area", dataLabelColor: K().ink, dataLabelFontSize: 8, dataLabelFontFace: FONT,
   };
   if (c.type === "scatter") {
     s.addChart("scatter", [{ name: c.x, values: rows.map((r) => num(r[xi])) },
@@ -145,12 +157,14 @@ function nativeChart(s: Slide, c: ChartArtifact, x: number, y: number, w: number
 }
 
 function drawPptx(pptx: Pptx, spec: SlideSpec, logo: string | null) {
+  slideTheme(spec.bg);
   const s = pptx.addSlide();
   s.background = { color: spec.bg };
   for (const p of spec.prims) {
     if (p.t === "rect") {
       s.addShape(p.radius ? "roundRect" : "rect", { x: p.x, y: p.y, w: p.w, h: p.h, fill: { color: p.fill }, line: { color: p.fill, width: 0 },
-        ...(p.radius ? { rectRadius: p.radius } : {}) });
+        ...(p.radius ? { rectRadius: p.radius } : {}),
+        ...(p.shadow ? { shadow: { type: "outer" as const, color: "000000", opacity: THEME === "dark" ? 0.55 : 0.16, blur: 10, offset: 3, angle: 90 } } : {}) });
     } else if (p.t === "text") {
       const size = p.min ? fitSize(p.text, p.w, p.h, p.size, p.min, (t, pt) => approxWidth(t, pt, p.bold)) : p.size;
       s.addText(p.text, { x: p.x, y: p.y, w: p.w, h: p.h, fontFace: FONT, fontSize: size, bold: !!p.bold, color: p.color,
@@ -168,7 +182,7 @@ function drawPptx(pptx: Pptx, spec: SlideSpec, logo: string | null) {
   }
 }
 
-async function toPptx(r: ReportArtifact, variant: Variant = "standard") {
+async function toPptx(r: ReportArtifact, variant: Variant = "standard", theme: DeckTheme = "light") {
   const { default: PptxGenJS } = await import("pptxgenjs");
   const pptx = new PptxGenJS();
   pptx.defineLayout({ name: "ACOLYTE_16x9", width: W, height: H });
@@ -176,16 +190,17 @@ async function toPptx(r: ReportArtifact, variant: Variant = "standard") {
   pptx.author = "Acolyte Analyst"; pptx.company = "Acolyte"; pptx.title = r.title;
   pptx.theme = { headFontFace: FONT, bodyFontFace: FONT };
   const logo = await logoPng();
-  for (const spec of buildDeck(r, variant)) drawPptx(pptx, spec, logo);
-  await pptx.writeFile({ fileName: `${slug(r.title)}${variant === "executive" ? "-executive" : ""}.pptx` });
+  for (const spec of themed(buildDeck(r, variant), theme)) drawPptx(pptx, spec, logo);
+  await pptx.writeFile({ fileName: `${slug(r.title)}${variant === "executive" ? "-executive" : ""}${theme === "light" ? "" : "-" + theme}.pptx` });
+  slideTheme("FFFFFF");
 }
 
-export const reportToPptx = (r: ReportArtifact, variant: Variant = "standard") => toPptx(r, variant);
+export const reportToPptx = (r: ReportArtifact, variant: Variant = "standard", theme: DeckTheme = "light") => toPptx(r, variant, theme);
 export const chartsToPptx = (charts: ChartArtifact[], title = "Acolyte Analyst charts") =>
   toPptx(chartsDeck(charts, charts.length === 1 ? charts[0].title : title));
 
 // ---------------------------------------------------------------- PDF renderer (same slides, 16:9 pages)
-export async function reportToPdf(r: ReportArtifact, variant: Variant = "standard") {
+export async function reportToPdf(r: ReportArtifact, variant: Variant = "standard", theme: DeckTheme = "light") {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "landscape", unit: "in", format: [W, H], compress: true });
   await loadWebPoppins();
@@ -217,22 +232,33 @@ export async function reportToPdf(r: ReportArtifact, variant: Variant = "standar
 
   const drawTable = (c: ChartArtifact, x: number, y: number, w: number, h: number) => {
     const tl = tableLayout(c, w, h);
-    doc.setFillColor(...hex(C.ink)); doc.rect(x, y, w, tl.headH, "F");
+    doc.setFillColor(...hex(K().head)); doc.rect(x, y, w, tl.headH, "F");
     let xx = x;
-    tl.cols.forEach((t, k) => { drawText(t, xx + 0.05, y, tl.widths[k] - 0.1, tl.headH, tl.pt, C.white, true, tl.numeric[k] ? "right" : "left", "bottom", 7); xx += tl.widths[k]; });
+    tl.cols.forEach((t, k) => { drawText(t, xx + 0.05, y, tl.widths[k] - 0.1, tl.headH, tl.pt, K().headText, true, tl.numeric[k] ? "right" : "left", "bottom", 7); xx += tl.widths[k]; });
     tl.rows.forEach((row, n) => {
       const yy = y + tl.headH + n * tl.rowH;
-      if (n % 2) { doc.setFillColor(250, 248, 243); doc.rect(x, yy, w, tl.rowH, "F"); }
+      if (n % 2) { doc.setFillColor(...hex(K().rowAlt)); doc.rect(x, yy, w, tl.rowH, "F"); }
       let cx = x;
-      row.forEach((t, k) => { drawText(t, cx + 0.05, yy, tl.widths[k] - 0.1, tl.rowH, tl.pt, C.ink, false, tl.numeric[k] ? "right" : "left", "middle"); cx += tl.widths[k]; });
+      row.forEach((t, k) => { drawText(t, cx + 0.05, yy, tl.widths[k] - 0.1, tl.rowH, tl.pt, K().ink, false, tl.numeric[k] ? "right" : "left", "middle"); cx += tl.widths[k]; });
     });
   };
 
-  buildDeck(r, variant).forEach((spec, n) => {
+  themed(buildDeck(r, variant), theme).forEach((spec, n) => {
+    slideTheme(spec.bg);
     if (n) doc.addPage([W, H], "landscape");
     doc.setFillColor(...hex(spec.bg)); doc.rect(0, 0, W, H, "F");
     for (const p of spec.prims as Prim[]) {
       if (p.t === "rect") {
+        if (p.shadow) {   // soft drop shadow: two offset layers under the tile
+          const GS = (doc as any).GState;
+          const sh = THEME === "dark" ? "000000" : "5D6B3A";
+          [[0.07, 0.08], [0.035, 0.12]].forEach(([off, op]) => {
+            if (GS) (doc as any).setGState(new GS({ opacity: op }));
+            doc.setFillColor(...hex(sh));
+            doc.roundedRect(p.x + off * 0.4, p.y + off, p.w, p.h, p.radius || 0.1, p.radius || 0.1, "F");
+          });
+          if (GS) (doc as any).setGState(new GS({ opacity: 1 }));
+        }
         doc.setFillColor(...hex(p.fill));
         if (p.radius) doc.roundedRect(p.x, p.y, p.w, p.h, p.radius, p.radius, "F"); else doc.rect(p.x, p.y, p.w, p.h, "F");
       } else if (p.t === "text") {
@@ -248,8 +274,8 @@ export async function reportToPdf(r: ReportArtifact, variant: Variant = "standar
           const indent = p.marker === "" ? 0 : 0.22;
           const lines: string[] = doc.splitTextToSize(it, p.w - indent);
           if (yy + lh > p.y + p.h) return;
-          if (p.numbered) drawText(`${i + 1}.`, p.x, yy, 0.22, lh, pt, p.color === C.white ? C.lime : C.olive, true);
-          else if (p.marker !== "") { doc.setFillColor(...hex(p.color === C.white ? C.lime : C.olive)); doc.rect(p.x + 0.02, yy + lh * 0.38, 0.07, 0.07, "F"); }
+          if (p.numbered) drawText(`${i + 1}.`, p.x, yy, 0.22, lh, pt, p.color === C.white || THEME === "dark" ? C.lime : C.olive, true);
+          else if (p.marker !== "") { doc.setFillColor(...hex(p.color === C.white || THEME === "dark" ? C.lime : C.olive)); doc.rect(p.x + 0.02, yy + lh * 0.38, 0.07, 0.07, "F"); }
           doc.setFont(PF, "normal"); doc.setFontSize(pt); doc.setTextColor(...hex(p.color));
           for (const ln of lines) { if (yy + lh > p.y + p.h + 0.05) break; doc.text(ln, p.x + indent, yy + pt * 0.92 / 72); yy += lh; }
           yy += pt * 0.45 / 72;
@@ -258,7 +284,7 @@ export async function reportToPdf(r: ReportArtifact, variant: Variant = "standar
         if (p.chart.type === "table") drawTable(p.chart, p.x, p.y, p.w, p.h);
         else if (p.chart.type === "kpi") {
           const yi = p.chart.columns.indexOf(p.chart.y[0]);
-          drawText(fmt(p.chart.rows[0]?.[yi], p.chart.value_format), p.x, p.y, p.w, p.h * 0.6, 54, C.olive, true, "center", "bottom");
+          drawText(fmt(p.chart.rows[0]?.[yi], p.chart.value_format), p.x, p.y, p.w, p.h * 0.6, 54, K().accent, true, "center", "bottom");
         } else {
           const img = chartImage(p.chart, Math.round(p.w * 100), Math.round(p.h * 100));
           if (img) doc.addImage(img, "JPEG", p.x, p.y, p.w, p.h, undefined, "FAST");
@@ -267,5 +293,6 @@ export async function reportToPdf(r: ReportArtifact, variant: Variant = "standar
       else if (p.t === "link") doc.link(p.x, p.y, p.w, p.h, { url: p.url });
     }
   });
-  doc.save(`${slug(r.title)}${variant === "executive" ? "-executive" : ""}.pdf`);
+  doc.save(`${slug(r.title)}${variant === "executive" ? "-executive" : ""}${theme === "light" ? "" : "-" + theme}.pdf`);
+  slideTheme("FFFFFF");
 }
