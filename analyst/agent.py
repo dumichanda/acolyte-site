@@ -505,11 +505,11 @@ def execute(s: Session, name: str, args, db_url: str) -> tuple[str, dict | None,
 
 # ------------------------------------------------------------------ agent loop
 def answer(client, s: Session, question: str, db_url: str, budget: Budget, mode: str = "auto",
-           max_tier: str = "deep") -> Iterator[dict]:
+           max_tier: str = "deep", max_steps: int = MAX_STEPS) -> Iterator[dict]:
     """Run one question; on any failure the conversation is rolled back so the next question starts clean."""
     start, finished = len(s.messages), False
     try:
-        for ev in _answer(client, s, question, db_url, budget, mode, max_tier):
+        for ev in _answer(client, s, question, db_url, budget, mode, max_tier, max_steps):
             if ev["type"] == "done":
                 finished = True
             yield ev
@@ -519,7 +519,7 @@ def answer(client, s: Session, question: str, db_url: str, budget: Budget, mode:
 
 
 def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode: str = "auto",
-            max_tier: str = "deep") -> Iterator[dict]:
+            max_tier: str = "deep", max_steps: int = MAX_STEPS) -> Iterator[dict]:
     import anthropic
 
     s.turns += 1
@@ -535,7 +535,7 @@ def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode
                 "tokens": {k: used[k] for k in ("input", "cache_read", "cache_write", "output")}, "final": final}
 
     try:
-        for _ in range(MAX_STEPS):
+        for _ in range(max_steps):
             if not budget.ok():
                 yield {"type": "error", "text": "The demo has reached its daily limit. Please try again tomorrow, or talk to Acolyte about a private install."}
                 return
@@ -617,6 +617,7 @@ def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode
                 tier = ORDER[ORDER.index(tier) + 1]
                 tool_errors = 0
                 yield {"type": "status", "text": f"Switching to a stronger model ({TIERS[tier]['model']})"}
+        yield usage_event(True)   # still report what was spent
         yield {"type": "error", "text": "That took too many steps. Please ask a more specific question."}
     finally:
         print(f"[usage] tier={tier} models={','.join(used['models']) or '-'} in={used['input']} cache_read={used['cache_read']} "

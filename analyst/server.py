@@ -365,7 +365,8 @@ def generate_brief(industry: str, day) -> None:
     s = Session(id=f"brief-{industry}-{day}", industry=industry)
     rec_queries = []
     try:
-        for ev in answer(client(), s, BRIEFS[industry], DB_URL, Budget(float(os.environ.get("BRIEF_MAX_USD", "3"))), "deep", "deep"):
+        for ev in answer(client(), s, BRIEFS[industry], DB_URL, Budget(float(os.environ.get("BRIEF_MAX_USD", "3"))), "deep", "deep",
+                         max_steps=18):
             t = ev.get("type")
             if t == "text":
                 text += ev["text"]
