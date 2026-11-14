@@ -62,4 +62,5 @@ run("insights.py")
 if not a.demo:
     run("draft_outreach.py", *claude, optional=True)
 run("export_snapshot.py", *claude)
+run("export_reports.py", optional=True)  # published monthly reports -> web/public/data/reports
 print("\nDone.")

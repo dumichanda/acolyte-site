@@ -28,6 +28,7 @@ export default defineConfig({
         admin: "admin/index.html",
         dashboards: "dashboards/index.html",
         property: "property/index.html",
+        reports: "reports/index.html",
       },
     },
   },

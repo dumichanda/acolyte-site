@@ -3,6 +3,7 @@ import { url } from "./site";
 const LINKS = [
   { href: "/analyst/", label: "Ask AI" },
   { href: "/dashboards/", label: "Dashboards" },
+  { href: "/reports/", label: "Reports" },
   { href: "/#use-cases", label: "Use cases" },
   { href: "/automation-index/", label: "Automation index" },
   { href: "/employers/", label: "Employers" },

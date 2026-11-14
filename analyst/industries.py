@@ -181,3 +181,53 @@ BRIEFS = {
         "promotions), or the current spread if there is one day of data; (4) Amazon.co.za and Takealot versus grocery. "
         "Keep it to 4-6 sections, and state how many items each comparison rests on."),
 }
+
+
+# ---------------------------------------------------------------- monthly reports (public sample packs, 1st of each month)
+MONTHLY = {
+    "property": {
+        "audience": "estate agency principals, developers and property investors", "since": "14 November 2026",
+        "sections": ("residential stock by province and region, and how it moved within the month; asking prices, rents and "
+                     "indicative 2-bed gross yields by region against the bond rate; price cuts and offers pending; agency "
+                     "share of listings in the biggest regions; the flow of new listings (Property24 newest)"),
+    },
+    "retail": {
+        "audience": "FMCG brand, category and pricing managers", "since": "14 November 2026",
+        "sections": ("which retailer is cheapest on a like-for-like basket; price index by retailer and by channel; the house-"
+                     "brand discount against name brands (retail_unit_prices); the widest price spreads and the month's price "
+                     "moves and likely promotions"),
+    },
+    "marketplace": {
+        "audience": "brands and sellers on Amazon.co.za and Takealot", "since": "14 November 2026",
+        "sections": ("Amazon.co.za versus Takealot on items both list; marketplace prices against the cheapest grocery or "
+                     "wholesale store; assortment coverage, ratings and third-party seller pricing; online-shopping search "
+                     "interest (Takealot, Amazon South Africa, Temu, Shein, Black Friday)"),
+    },
+    "jobs": {
+        "audience": "HR, recruitment and workforce-planning leaders", "since": "12 November 2026",
+        "sections": ("hiring demand by role family and province; who is hiring (top direct employers, share via recruiters) "
+                     "with Glassdoor ratings; pay from Glassdoor salary benchmarks against advertised ranges; skills and "
+                     "tools in demand; roles with the most automatable work"),
+    },
+}
+
+
+def monthly_prompt(industry: str, period, month_to_date: bool) -> str:
+    """Prompt for one monthly report. period = first day of the month."""
+    from datetime import date
+    m = MONTHLY[industry]
+    first = period
+    last = date(first.year + (first.month == 12), first.month % 12 + 1, 1)
+    back = date(first.year - (first.month <= 5), (first.month - 6) % 12 + 1, 1)
+    label = first.strftime("%B %Y")
+    mtd = " This is a month-to-date edition: say so in the title (e.g. '(month to date)')." if month_to_date else ""
+    return (
+        f"Make the {label} monthly report pack for {m['audience']}. Period: {first} to {last} (exclusive).{mtd} "
+        f"Our collection for this data started on {m['since']}: say so plainly, treat the first collection days as the "
+        "baseline and never present figures for months before that as if we had them. Write 5 to 7 sections ordered by "
+        "importance, each with an action title, a takeaway with numbers, KPI cards and a 'so what' for the reader. Cover: "
+        f"(1) the month's headline numbers and what changed within the month (earliest vs latest day in the period); "
+        f"(2) {m['sections']}; and (3) a 5-month demand look-back from {back.strftime('%B %Y')} to {label} using "
+        "analyst.search_interest rows whose term_group ends in '12 months' (monthly averages of interest per term): name "
+        "the trends, patterns and seasonal peaks, and what they mean for the reader. Finish with concrete actions for the "
+        "coming month, and in the method say exactly which dates and datasets each part rests on.")

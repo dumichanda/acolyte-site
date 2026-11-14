@@ -20,6 +20,36 @@ function ExportBtn({ label, run, primary }: { label: string; run: () => Promise<
 
 import { API, api, getToken, logout, type Industry, type Me } from "../auth";
 import { SignIn, UsageCard } from "../Account";
+import { loadIndex, loadReport, monthLabel, type ReportCard } from "../reports/data";
+
+/** Fills the empty canvas: this analyst's latest monthly reports, opened straight into the canvas. */
+function LatestReports({ industry, onOpen }: { industry: string; onOpen: (r: ReportArtifact) => void }) {
+  const [cards, setCards] = useState<ReportCard[]>([]);
+  const [busy, setBusy] = useState<number | null>(null);
+  useEffect(() => { loadIndex().then((rs) => setCards(rs.filter((r) => r.industry === industry).slice(0, 4))); }, [industry]);
+  if (!cards.length) return (
+    <div className="latest-reports empty">
+      <b>Monthly reports</b>
+      <p className="muted small">This analyst publishes a report pack on the 1st of every month. It will appear here, ready to open and download.</p>
+      <a className="link" href={url("/reports/")}>Reports &amp; dashboards →</a>
+    </div>
+  );
+  return (
+    <div className="latest-reports">
+      <div className="lr-head"><b>Latest reports from this analyst</b><a className="link" href={url("/reports/")}>See all →</a></div>
+      {cards.map((r) => (
+        <button key={r.id} className="lr" disabled={busy === r.id} onClick={async () => {
+          setBusy(r.id); const f = await loadReport(r.id); setBusy(null); if (f) onOpen(f.report);
+        }}>
+          <span className="muted small">{monthLabel(r.period, r.month_to_date)}</span>
+          <b>{r.title}</b>
+          {r.takeaway && <span className="muted small">{r.takeaway.length > 160 ? r.takeaway.slice(0, 157) + "…" : r.takeaway}</span>}
+          <span className="go">{busy === r.id ? "Opening…" : "Open the report →"}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** Signed-in account (null = anonymous demo visitor). */
 const AuthCtx = createContext<Me | null>(null);
@@ -744,10 +774,13 @@ function App() {
             </div>
           )}
           {!current && (
-            <div className="canvas-empty">
-              <div className="big">Charts and reports appear here</div>
-              <p className="muted">Each one is drawn from the live data, can be downloaded as PNG, CSV or PDF, and shows the query behind it.</p>
-            </div>
+            <>
+              <div className="canvas-empty">
+                <div className="big">Charts and reports appear here</div>
+                <p className="muted">Each one is drawn from the live data, can be downloaded as PNG, CSV or PDF, and shows the query behind it.</p>
+              </div>
+              <LatestReports industry={ws} onOpen={openReport} />
+            </>
           )}
           {current?.kind === "chart" && <div className="card"><ChartView c={current} /></div>}
           {current?.kind === "report" && <div className="card"><ReportView r={current} /></div>}

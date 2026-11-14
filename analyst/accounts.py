@@ -417,3 +417,47 @@ def finish_brief(db: str, industry: str, day, report: dict | None, summary: str,
                         finished_at = now() WHERE industry = %s AND day = %s""",
                      ("ready" if report else "failed", json.dumps(report, default=str) if report else None, (summary or "")[:4000],
                       cost, (error or "")[:500] or None, industry, day))
+
+
+# ---------------------------------------------------------------- monthly reports (public sample packs)
+def claim_report(db: str, industry: str, period, month_to_date: bool, force: bool = False) -> bool:
+    """Mark a monthly report as running. False if it is running or ready already (unless force)."""
+    with psycopg.connect(db) as conn:
+        r = conn.execute("""INSERT INTO admin.reports AS r (industry, period, month_to_date) VALUES (%s, %s, %s)
+                            ON CONFLICT (industry, period) DO UPDATE SET status = 'running', started_at = now(), error = NULL,
+                                month_to_date = EXCLUDED.month_to_date
+                            WHERE %s OR r.status = 'failed'
+                               OR (r.status = 'running' AND r.started_at < now() - interval '25 minutes')
+                            RETURNING id""", (industry, period, month_to_date, force)).fetchone()
+    return bool(r)
+
+
+def finish_report(db: str, industry: str, period, report: dict | None, summary: str, cost: float, error: str | None) -> None:
+    with psycopg.connect(db) as conn:
+        conn.execute("""UPDATE admin.reports SET status = %s, report = %s, title = %s, summary = %s, cost_usd = %s,
+                        error = %s, finished_at = now() WHERE industry = %s AND period = %s""",
+                     ("ready" if report else "failed", json.dumps(report, default=str) if report else None,
+                      (report or {}).get("title"), (summary or "")[:4000], cost, (error or "")[:500] or None, industry, period))
+
+
+def report_status(db: str, industry: str, period) -> str | None:
+    with psycopg.connect(db) as conn:
+        r = conn.execute("SELECT status FROM admin.reports WHERE industry = %s AND period = %s", (industry, period)).fetchone()
+    return r[0] if r else None
+
+
+def list_reports(db: str) -> list[dict]:
+    """Published, ready reports (metadata only)."""
+    with psycopg.connect(db) as conn:
+        return _jsonable(_rows(conn, """
+            SELECT id, industry, period, month_to_date, title, finished_at,
+                   report->'exec'->>'takeaway' AS takeaway, report->'exec'->'kpis' AS kpis,
+                   jsonb_array_length(COALESCE(report->'sections', '[]')) AS sections
+            FROM admin.reports WHERE status = 'ready' AND published ORDER BY period DESC, industry"""))
+
+
+def get_report(db: str, rid: int) -> dict | None:
+    with psycopg.connect(db) as conn:
+        r = _rows(conn, """SELECT id, industry, period, month_to_date, title, report, finished_at FROM admin.reports
+                           WHERE id = %s AND status = 'ready' AND published""", (rid,))
+    return _jsonable(r[0]) if r else None

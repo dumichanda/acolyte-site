@@ -31,7 +31,7 @@ from pydantic import BaseModel, Field
 from . import accounts as acc
 from . import clientdata as cd
 from .agent import MODEL, TIERS, Budget, Session, answer, query, route
-from .industries import BRIEFS, INDUSTRIES
+from .industries import BRIEFS, INDUSTRIES, MONTHLY, monthly_prompt
 
 REPORT_RX = re.compile(r"report|pack|deck|presentation|power ?point|\bppt|\bpdf", re.I)
 
@@ -426,13 +426,13 @@ def sast_now() -> datetime:
     return datetime.now(ZoneInfo("Africa/Johannesburg"))
 
 
-def generate_brief(industry: str, day) -> None:
-    """Run the industry's brief prompt as a deep report pack and store it. Never raises."""
+def write_pack(industry: str, prompt: str, sid: str, label: str) -> tuple[dict | None, str, float, str | None]:
+    """Run a prompt as a deep report pack for an industry analyst. Returns (report, text, cost, error). Never raises."""
     t0, report, text, cost, err = time.time(), None, "", 0.0, None
-    s = Session(id=f"brief-{industry}-{day}", industry=industry)
+    s = Session(id=sid, industry=industry)
     rec_queries = []
     try:
-        for ev in answer(client(), s, BRIEFS[industry], DB_URL, Budget(float(os.environ.get("BRIEF_MAX_USD", "3"))), "deep", "deep",
+        for ev in answer(client(), s, prompt, DB_URL, Budget(float(os.environ.get("BRIEF_MAX_USD", "3"))), "deep", "deep",
                          max_steps=18):
             t = ev.get("type")
             if t == "text":
@@ -449,15 +449,20 @@ def generate_brief(industry: str, day) -> None:
             err = "The analyst finished without writing a report."
     except Exception as e:
         err = f"{e.__class__.__name__}: {e}"[:300]
-    print(f"[brief] {industry} {day}: {'ready' if report else 'failed'} ${cost:.3f} {err or ''}", flush=True)
+    print(f"[{label}] {industry}: {'ready' if report else 'failed'} ${cost:.3f} {err or ''}", flush=True)
+    log_usage({"account_id": None, "visitor": label, "session_id": sid, "country": None,
+               "question": f"[{label}] {industry}", "mode": "deep", "tier": "deep", "models": [],
+               "status": "done" if report else "error", "error": err, "queries": json.dumps(rec_queries)[:20000],
+               "charts": len((report or {}).get("charts") or {}), "report": bool(report), "cost_usd": cost,
+               "input": None, "cache_read": None, "cache_write": None, "output": None,
+               "duration_ms": int((time.time() - t0) * 1000)})
+    return report, text, cost, (None if report else err)
+
+
+def generate_brief(industry: str, day) -> None:
+    report, text, cost, err = write_pack(industry, BRIEFS[industry], f"brief-{industry}-{day}", "daily-brief")
     try:
-        acc.finish_brief(ADMIN_DB_URL, industry, day, report, text, cost, None if report else err)
-        log_usage({"account_id": None, "visitor": "daily-brief", "session_id": s.id, "country": None,
-                   "question": f"[daily brief] {industry}", "mode": "deep", "tier": "deep", "models": [],
-                   "status": "done" if report else "error", "error": err, "queries": json.dumps(rec_queries)[:20000],
-                   "charts": len((report or {}).get("charts") or {}), "report": bool(report), "cost_usd": cost,
-                   "input": None, "cache_read": None, "cache_write": None, "output": None,
-                   "duration_ms": int((time.time() - t0) * 1000)})
+        acc.finish_brief(ADMIN_DB_URL, industry, day, report, text, cost, err)
     except Exception as e:
         print(f"[brief] could not save: {e}", flush=True)
 
@@ -501,6 +506,8 @@ def _reset_interrupted_briefs() -> None:
     try:
         import psycopg
         with psycopg.connect(ADMIN_DB_URL, connect_timeout=10) as conn:
+            conn.execute("""UPDATE admin.reports SET status = 'failed', error = 'Interrupted by a server restart',
+                            started_at = now() - interval '1 hour', finished_at = now() WHERE status = 'running'""")
             n = conn.execute("""UPDATE admin.briefs SET status = 'failed', error = 'Interrupted by a server restart',
                                 started_at = now() - interval '1 hour', finished_at = now() WHERE status = 'running'""").rowcount
         if n:
@@ -523,6 +530,78 @@ def brief(industry: str, day: str | None = None, account: dict = Depends(need_ac
             status = "running"
     b = acc.get_brief(ADMIN_DB_URL, industry, day)
     return {"today": str(today), "today_status": status, "brief": b, "history": acc.list_briefs(ADMIN_DB_URL, industry)}
+
+
+# ---------------------------------------------------------------- monthly reports
+_report_threads: dict[str, threading.Thread] = {}
+
+
+def _period(month: str | None):
+    """'2026-11' -> date(2026, 11, 1); default the current SAST month. Returns (period, month_to_date)."""
+    from datetime import date as _d
+    today = sast_now().date()
+    if month:
+        try:
+            y, m = (int(x) for x in month.split("-")[:2])
+            p = _d(y, m, 1)
+        except ValueError:
+            raise HTTPException(400, "Use month=YYYY-MM.")
+    else:
+        p = _d(today.year, today.month, 1)
+    if p > today:
+        raise HTTPException(400, "That month hasn't started yet.")
+    return p, (p.year, p.month) == (today.year, today.month)
+
+
+def generate_report(industry: str, period, month_to_date: bool) -> None:
+    report, text, cost, err = write_pack(industry, monthly_prompt(industry, period, month_to_date),
+                                         f"report-{industry}-{period}", "monthly-report")
+    try:
+        acc.finish_report(ADMIN_DB_URL, industry, period, report, text, cost, err)
+    except Exception as e:
+        print(f"[report] could not save: {e}", flush=True)
+
+
+@app.post("/admin/reports/{industry}/run")
+def report_run(industry: str, req: Request, month: str | None = None, force: bool = False):
+    """Write the monthly report for an industry (default: this month, month to date). Called by the reports workflow."""
+    require_admin(req)
+    if industry not in MONTHLY:
+        raise HTTPException(404, "No monthly report for that industry.")
+    if not (DB_URL and os.environ.get("ANTHROPIC_API_KEY")):
+        raise HTTPException(503, "The analyst is not configured.")
+    period, mtd = _period(month)
+    key = f"{industry}:{period}"
+    th = _report_threads.get(key)
+    started = False
+    if not (th and th.is_alive()) and acc.claim_report(ADMIN_DB_URL, industry, period, mtd, force):
+        th = threading.Thread(target=generate_report, args=(industry, period, mtd), daemon=True)
+        _report_threads[key] = th
+        th.start()
+        started = True
+    return {"started": started, "period": str(period), "month_to_date": mtd,
+            "status": acc.report_status(ADMIN_DB_URL, industry, period)}
+
+
+@app.get("/admin/reports/{industry}")
+def report_admin_status(industry: str, req: Request, month: str | None = None):
+    require_admin(req)
+    period, _ = _period(month)
+    return {"period": str(period), "status": acc.report_status(ADMIN_DB_URL, industry, period)}
+
+
+@app.get("/reports")
+def reports_public():
+    """Published monthly reports (public sample packs; market data only)."""
+    return {"reports": acc.list_reports(ADMIN_DB_URL)}
+
+
+@app.get("/reports/{rid}")
+def report_public(rid: int):
+    r = acc.get_report(ADMIN_DB_URL, rid)
+    if not r:
+        raise HTTPException(404, "Report not found.")
+    return r
 
 
 @app.post("/admin/briefs/{industry}/run")

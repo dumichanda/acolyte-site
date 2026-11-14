@@ -1,0 +1,88 @@
+name: Monthly reports
+
+# Writes the monthly report pack for each analyst (Talent, Property, Retail Pricing, Marketplace) on the Analyst server,
+# then publishes them to the site's Reports page. Runs on the 1st of every month for the month just ended, and on
+# demand for any month (default: this month, month to date). Needs DATABASE_URL, SCRAPPA_API_KEY and ADMIN_TOKEN.
+on:
+  schedule:
+    - cron: "41 5 1 * *"        # 07:41 SAST on the 1st
+  workflow_dispatch:
+    inputs:
+      month:
+        description: "YYYY-MM (blank = this month, month to date)"
+        default: ""
+      force:
+        description: "Rewrite reports that already exist"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-index        # never alongside the daily refresh (both commit data)
+  cancel-in-progress: false
+
+jobs:
+  reports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SCRAPPA_API_KEY: ${{ secrets.SCRAPPA_API_KEY }}
+      ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+      API: https://acolyte-site.onrender.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: 12-month search trends for the look-back
+        run: python pipeline/fetch_trends.py --long
+
+      - name: Write the reports
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then MONTH=$(date -u -d "$(date -u +%Y-%m-01) -1 day" +%Y-%m); else MONTH="${{ inputs.month }}"; fi
+          FORCE="${{ inputs.force }}"; [ "$FORCE" = "true" ] || FORCE=false
+          echo "Month: ${MONTH:-this month}  force: $FORCE"
+          for i in $(seq 1 8); do   # wake the server
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$API/health"); echo "health: $code"; [ "$code" = "200" ] && break; sleep 15
+          done
+          for ind in property retail marketplace jobs; do
+            curl -fsS --max-time 90 -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/reports/$ind/run?month=$MONTH&force=$FORCE"; echo
+          done
+          for i in $(seq 1 75); do
+            pending=0
+            for ind in property retail marketplace jobs; do
+              st=$(curl -fsS --max-time 60 -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/reports/$ind?month=$MONTH" | python3 -c "import json,sys;print(json.load(sys.stdin).get('status'))" || echo unknown)
+              [ "$st" = "running" ] && pending=$((pending+1))
+            done
+            echo "still writing: $pending"
+            [ "$pending" = "0" ] && break
+            sleep 20
+          done
+          for ind in property retail marketplace jobs; do
+            echo "$ind: $(curl -fsS --max-time 60 -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/reports/$ind?month=$MONTH")"
+          done
+
+      - name: Publish to the site
+        run: |
+          python pipeline/export_reports.py
+          git config user.name "acolyte-bot"
+          git config user.email "acolyte-bot@users.noreply.github.com"
+          git add web/public/data/reports
+          if git diff --cached --quiet; then echo "No report changes."; else
+            git commit -m "Monthly reports $(date -u +%Y-%m-%d)"
+            for i in 1 2 3 4; do git pull --rebase origin main && git push && break; sleep $((i * 10)); done
+          fi
+
+  deploy:
+    needs: reports
+    uses: ./.github/workflows/deploy.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write

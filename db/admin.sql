@@ -133,3 +133,21 @@ ALTER TABLE admin.client_tables ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DE
 ALTER TABLE admin.client_tables ADD COLUMN IF NOT EXISTS source_url TEXT;
 ALTER TABLE admin.client_tables ADD COLUMN IF NOT EXISTS last_synced TIMESTAMPTZ;
 ALTER TABLE admin.client_tables ADD COLUMN IF NOT EXISTS sync_error TEXT;
+
+-- ---------------------------------------------------------------- monthly reports (public sample packs)
+CREATE TABLE IF NOT EXISTS admin.reports (
+    id          SERIAL PRIMARY KEY,
+    industry    TEXT NOT NULL,
+    period      DATE NOT NULL,                 -- first day of the month covered
+    title       TEXT,
+    status      TEXT NOT NULL DEFAULT 'running' CHECK (status IN ('running', 'ready', 'failed')),
+    report      JSONB,                         -- report artifact (charts embedded)
+    summary     TEXT,
+    month_to_date BOOLEAN NOT NULL DEFAULT FALSE,
+    published   BOOLEAN NOT NULL DEFAULT TRUE, -- shown on the public Reports page
+    cost_usd    NUMERIC,
+    error       TEXT,
+    started_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    finished_at TIMESTAMPTZ,
+    UNIQUE (industry, period)
+);

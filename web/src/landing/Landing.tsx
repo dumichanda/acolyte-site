@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, 
 import type { Snapshot } from "../types";
 import { rands } from "../types";
 import { SITE, url } from "../site";
+import { ANALYSTS as REPORT_ANALYSTS, latestPerAnalyst, loadIndex, monthLabel, type ReportCard } from "../reports/data";
 
 const reduced = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -307,6 +308,42 @@ const DOES = [
   { t: "Checks its own work", x: "every figure traced back to the data" },
 ];
 
+/* ---------------- Sample reports (monthly packs, published by the reports workflow) ---------------- */
+
+function SampleReports() {
+  const [cards, setCards] = useState<ReportCard[] | null>(null);
+  useEffect(() => { loadIndex().then((rs) => setCards(latestPerAnalyst(rs))); }, []);
+  return (
+    <section id="reports" className="samples">
+      <div className="inner">
+        <div className="row-head">
+          <div>
+            <span className="eyebrow">Sample reports</span>
+            <h2>This month's reports, <em>free to read.</em></h2>
+            <p className="lede">Every analyst publishes a monthly report pack: what changed, trends and patterns, a 5-month look-back on demand, and actions for the month ahead. Download any of them as PowerPoint or PDF.</p>
+          </div>
+          <a className="btn-signal" href={url("/reports/")}>See all reports &amp; dashboards <span className="arr">→</span></a>
+        </div>
+        {cards && cards.length ? (
+          <div className="sample-grid">
+            {cards.map((r) => (
+              <a key={r.id} className="sample" href={url(`/reports/#report-${r.id}`)}>
+                <span className="st mono">{REPORT_ANALYSTS[r.industry]?.name || r.analyst} · {monthLabel(r.period, r.month_to_date)}</span>
+                <h3>{r.title}</h3>
+                {r.takeaway && <p>{r.takeaway.length > 170 ? r.takeaway.slice(0, 167) + "…" : r.takeaway}</p>}
+                <div className="sk">{r.kpis.slice(0, 2).map((k, i) => <div key={i}><b>{k.value}</b><span>{k.label}</span></div>)}</div>
+                <span className="go">Read the report <span className="arr">→</span></span>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <p className="sample-empty">{cards === null ? "Loading reports…" : "The first editions are being written. They'll appear here as soon as they're published."}</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 /* ---------------- Datasets and use cases ---------------- */
 
 const DATASETS = [
@@ -440,6 +477,7 @@ export default function Landing() {
           <a className="logo" href={url("/")}><img src={url("/favicon.svg")} alt="" />acolyte</a>
           <div className="pill links">
             <a href="#analyst">Your analyst</a>
+            <a href={url("/reports/")}>Reports</a>
             <a href="#use-cases">Use cases</a>
             <a href={url("/analyst/")}>Ask AI</a>
             <a href="#automation">Automation</a>
@@ -514,6 +552,8 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      <SampleReports />
 
       <section className="proof" id="use-cases">
         <div className="inner">

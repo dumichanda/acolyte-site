@@ -51,6 +51,8 @@ For "what changed since yesterday", lead with stock changes (complete), then new
 ## analyst.search_interest — Google Trends, South Africa (weekly pull, 90 days of daily values)
 analyst, term_group, term, day, interest (0-100, RELATIVE within its term_group and pull), interest_7d_avg.
 Compare terms inside the same term_group, or one term over time; never compare raw values across groups.
+Groups ending in ' · 12 months' hold 12 months of WEEKLY values (pulled monthly): use them for month-by-month
+patterns over the last 5-12 months (monthly averages per term); the plain groups hold the last 90 days, daily.
 Use as a leading demand signal (e.g. searches for "houses for sale cape town" vs listings there).
 
 ## analyst.areas — area crosswalk
