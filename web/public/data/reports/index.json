@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-14T22:33:17.235656+00:00",
+ "generated": "2026-11-14T22:49:53.752946+00:00",
  "reports": [
   {
    "id": 4,
@@ -62,6 +62,37 @@
    ],
    "sections": 6,
    "published": "2026-11-14T22:27:43.060239+00:00"
+  },
+  {
+   "id": 1,
+   "industry": "property",
+   "analyst": "Property Analyst",
+   "period": "2026-11-01",
+   "month_to_date": true,
+   "title": "SA Property Monthly Pack \u2014 November 2026 (month to date, baseline edition)",
+   "takeaway": "On our first collection day (14 Nov 2026) Private Property carried 190,220 homes for sale and 34,248 to rent; just 2.7% of sampled sale listings were price-reduced, and the national 2-bed gross yield (10.1%) sits just under the 10.5% bond rate.",
+   "kpis": [
+    {
+     "tone": "brand",
+     "label": "Homes for sale",
+     "value": "190,220",
+     "context": "full count, 14 Nov 2026"
+    },
+    {
+     "tone": "neutral",
+     "label": "Homes to rent",
+     "value": "34,248",
+     "context": "5.6 for sale per rental"
+    },
+    {
+     "tone": "neutral",
+     "label": "Top-5 regions' share",
+     "value": "50%",
+     "context": "of sale stock across 48 regions"
+    }
+   ],
+   "sections": 6,
+   "published": "2026-11-14T22:49:19.162422+00:00"
   },
   {
    "id": 2,
