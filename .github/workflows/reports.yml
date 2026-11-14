@@ -47,6 +47,14 @@ jobs:
           python pipeline/db.py
           python - <<'PY'
           import os, psycopg
+          import re
+          for user in ("analyst_web", "analyst_admin"):
+              url = re.sub(r"//[^:@/]+:[^@/]*@", f"//{user}:{os.environ['ANALYST_DB_PASSWORD']}@", os.environ["DATABASE_URL"], count=1)
+              try:
+                  psycopg.connect(url, connect_timeout=15).close()
+                  print(f"login {user} with the GitHub ANALYST_DB_PASSWORD: OK")
+              except Exception as e:
+                  print(f"login {user} with the GitHub ANALYST_DB_PASSWORD: FAILED ({e.__class__.__name__})")
           with psycopg.connect(os.environ["DATABASE_URL"]) as c:
               for priv in ("SELECT", "INSERT", "UPDATE"):
                   print(priv, "on admin.reports for analyst_admin:",
