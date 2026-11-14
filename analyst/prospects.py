@@ -59,6 +59,7 @@ SQL = {
                coalesce(sum(reviews), 0)                                    AS reviews
         FROM analyst.retail_offers
         WHERE day >= current_date - 14 AND channel IN ('online marketplace', 'other online store') AND retailer IS NOT NULL
+          AND retailer !~* '(desertcart|ubuy|\.(ae|sa|uk|us|in|ng|ke|au|de|com\.sa|co\.uk|com\.au)$)'   -- SA stores only
         GROUP BY retailer HAVING count(DISTINCT item) >= 3""",
     "jobs": """
         SELECT e.employer AS name, e.is_recruiter, e.province, e.industry, e.size_band, e.open_roles,
