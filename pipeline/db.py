@@ -71,7 +71,8 @@ def init_db() -> None:
         conn.execute((ROOT / "db" / "admin.sql").read_text())
         conn.execute((ROOT / "db" / "property.sql").read_text())
         conn.execute((ROOT / "db" / "retail.sql").read_text())
-        conn.execute((ROOT / "db" / "talent.sql").read_text()) if (ROOT / "db" / "talent.sql").exists() else None
+        for extra in ("talent.sql", "signals.sql", "geo.sql"):
+            conn.execute((ROOT / "db" / extra).read_text())
         setup_analyst_role(conn)
         with conn.cursor() as cur:
             cur.executemany(

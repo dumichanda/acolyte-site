@@ -15,6 +15,9 @@ pipeline, database, Acolyte Analyst, accounts, dashboards and exports, so a new 
 | SA jobs | Live, refreshed daily | Job ads from Adzuna and verified web listings, employers (profiled by agents), skills and tools from ad text, role scores |
 | SA property | Live, refreshed daily | Private Property listings, asking prices, rents, agencies and full stock counts per province and region, via the Scrappa API (schema `property`) |
 | SA retail prices | Live, refreshed daily | ~48-item FMCG basket on Google Shopping South Africa: prices by retailer and channel incl. Amazon.co.za and Takealot (schema `retail`) |
+| Property24 | Live, daily | Newest listings + full stock counts for 26 main cities (portal `property24` in schema `property`) |
+| Demand signals | Live, weekly | Google Trends search interest in SA for property, jobs, retail and marketplace terms (schema `signals`) |
+| Area crosswalk | Live | Suburb → region/city → metro → province across all datasets (`geo.metros`, `analyst.areas`) |
 | Talent extras | Live | Google Jobs and LinkedIn ads (into `jobs`), Glassdoor salary percentiles and employer ratings (schema `talent`) |
 
 ## Use cases

@@ -40,3 +40,18 @@ Useful measures (define them in the answer):
 day, item, category, retailer, channel, price_zar, previous_day, previous_price_zar, change_zar, change_pct.
 Each item-retailer price vs the previous day it was seen. Moves of −10% or more are likely promotions; a return to
 the earlier price later means the promotion ended. For "what changed since yesterday" filter day = latest day.
+
+## analyst.search_interest — Google Trends, South Africa (weekly pull, 90 days of daily values)
+analyst, term_group, term, day, interest (0-100, RELATIVE within its term_group and pull), interest_7d_avg.
+Compare terms inside the same term_group, or one term over time; never compare raw values across groups.
+Use as a leading demand signal (e.g. searches for "houses for sale cape town" vs listings there).
+
+## analyst.areas — area crosswalk
+level (suburb, region/city, job city), area, parent (region of a suburb), province, metro (e.g. City of Tshwane,
+Ekurhuleni, eThekwini), seen_in (which datasets use the name). Join on area = region/city/suburb to compare datasets
+by metro or province.
+
+## analyst.retail_unit_prices — price per kg / litre / unit, and name vs house brand
+day, item, category, brand_type ('name brand' or 'house brand', e.g. Ritebrand at Shoprite, Checkers Housebrand,
+PnP own brand, Woolworths own), retailer, channel, price_zar, size_value, size_unit, price_per_unit_zar, unit_basis.
+Use for fair comparisons across pack sizes and for the house-brand discount vs name brands in the same category.

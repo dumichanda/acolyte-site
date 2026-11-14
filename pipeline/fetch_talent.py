@@ -36,7 +36,9 @@ SALARY_TITLES = {
 }
 # Glassdoor location ids (from /glassdoor/locations/search).
 LOCATIONS = [("South Africa", "COUNTRY", 211), ("Gauteng", "STATE", 6781), ("Western Cape", "STATE", 6786),
-             ("KwaZulu-Natal", "STATE", 6778)]
+             ("KwaZulu-Natal", "STATE", 6778), ("Eastern Cape", "STATE", 6780), ("Free State", "STATE", 6779),
+             ("Limpopo", "STATE", 6784), ("Mpumalanga", "STATE", 6782), ("North West", "STATE", 6785),
+             ("Northern Cape", "STATE", 6783)]
 
 CITY_PROVINCE = {
     "johannesburg": "Gauteng", "sandton": "Gauteng", "pretoria": "Gauteng", "centurion": "Gauteng", "midrand": "Gauteng",
@@ -203,9 +205,9 @@ def main() -> None:
     if not scrappa.key():
         print("SCRAPPA_API_KEY not set; skipping talent extras.")
         return
-    searches = int(os.environ.get("TALENT_JOB_SEARCHES", "8"))
-    sal = int(os.environ.get("TALENT_SALARY_CALLS", "15"))
-    rat = int(os.environ.get("TALENT_RATING_CALLS", "15"))
+    searches = int(os.environ.get("TALENT_JOB_SEARCHES", "16"))
+    sal = int(os.environ.get("TALENT_SALARY_CALLS", "30"))
+    rat = int(os.environ.get("TALENT_RATING_CALLS", "25"))
     with connect() as conn:
         conn.execute((ROOT / "db" / "talent.sql").read_text())
         if conn.execute("SELECT 1 FROM pg_roles WHERE rolname = 'analyst_reader'").fetchone():

@@ -11,7 +11,7 @@ import urllib.parse
 import urllib.request
 
 BASE = "https://scrappa.co/api/"
-SOURCES = ("privateproperty", "google_shopping", "google_jobs", "linkedin_jobs", "glassdoor")
+SOURCES = ("privateproperty", "property24", "google_shopping", "google_jobs", "linkedin_jobs", "glassdoor", "google_trends")
 
 
 class Budget(Exception):

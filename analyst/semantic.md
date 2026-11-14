@@ -81,3 +81,13 @@ salary_count, url. Treat ratings with fewer than 20 reviews as indicative.
   yesterday / this week", compare the latest days with the same days a week earlier.
 - analyst.salary_history — Glassdoor salary medians at each monthly refresh (as_of, monthly_median, change_vs_previous,
   change_pct). analyst.employer_rating_history — rating and review counts at each refresh (rating_change, new_reviews).
+
+## analyst.search_interest — Google Trends, South Africa (weekly pull, 90 days of daily values)
+analyst, term_group, term, day, interest (0-100, RELATIVE within its term_group and pull), interest_7d_avg.
+Compare terms inside the same term_group, or one term over time; never compare raw values across groups.
+Use as a leading demand signal (e.g. searches for "houses for sale cape town" vs listings there).
+
+## analyst.areas — area crosswalk
+level (suburb, region/city, job city), area, parent (region of a suburb), province, metro (e.g. City of Tshwane,
+Ekurhuleni, eThekwini), seen_in (which datasets use the name). Join on area = region/city/suburb to compare datasets
+by metro or province.

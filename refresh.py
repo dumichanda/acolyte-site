@@ -48,8 +48,10 @@ else:
         agent("job_scout")  # agentic web job search (OpenRouter or Claude); skips itself without a key
 if not a.demo:
     run("fetch_property.py", optional=True)  # SA property dataset (Scrappa); skips itself without SCRAPPA_API_KEY
+    run("fetch_property24.py", optional=True)  # Property24 newest listings + city stock (Scrappa)
     run("fetch_retail.py", optional=True)    # SA retail prices: FMCG basket on Google Shopping SA (Scrappa)
     run("fetch_talent.py", optional=True)    # Google Jobs + LinkedIn ads, Glassdoor salaries and ratings (Scrappa)
+    run("fetch_trends.py", optional=True)    # Google Trends demand signals, weekly (Scrappa)
 run("classify.py", *claude)
 run("companies.py")
 if not a.demo and not a.no_enrich:

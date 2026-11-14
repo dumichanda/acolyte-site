@@ -10,6 +10,10 @@ CREATE TABLE IF NOT EXISTS retail.basket (
     match    TEXT[] NOT NULL          -- lower-case tokens the offer title must all contain
 );
 
+ALTER TABLE retail.basket ADD COLUMN IF NOT EXISTS brand_type TEXT NOT NULL DEFAULT 'name brand';  -- or 'house brand'
+ALTER TABLE retail.basket ADD COLUMN IF NOT EXISTS size_value NUMERIC;   -- in size_unit
+ALTER TABLE retail.basket ADD COLUMN IF NOT EXISTS size_unit TEXT;       -- kg, l or units
+
 CREATE TABLE IF NOT EXISTS retail.offers (
     day          DATE NOT NULL,
     item         TEXT NOT NULL,
@@ -66,3 +70,11 @@ SELECT day, item, category, retailer, channel, price_zar,
        price_zar - lag(price_zar) OVER w AS change_zar,
        round(100.0 * (price_zar - lag(price_zar) OVER w) / NULLIF(lag(price_zar) OVER w, 0), 1) AS change_pct
 FROM analyst.retail_prices WINDOW w AS (PARTITION BY item, retailer ORDER BY day);
+
+-- Price per kg / litre / unit, and name vs house brand, for fair comparisons across pack sizes.
+DROP VIEW IF EXISTS analyst.retail_unit_prices CASCADE;
+CREATE VIEW analyst.retail_unit_prices AS
+SELECT p.day, p.item, p.category, b.brand_type, p.retailer, p.channel, p.price_zar, b.size_value, b.size_unit,
+       round(p.price_zar / NULLIF(b.size_value, 0), 2) AS price_per_unit_zar,
+       CASE b.size_unit WHEN 'kg' THEN 'per kg' WHEN 'l' THEN 'per litre' ELSE 'per unit' END AS unit_basis
+FROM analyst.retail_prices p JOIN retail.basket b USING (item);

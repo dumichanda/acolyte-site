@@ -47,3 +47,20 @@ Useful derived measures:
 - analyst.property_daily_activity — from the listing SAMPLE: day, province, region, deal_type, new_listings (first seen
   that day), price_cuts, price_rises, avg_cut_pct. The first collection day is left out (baseline).
 For "what changed since yesterday", lead with stock changes (complete), then new listings and price cuts (sample).
+
+## analyst.search_interest — Google Trends, South Africa (weekly pull, 90 days of daily values)
+analyst, term_group, term, day, interest (0-100, RELATIVE within its term_group and pull), interest_7d_avg.
+Compare terms inside the same term_group, or one term over time; never compare raw values across groups.
+Use as a leading demand signal (e.g. searches for "houses for sale cape town" vs listings there).
+
+## analyst.areas — area crosswalk
+level (suburb, region/city, job city), area, parent (region of a suburb), province, metro (e.g. City of Tshwane,
+Ekurhuleni, eThekwini), seen_in (which datasets use the name). Join on area = region/city/suburb to compare datasets
+by metro or province.
+
+## Two portals: portal = 'privateproperty' or 'property24'
+- Private Property: regions (48) with full stock counts (category residential/commercial) and a first-pages sample.
+- Property24: 26 main cities (region = city name, e.g. 'Johannesburg', 'Sandton', 'Cape Town'), full city counts in
+  property_stock (category 'all'), and the NEWEST listings each day (an unbiased flow of new stock: use these for
+  "new listings", asking prices of new stock and agency share of new mandates). office = agency branch.
+Never add counts across portals (the same home is often on both). Compare portals side by side, or pick one.
