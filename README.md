@@ -156,6 +156,15 @@ tier. The whole conversation is prompt-cached between steps. Every answer shows 
 today's spend by tier; Render logs one `[usage]` line per question. Override models with `ANALYST_MODEL_FAST`,
 `ANALYST_MODEL_STANDARD`, `ANALYST_MODEL_DEEP`.
 
+**Client accounts, chat history and dashboards.** In `/admin/` → *Clients*, create an account per client with a plan
+(**Junior Analyst R30k**: 150 questions/day, 2 report packs/day and 8/week, Fast + Balanced models with Deep for packs only,
+3 dashboards; **Senior AI & Data Science R50k**: 400 questions/day, 6 packs/day and 25/week, all models, 10 dashboards).
+A PIN is generated and shown once (stored only as a PBKDF2 hash). Clients sign in on Ask AI with the PIN: they get
+usage rings (today / this week, based on actual AI cost), their saved chats in the side panel (continue any chat later),
+and a **Pin** button on every chart. `/dashboards/` shows their pinned charts live: each tile re-runs its SQL through
+the read-only guard (cached 15 minutes), with resize, reorder, PNG/CSV and PowerPoint export. Anonymous visitors keep
+the public demo limits and their chats are saved in their own browser.
+
 **Admin page** (`/admin/`, private): set `ADMIN_TOKEN` (any long random string) on the Render service, then open the page
 and enter it. Shows spend by day and model tier, questions with their SQL, unique visitors (daily anonymous ID, no IPs),
 countries, errors, agent runs and costs, Adzuna usage and the sales pipeline. Usage is logged to `admin.analyst_usage`

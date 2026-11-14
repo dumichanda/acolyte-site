@@ -50,3 +50,45 @@ SELECT o.stage, count(*) AS opportunities,
        count(*) FILTER (WHERE EXISTS (SELECT 1 FROM activities a WHERE a.opportunity_id = o.id AND a.kind = 'email_draft')) AS with_draft,
        count(*) FILTER (WHERE EXISTS (SELECT 1 FROM activities a WHERE a.opportunity_id = o.id AND a.kind = 'email_sent')) AS emailed
 FROM opportunities o GROUP BY 1;
+
+-- ---------------------------------------------------------------- client accounts, chat history, dashboards
+CREATE TABLE IF NOT EXISTS admin.accounts (
+    id          SERIAL PRIMARY KEY,
+    name        TEXT NOT NULL,
+    plan        TEXT NOT NULL DEFAULT 'junior' CHECK (plan IN ('junior', 'senior', 'owner')),
+    pin_salt    TEXT NOT NULL,
+    pin_hash    TEXT NOT NULL,          -- PBKDF2-SHA256; the PIN itself is never stored
+    active      BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_login  TIMESTAMPTZ
+);
+ALTER TABLE admin.analyst_usage ADD COLUMN IF NOT EXISTS account_id INT;
+CREATE INDEX IF NOT EXISTS analyst_usage_account_idx ON admin.analyst_usage (account_id, at);
+
+CREATE TABLE IF NOT EXISTS admin.conversations (
+    id          TEXT PRIMARY KEY,       -- = analyst session id
+    account_id  INT NOT NULL REFERENCES admin.accounts(id) ON DELETE CASCADE,
+    title       TEXT,
+    items       JSONB NOT NULL DEFAULT '[]',   -- what the chat shows
+    artifacts   JSONB NOT NULL DEFAULT '{}',   -- charts and reports
+    state       JSONB,                          -- model conversation + datasets, to continue later
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS conversations_account_idx ON admin.conversations (account_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS admin.dashboards (
+    id          SERIAL PRIMARY KEY,
+    account_id  INT NOT NULL REFERENCES admin.accounts(id) ON DELETE CASCADE,
+    name        TEXT NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS admin.dashboard_tiles (
+    id           SERIAL PRIMARY KEY,
+    dashboard_id INT NOT NULL REFERENCES admin.dashboards(id) ON DELETE CASCADE,
+    position     INT NOT NULL DEFAULT 0,
+    size         TEXT NOT NULL DEFAULT 'half' CHECK (size IN ('half', 'full')),
+    spec         JSONB NOT NULL,        -- {type, x, y, title, subtitle, value_format, sql}: re-run live
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);

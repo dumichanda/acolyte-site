@@ -8,6 +8,7 @@ import react from "@vitejs/plugin-react";
 //   /employers/           Who is hiring (company profiles)
 //   /tools/               Tools & skills in demand
 //   /analyst/             Acolyte Analyst: chat with the data (talks to analyst/server.py)
+//   /dashboards/          Live client dashboards (PIN sign-in); tiles are pinned from Ask AI
 //   /admin/               Private admin: analyst costs, questions, visitors, jobs (needs the admin key)
 //   /crm/                 Private CRM: talks to crm/server.py on your own computer
 // BASE_PATH: "/acolyte-site/" on GitHub Pages (set by the deploy workflow), "/" on a custom domain or locally.
@@ -25,6 +26,7 @@ export default defineConfig({
         crm: "crm/index.html",
         analyst: "analyst/index.html",
         admin: "admin/index.html",
+        dashboards: "dashboards/index.html",
       },
     },
   },

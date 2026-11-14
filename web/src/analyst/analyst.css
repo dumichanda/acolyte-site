@@ -81,3 +81,30 @@
 
 .analyst .usage { margin-top: 8px; font-size: 11px; color: var(--muted); font-family: "JetBrains Mono", monospace; }
 .analyst .mode { background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 5px 8px; font: inherit; font-size: 12px; }
+
+/* ---- side panel: chat history + account ---- */
+.analyst .an-grid.with-side { grid-template-columns: 230px minmax(320px, 5fr) 7fr; }
+.analyst .side { position: sticky; top: 12px; display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - 24px); min-width: 0; }
+.analyst .side .new-chat { width: 100%; }
+.analyst .side-title { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 4px; }
+.analyst .history { overflow-y: auto; flex: 1; min-height: 80px; display: flex; flex-direction: column; gap: 2px; }
+.analyst .hist { display: flex; align-items: center; border-radius: 10px; }
+.analyst .hist:hover, .analyst .hist.on { background: var(--panel); }
+.analyst .hist.on { box-shadow: inset 2px 0 0 var(--accent); }
+.analyst .hist-open { flex: 1; min-width: 0; text-align: left; background: none; border: none; color: var(--ink); font: inherit; font-size: 13px; padding: 7px 8px; cursor: pointer; display: flex; flex-direction: column; }
+.analyst .hist-open span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.analyst .hist-open em { font-style: normal; font-size: 10px; color: var(--muted); }
+.analyst .hist-del { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0 8px; opacity: 0; }
+.analyst .hist:hover .hist-del { opacity: 1; }
+.analyst .side-account { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.analyst .side-toggle { display: none; margin-bottom: 8px; }
+.pin { position: relative; }
+.pin-menu { position: absolute; right: 0; top: 30px; z-index: 30; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px; min-width: 220px; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 12px 32px #0008; }
+.pin-menu button { text-align: left; background: none; border: none; color: var(--ink); font: inherit; font-size: 13px; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+.pin-menu button:hover { background: #ffffff0d; }
+@media (max-width: 1180px) {
+  .analyst .an-grid.with-side { grid-template-columns: 1fr; }
+  .analyst .side-toggle { display: inline-block; }
+  .analyst .side { display: none; position: static; max-height: none; }
+  .analyst .side.open { display: flex; }
+}

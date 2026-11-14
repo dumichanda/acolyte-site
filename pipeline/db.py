@@ -50,6 +50,11 @@ def setup_analyst_role(conn: psycopg.Connection) -> None:
     conn.execute("GRANT USAGE ON SEQUENCE admin.analyst_usage_id_seq TO analyst_admin")
     conn.execute("GRANT SELECT ON admin.agent_costs, admin.adzuna_usage, admin.pipeline_totals, admin.crm_totals TO analyst_admin")
     conn.execute("ALTER ROLE analyst_admin SET statement_timeout = '15s'")
+    conn.execute("GRANT SELECT, UPDATE ON admin.analyst_usage TO analyst_admin")
+    conn.execute("""GRANT SELECT, INSERT, UPDATE, DELETE ON admin.accounts, admin.conversations, admin.dashboards,
+                    admin.dashboard_tiles TO analyst_admin""")
+    conn.execute("""GRANT USAGE ON SEQUENCE admin.accounts_id_seq, admin.dashboards_id_seq, admin.dashboard_tiles_id_seq
+                    TO analyst_admin""")
 
 
 def init_db() -> None:

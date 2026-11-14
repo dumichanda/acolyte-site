@@ -203,6 +203,9 @@ class Session:
     datasets: dict = field(default_factory=dict)
     charts: dict = field(default_factory=dict)
     report_reviews: int = 0
+    account_id: int | None = None
+    ui_items: list = field(default_factory=list)       # what the chat panel shows (saved with the conversation)
+    ui_artifacts: dict = field(default_factory=dict)
     turns: int = 0
     updated: float = field(default_factory=time.time)
 
@@ -236,8 +239,9 @@ class Budget:
 
 
 # ------------------------------------------------------------------ tools
-def run_sql(s: Session, args: dict, db_url: str) -> tuple[str, dict]:
-    sql = (args.get("sql") or "").strip().rstrip(";").strip()
+def query(sql: str, db_url: str, limit: int = MAX_ROWS) -> tuple[list, list]:
+    """Run one read-only SELECT through the analyst guard. Used by the AI (run_sql) and by live dashboards."""
+    sql = (sql or "").strip().rstrip(";").strip()
     code = re.sub(r"'(?:[^']|'')*'", "''", sql)  # ignore words inside string literals ('Call Centre')
     if not re.match(r"^(select|with)\b", code, re.I) or ";" in code or FORBIDDEN.search(code):
         raise ValueError("Only a single read-only SELECT/WITH statement is allowed.")
@@ -245,10 +249,16 @@ def run_sql(s: Session, args: dict, db_url: str) -> tuple[str, dict]:
         conn.execute("SET TRANSACTION READ ONLY")
         conn.execute("SET LOCAL statement_timeout = '10s'")
         conn.execute("SET LOCAL search_path = analyst")
-        cur = conn.execute(f"SELECT * FROM ({sql}) AS q LIMIT {MAX_ROWS + 1}")
+        cur = conn.execute(f"SELECT * FROM ({sql}) AS q LIMIT {limit + 1}")
         cols = [c.name for c in cur.description]
         rows = [[clean(v) for v in r] for r in cur.fetchall()]
         conn.rollback()
+    return cols, rows
+
+
+def run_sql(s: Session, args: dict, db_url: str) -> tuple[str, dict]:
+    sql = (args.get("sql") or "").strip().rstrip(";").strip()
+    cols, rows = query(sql, db_url)
     truncated = len(rows) > MAX_ROWS
     rows = rows[:MAX_ROWS]
     ds_id = f"d{len(s.datasets) + 1}"
@@ -471,11 +481,12 @@ def execute(s: Session, name: str, args, db_url: str) -> tuple[str, dict | None,
 
 
 # ------------------------------------------------------------------ agent loop
-def answer(client, s: Session, question: str, db_url: str, budget: Budget, mode: str = "auto") -> Iterator[dict]:
+def answer(client, s: Session, question: str, db_url: str, budget: Budget, mode: str = "auto",
+           max_tier: str = "deep") -> Iterator[dict]:
     """Run one question; on any failure the conversation is rolled back so the next question starts clean."""
     start, finished = len(s.messages), False
     try:
-        for ev in _answer(client, s, question, db_url, budget, mode):
+        for ev in _answer(client, s, question, db_url, budget, mode, max_tier):
             if ev["type"] == "done":
                 finished = True
             yield ev
@@ -484,7 +495,8 @@ def answer(client, s: Session, question: str, db_url: str, budget: Budget, mode:
             del s.messages[start:]
 
 
-def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode: str = "auto") -> Iterator[dict]:
+def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode: str = "auto",
+            max_tier: str = "deep") -> Iterator[dict]:
     import anthropic
 
     s.turns += 1
@@ -578,7 +590,7 @@ def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode
                 results.append({"type": "tool_result", "tool_use_id": b.id, "content": text, **({"is_error": True} if err else {})})
             s.messages.append({"role": "user", "content": results})
             # Struggling on a cheap tier (repeated failed queries / rejected report): move up a tier for the rest.
-            if tool_errors >= 2 and tier != "deep" and mode == "auto":
+            if tool_errors >= 2 and ORDER.index(tier) < ORDER.index(max_tier) and mode == "auto":
                 tier = ORDER[ORDER.index(tier) + 1]
                 tool_errors = 0
                 yield {"type": "status", "text": f"Switching to a stronger model ({TIERS[tier]['model']})"}

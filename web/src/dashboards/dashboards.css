@@ -1,0 +1,23 @@
+.dash .gate { max-width: 560px; }
+.dash .gate h1 { margin: 10px 0 6px; }
+.dash-grid { display: grid; grid-template-columns: 220px 1fr; gap: 20px; align-items: start; }
+.dash-side { position: sticky; top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.dash-side .side-title { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 4px; }
+.dash-side .board { text-align: left; background: none; border: none; border-radius: 10px; color: var(--ink); font: inherit; font-size: 13px; padding: 8px 10px; cursor: pointer; display: flex; flex-direction: column; }
+.dash-side .board em { font-style: normal; font-size: 11px; color: var(--muted); }
+.dash-side .board:hover, .dash-side .board.on { background: var(--panel); }
+.dash-side .board.on { box-shadow: inset 2px 0 0 var(--accent); }
+.dash-side .side-account { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 10px; }
+.dash .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.tile.full { grid-column: span 2; }
+.tile-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
+.tile-head h3 { margin: 0; font-size: 15px; }
+.tile-tools { display: flex; gap: 4px; flex-shrink: 0; opacity: .55; transition: opacity .15s; }
+.tile:hover .tile-tools { opacity: 1; }
+.tile-tools button { background: var(--bg); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; font: inherit; font-size: 11px; padding: 3px 7px; cursor: pointer; }
+.tile-foot { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.tile-foot summary { cursor: pointer; }
+.tile-foot pre { white-space: pre-wrap; font-family: "JetBrains Mono", monospace; font-size: 11px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; max-width: 520px; }
+.kpi-tile { padding: 40px 0; text-align: center; display: flex; flex-direction: column; } .kpi-tile b { font-size: 52px; color: var(--accent); letter-spacing: -.03em; }
+@media (max-width: 900px) { .dash-grid { grid-template-columns: 1fr; } .dash-side { position: static; } .tiles { grid-template-columns: 1fr; } .tile.full { grid-column: auto; } }

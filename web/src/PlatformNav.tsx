@@ -2,6 +2,7 @@ import { url } from "./site";
 
 const LINKS = [
   { href: "/analyst/", label: "Ask AI" },
+  { href: "/dashboards/", label: "Dashboards" },
   { href: "/automation-index/", label: "Index" },
   { href: "/employers/", label: "Employers" },
   { href: "/tools/", label: "Tools & skills" },

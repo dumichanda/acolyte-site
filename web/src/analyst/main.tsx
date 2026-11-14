@@ -1,10 +1,10 @@
-import { StrictMode, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, StrictMode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import ReactECharts from "../Chart";
 import "../index.css";
 import "./analyst.css";
 import PlatformNav from "../PlatformNav";
-import { SITE, url } from "../site";
+import { url } from "../site";
 import { readTheme } from "../charts";
 import { chartOption, download, fmt, toCSV, type Artifact, type ChartArtifact, type ReportArtifact } from "./chart";
 
@@ -18,11 +18,55 @@ function ExportBtn({ label, run, primary }: { label: string; run: () => Promise<
     {busy ? "Preparing…" : label}</button>;
 }
 
-const API = (() => {
-  const q = new URLSearchParams(location.search).get("api");
-  try { if (q) localStorage.setItem("analystApi", q); return q || localStorage.getItem("analystApi") || SITE.analystApi; }
-  catch { return q || SITE.analystApi; }
-})().replace(/\/$/, "");
+import { API, api, getToken, logout, type Me } from "../auth";
+import { SignIn, UsageCard } from "../Account";
+
+/** Signed-in account (null = anonymous demo visitor). */
+const AuthCtx = createContext<Me | null>(null);
+
+interface Conv { id: string; title: string; updated_at: string; items?: unknown[]; artifacts?: Record<string, unknown> }
+const LOCAL_HISTORY = "analystHistory";
+const readLocal = (): Conv[] => { try { return JSON.parse(localStorage.getItem(LOCAL_HISTORY) || "[]"); } catch { return []; } };
+const writeLocal = (xs: Conv[]) => {
+  for (let n = xs.length; n > 0; n -= 5) {   // drop the oldest chats if browser storage is full
+    try { localStorage.setItem(LOCAL_HISTORY, JSON.stringify(xs.slice(0, n))); return; } catch { /* quota */ }
+  }
+};
+
+/** "Pin to dashboard": saves the chart's query so the dashboard re-runs it live. */
+function PinButton({ c }: { c: ChartArtifact }) {
+  const me = useContext(AuthCtx);
+  const [open, setOpen] = useState(false);
+  const [boards, setBoards] = useState<{ id: number; name: string; tiles: number }[] | null>(null);
+  const [msg, setMsg] = useState("");
+  if (!me || !c.sql) return null;
+  const pin = async (id: number) => {
+    try { await api(`/dashboards/${id}/tiles`, { body: { spec: c } }); setMsg("Pinned ✓"); setOpen(false); }
+    catch (e) { setMsg((e as Error).message); }
+  };
+  return (
+    <span className="pin">
+      <button className="btn sm" onClick={async () => {
+        setOpen(!open); setMsg("");
+        if (!open) setBoards((await api<{ dashboards: { id: number; name: string; tiles: number }[] }>("/dashboards")).dashboards);
+      }}>{msg === "Pinned ✓" ? "Pinned ✓" : "Pin"}</button>
+      {open && (
+        <div className="pin-menu">
+          <div className="muted small">Pin to dashboard</div>
+          {boards === null && <div className="muted small">Loading…</div>}
+          {boards?.map((b) => <button key={b.id} onClick={() => pin(b.id)}>{b.name} <span className="muted">({b.tiles})</span></button>)}
+          <button onClick={async () => {
+            const name = prompt("Name for the new dashboard", "My dashboard");
+            if (!name) return;
+            try { const d = await api<{ id: number }>("/dashboards", { body: { name } }); await pin(d.id); }
+            catch (e) { setMsg((e as Error).message); }
+          }}>+ New dashboard…</button>
+          {msg && msg !== "Pinned ✓" && <div className="err">{msg}</div>}
+        </div>
+      )}
+    </span>
+  );
+}
 
 const STARTERS = [
   "Which role types have the most automatable work, and where?",
@@ -104,6 +148,7 @@ function ChartView({ c, height = 340, print = false }: { c: ChartArtifact; heigh
           {c.type !== "table" && c.type !== "kpi" && <button className="btn sm" onClick={png}>PNG</button>}
           <button className="btn sm" onClick={csv}>CSV</button>
           <ExportBtn label="PPT" run={async () => (await exporter()).chartsToPptx([c])} />
+          <PinButton c={c} />
         </div>}
       </div>
       {body}
@@ -187,6 +232,47 @@ function App() {
   const [mode, setMode] = useState<"auto" | "fast" | "standard" | "deep">("auto");
   const session = useRef<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const [me, setMe] = useState<Me | null>(null);
+  const [history, setHistory] = useState<Conv[]>([]);
+  const [sideOpen, setSideOpen] = useState(false);
+
+  const refreshAccount = useCallback(async () => {
+    if (!getToken()) { setMe(null); setHistory(readLocal()); return; }
+    try {
+      setMe(await api<Me>("/me"));
+      setHistory((await api<{ conversations: Conv[] }>("/conversations")).conversations);
+    } catch { setMe(null); setHistory(readLocal()); }
+  }, []);
+  useEffect(() => { refreshAccount(); }, [refreshAccount]);
+
+  // Anonymous visitors: keep chats in this browser.
+  useEffect(() => {
+    if (busy || me || !session.current || !items.length) return;
+    const first = items.find((i) => i.kind === "user") as { text: string } | undefined;
+    const entry: Conv = { id: session.current, title: first?.text ?? "Chat", updated_at: new Date().toISOString(), items, artifacts };
+    const next = [entry, ...readLocal().filter((c) => c.id !== entry.id)].slice(0, 25);
+    writeLocal(next); setHistory(next);
+  }, [busy]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openConversation = async (id: string) => {
+    if (busy) return;
+    let c: Conv | undefined;
+    try { c = me ? await api<Conv>(`/conversations/${id}`) : readLocal().find((x) => x.id === id); }
+    catch { return; }
+    if (!c) return;
+    const its = ((c.items || []) as Item[]).map((it) => (it.kind === "assistant" ? { ...it, done: true } : it));
+    const arts = (c.artifacts || {}) as Record<string, Artifact>;
+    const ids = its.flatMap((it) => (it.kind === "assistant" ? it.artifacts : []));
+    session.current = id; setItems(its); setArtifacts(arts);
+    setOrder([...ids].reverse()); setActive(ids.length ? ids[ids.length - 1] : null); setSideOpen(false);
+  };
+  const deleteConversation = async (id: string) => {
+    if (!confirm("Delete this chat?")) return;
+    if (me) { await api(`/conversations/${id}`, { method: "DELETE" }).catch(() => {}); }
+    else writeLocal(readLocal().filter((c) => c.id !== id));
+    if (session.current === id) reset();
+    refreshAccount();
+  };
 
   useEffect(() => {
     if (!API) return;
@@ -206,7 +292,9 @@ function App() {
     setItems((xs) => [...xs, { kind: "user", text: question }, { kind: "assistant", text: "", status: [], queries: [], artifacts: [], done: false }]);
     let answerText = "";
     try {
-      const r = await fetch(`${API}/ask`, { method: "POST", headers: { "Content-Type": "application/json" },
+      const token = getToken();
+      const r = await fetch(`${API}/ask`, { method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ session_id: session.current, question, mode }) });
       if (!r.ok || !r.body) {
         const err = await r.json().catch(() => ({ detail: r.statusText }));
@@ -243,6 +331,7 @@ function App() {
     } finally {
       patchLast((a) => { a.done = true; });
       setBusy(false);
+      if (getToken()) setTimeout(refreshAccount, 1200);   // usage rings + saved chat list
       if (speak && answerText && "speechSynthesis" in window) {
         const u = new SpeechSynthesisUtterance(answerText.replace(/\*\*/g, "").replace(/^[-•]\s*/gm, ""));
         u.lang = "en-ZA"; speechSynthesis.cancel(); speechSynthesis.speak(u);
@@ -250,15 +339,37 @@ function App() {
     }
   }
 
-  const reset = () => { session.current = null; setItems([]); setArtifacts({}); setOrder([]); setActive(null); };
+  function reset() { session.current = null; setItems([]); setArtifacts({}); setOrder([]); setActive(null); setSideOpen(false); }
   const current = active ? artifacts[active] : null;
   const ready = health === "ok";
   const placeholder = useMemo(() => (ready ? "Ask about South Africa's job market…" : health === "checking" ? "Waking up the analyst (can take up to a minute)…" : "Analyst offline"), [ready, health]);
 
   return (
+    <AuthCtx.Provider value={me}>
     <div className="wrap analyst">
       <PlatformNav active="/analyst/" />
-      <div className="an-grid">
+      <button className="btn sm side-toggle" onClick={() => setSideOpen(!sideOpen)}>☰ Chats</button>
+      <div className="an-grid with-side">
+        <aside className={"side" + (sideOpen ? " open" : "")}>
+          <button className="btn primary new-chat" onClick={reset} disabled={busy}>+ New chat</button>
+          <div className="side-title">{me ? "Your chats" : "Chats on this device"}</div>
+          <div className="history">
+            {history.length === 0 && <div className="muted small">No chats yet.</div>}
+            {history.map((c) => (
+              <div key={c.id} className={"hist" + (c.id === session.current ? " on" : "")}>
+                <button className="hist-open" onClick={() => openConversation(c.id)} title={c.title}>
+                  <span>{c.title}</span><em>{new Date(c.updated_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}</em>
+                </button>
+                <button className="hist-del" onClick={() => deleteConversation(c.id)} aria-label="Delete chat">×</button>
+              </div>
+            ))}
+          </div>
+          <div className="side-account">
+            {me ? <UsageCard me={me} onLogout={() => { logout(); reset(); refreshAccount(); }} />
+              : <SignIn onDone={(m) => { setMe(m); reset(); refreshAccount(); }} />}
+            {me && <a className="link" href="../dashboards/">Your dashboards →</a>}
+          </div>
+        </aside>
         <section className="chat">
           <header>
             <h1>Ask the data</h1>
@@ -349,6 +460,7 @@ function App() {
         </section>
       </div>
     </div>
+    </AuthCtx.Provider>
   );
 }
 
