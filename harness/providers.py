@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 import requests
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-SITE = "https://dumichanda.github.io/acolyte-site/"
+SITE = "https://acolytegroup.co.za/"
 
 # USD per 1M tokens (input, output) for direct Anthropic calls; OpenRouter reports cost itself.
 ANTHROPIC_PRICES = {"claude-opus-5-5": (4.0, 20.0), "claude-sonnet-5-5": (2.0, 10.0), "claude-haiku-5-5": (0.10, 0.50),

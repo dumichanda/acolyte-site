@@ -417,7 +417,7 @@ export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): Sli
     if (!BRAND) {
       p.push({ t: "rect", x: W - M - 3.2, y: sy + 0.14, w: 3.0, h: 0.44, fill: C.lime, radius: 0.22 });
       p.push({ t: "text", x: W - M - 3.2, y: sy + 0.14, w: 3.0, h: 0.44, text: "Talk to Acolyte →", size: 11, bold: true, color: C.ink, align: "center", valign: "middle" });
-      p.push({ t: "link", x: W - M - 3.2, y: sy + 0.14, w: 3.0, h: 0.44, url: "https://dumichanda.github.io/acolyte-site/#contact" });
+      p.push({ t: "link", x: W - M - 3.2, y: sy + 0.14, w: 3.0, h: 0.44, url: "https://acolytegroup.co.za/#contact" });
     }
     slides.push({ bg: C.white, prims: p });
   }
@@ -437,8 +437,8 @@ export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): Sli
     p.push({ t: "text", x: 0.6, y: 3.3, w: 10, h: 0.9, text: "Acolyte builds AI analysts, live dashboards and automated board packs for South African businesses, running on your own data and servers.", size: 15, color: C.darkMuted });
     p.push({ t: "rect", x: 0.6, y: 4.6, w: 3.0, h: 0.6, fill: C.lime, radius: 0.3 });
     p.push({ t: "text", x: 0.6, y: 4.6, w: 3.0, h: 0.6, text: "Talk to Acolyte →", size: 14, bold: true, color: C.ink, align: "center", valign: "middle" });
-    p.push({ t: "link", x: 0.6, y: 4.6, w: 3.0, h: 0.6, url: "https://dumichanda.github.io/acolyte-site/#contact" });
-    p.push({ t: "text", x: 0.6, y: 6.75, w: 9, h: 0.3, text: "dumichanda.github.io/acolyte-site", size: 9, color: C.darkMuted });
+    p.push({ t: "link", x: 0.6, y: 4.6, w: 3.0, h: 0.6, url: "https://acolytegroup.co.za/#contact" });
+    p.push({ t: "text", x: 0.6, y: 6.75, w: 9, h: 0.3, text: "acolytegroup.co.za", size: 9, color: C.darkMuted });
     slides.push({ bg: C.ink, prims: p });
     }
   }

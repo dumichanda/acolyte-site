@@ -1,14 +1,9 @@
-name: Deploy site to GitHub Pages
+name: Deploy site to GitHub Pages (legacy)
 
-# Builds /web and publishes it to GitHub Pages.
-# Runs on every push to main that touches the site, on demand, and after each daily data refresh.
-# Requires: Settings -> Pages -> Source: GitHub Actions (and a public repo on the free plan).
+# Legacy: the site now runs on Cloudflare Pages at https://acolytegroup.co.za, which builds /web on every push.
+# Kept for a manual fallback only (GitHub Pages needs a public repo, or GitHub Pro for a private one).
 on:
-  push:
-    branches: [main]
-    paths: ["web/**", ".github/workflows/deploy.yml"]
   workflow_dispatch:
-  workflow_call:
 
 permissions:
   contents: read

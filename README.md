@@ -54,7 +54,7 @@ page's `USE_CASES` list (`web/src/landing/Landing.tsx`).
 | `/crm/` | **Private** sales pipeline. Works only while `python crm/server.py` runs on your computer (see below) |
 | `/privacy/` | POPIA privacy notice |
 
-Live at **https://dumichanda.github.io/acolyte-site/** (or your own domain).
+Live at **https://acolytegroup.co.za** (Cloudflare Pages; see "Hosting" below).
 
 ```
  GitHub Actions, daily 06:17 SAST

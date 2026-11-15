@@ -103,11 +103,3 @@ jobs:
             git commit -m "Monthly reports $(date -u +%Y-%m-%d)"
             for i in 1 2 3 4; do git pull --rebase origin main && git push && break; sleep $((i * 10)); done
           fi
-
-  deploy:
-    needs: reports
-    uses: ./.github/workflows/deploy.yml
-    permissions:
-      contents: read
-      pages: write
-      id-token: write

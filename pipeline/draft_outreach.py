@@ -16,7 +16,7 @@ import os
 from db import connect, init_db
 
 SENDER = {k: os.environ.get(f"SENDER_{k.upper()}", "") for k in ("name", "title", "email", "phone")}
-SITE = "https://dumichanda.github.io/acolyte-site/"
+SITE = "https://acolytegroup.co.za/"
 
 
 def rands(v) -> str:

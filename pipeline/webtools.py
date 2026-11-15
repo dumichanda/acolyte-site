@@ -13,7 +13,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 import requests
 
-SITE = "https://dumichanda.github.io/acolyte-site/"
+SITE = "https://acolytegroup.co.za/"
 UA = {"User-Agent": f"Mozilla/5.0 (compatible; AcolyteIndexBot/1.0; +{SITE})", "Accept-Language": "en-ZA,en;q=0.8"}
 session = requests.Session()
 session.headers.update(UA)

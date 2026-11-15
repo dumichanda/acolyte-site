@@ -21,7 +21,7 @@ import psycopg
 from . import mail
 from .prospects import ANALYST_NAME, _rows
 
-SITE = "https://dumichanda.github.io/acolyte-site"
+SITE = "https://acolytegroup.co.za"
 
 
 def settings(db: str) -> dict:

@@ -17,7 +17,7 @@ services:
       - key: ANALYST_DATABASE_URL
         sync: false
       - key: ALLOWED_ORIGINS
-        value: https://dumichanda.github.io
+        value: https://acolytegroup.co.za,https://www.acolytegroup.co.za,https://dumichanda.github.io
       - key: ANALYST_DAILY_BUDGET_USD
         value: "3"
       - key: ANALYST_HOURLY_LIMIT

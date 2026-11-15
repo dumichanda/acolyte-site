@@ -7,7 +7,7 @@
 Environment
   ANTHROPIC_API_KEY        Claude API key
   ANALYST_DATABASE_URL     read-only login (role analyst_web; see pipeline/db.py)
-  ALLOWED_ORIGINS          comma-separated sites allowed to call this API (default: the GitHub Pages site + localhost)
+  ALLOWED_ORIGINS          comma-separated sites allowed to call this API (acolytegroup.co.za is always allowed)
   ANALYST_DAILY_BUDGET_USD daily spend cap for the public demo (default 3)
   ANALYST_HOURLY_LIMIT     questions per visitor per hour (default 20)
   ANALYST_MODEL / ANALYST_EFFORT  default claude-opus-5-5 / medium
@@ -42,6 +42,10 @@ ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 SALT = hashlib.sha256(("acolyte-visitors:" + DB_URL).encode()).hexdigest()
 ORIGINS = [o.strip() for o in os.environ.get(
     "ALLOWED_ORIGINS", "https://dumichanda.github.io,http://localhost:5173,http://localhost:4173").split(",") if o.strip()]
+# The production site is always allowed, whatever ALLOWED_ORIGINS says on Render.
+for _o in ("https://acolytegroup.co.za", "https://www.acolytegroup.co.za", "https://acolyte-site.pages.dev"):
+    if _o not in ORIGINS:
+        ORIGINS.append(_o)
 HOURLY = int(os.environ.get("ANALYST_HOURLY_LIMIT", "20"))
 MAX_TURNS = 25
 SESSION_TTL = 2 * 3600

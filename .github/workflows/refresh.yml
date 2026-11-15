@@ -2,7 +2,7 @@ name: Refresh Automation Index
 
 # Runs the data pipeline every morning: jobs -> Neon -> classify -> companies -> enrich -> tools/skills
 # -> CRM drafts -> snapshot.json,
-# commits the new snapshot, then redeploys the site to GitHub Pages.
+# commits the new snapshot; Cloudflare Pages rebuilds the site from that commit.
 on:
   schedule:
     - cron: "17 4 * * *"   # 06:17 South African time
@@ -143,11 +143,3 @@ jobs:
             # main may have moved while the pipeline ran: rebase onto it, retry a few times
             for i in 1 2 3 4; do git pull --rebase origin main && git push && break; sleep $((i * 10)); done
           fi
-
-  deploy:
-    needs: refresh
-    uses: ./.github/workflows/deploy.yml
-    permissions:
-      contents: read
-      pages: write
-      id-token: write

@@ -34,7 +34,7 @@ def headers() -> dict:
     key = os.environ.get("OPENROUTER_API_KEY", "")
     if not key:
         sys.exit("OPENROUTER_API_KEY is not set.")
-    return {"Authorization": f"Bearer {key}", "HTTP-Referer": "https://dumichanda.github.io/acolyte-site/", "X-Title": "Acolyte"}
+    return {"Authorization": f"Bearer {key}", "HTTP-Referer": "https://acolytegroup.co.za/", "X-Title": "Acolyte"}
 
 
 def image_models() -> list[dict]:
