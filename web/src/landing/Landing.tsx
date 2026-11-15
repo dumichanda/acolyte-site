@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, 
 import type { Snapshot } from "../types";
 import { rands } from "../types";
 import { SITE, url } from "../site";
+import MatrixRain from "./MatrixRain";
 import { ANALYSTS as REPORT_ANALYSTS, latestPerAnalyst, loadIndex, monthLabel, type ReportCard } from "../reports/data";
 
 const reduced = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -487,6 +488,7 @@ export default function Landing() {
       </nav>
 
       <section className="hero">
+        <MatrixRain />
         <div className="glow" />
         <div className="inner">
           <div>

@@ -373,3 +373,13 @@ body:has(.lp) { background: #0c0c0e; }
 .lp .hero h1 .rot { display: inline-block; }
 .lp .hero h1 .rot em { display: inline-block; transition: opacity .38s ease, transform .38s ease; }
 .lp .hero h1 .rot em.out { opacity: 0; transform: translateY(0.25em); }
+
+/* Digital rain behind the hero: strongest on the right, fading out behind the headline so it stays readable */
+.lp .hero { overflow: hidden; }
+.lp .hero .matrix-rain { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: .55;
+  -webkit-mask-image: linear-gradient(100deg, transparent 0%, #0006 30%, #000 62%), linear-gradient(to bottom, #000 70%, transparent 100%);
+  -webkit-mask-composite: source-in; mask-image: linear-gradient(100deg, transparent 0%, #0006 30%, #000 62%), linear-gradient(to bottom, #000 70%, transparent 100%);
+  mask-composite: intersect; }
+.lp .hero::before, .lp .hero .glow { z-index: 1; }
+.lp .hero .inner { z-index: 2; }
+@media (max-width: 900px) { .lp .hero .matrix-rain { opacity: .3; } }
