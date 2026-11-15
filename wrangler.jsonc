@@ -1,0 +1,12 @@
+// Cloudflare Workers: serves the static website built from /web (no server code runs here).
+// Build command (Cloudflare dashboard): cd web && npm ci && npm run build
+// Deploy command: npx wrangler deploy
+{
+  "name": "acolyte-site",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./web/dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  }
+}
