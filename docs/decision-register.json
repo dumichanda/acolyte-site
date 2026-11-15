@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-15T13:40",
+ "updated": "2026-11-15T14:10",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -422,6 +422,15 @@
     "FE": 1.5,
     "CW": 1,
     "QA": 0.5
+   }
+  },
+  {
+   "at": "2026-11-15T14:10",
+   "title": "Landing hero digital rain",
+   "what": "Canvas animation behind the hero with readability mask and performance safeguards.",
+   "days": {
+    "FE": 1,
+    "UX": 0.5
    }
   }
  ],
@@ -1217,6 +1226,18 @@
    "why": "People follow steps faster when they see the screen; a branded page is fit to send to clients and new agents.",
    "alternatives": "Text-only docs.",
    "note": "Screenshots come from the real site build with sample data only (Sample Realty, Thandi M); no real client data, PINs or keys."
+  },
+  {
+   "id": "D67",
+   "at": "2026-11-15T14:10",
+   "kind": "Design",
+   "by": "You",
+   "status": "Active",
+   "title": "Digital-rain background on the landing hero",
+   "decision": "Columns of falling figures (digits, R, %) in Acolyte lime behind the hero, strongest on the right and fading behind the headline.",
+   "why": "A data-in-motion feel that matches the brand, without hurting readability.",
+   "alternatives": "Static dot grid only; a stock image.",
+   "note": "About 24 frames a second, paused when off screen or the tab is hidden; a still frame for people who prefer reduced motion; dimmer on phones."
   }
  ]
 }
