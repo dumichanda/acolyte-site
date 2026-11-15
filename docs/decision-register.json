@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-15T12:55",
+ "updated": "2026-11-15T13:05",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -406,10 +406,10 @@
   },
   {
    "at": "2026-11-15T12:55",
-   "title": "Admin and customer how-to guides",
+   "title": "Admin, customer and agent how-to guides",
    "what": "Two step-by-step guides checked against the live screens.",
    "days": {
-    "CW": 2,
+    "CW": 3,
     "PM": 0.5
    }
   }
@@ -1189,8 +1189,8 @@
    "kind": "Product",
    "by": "You",
    "status": "Active",
-   "title": "How-to guides for the owner and for customers",
-   "decision": "Two editable how-to guides: one for the admin/owner (clients, briefs, credit, CRM, email, troubleshooting) and one for customers (sign-in, questions, skills, dashboards, packs, own data, plans, help).",
+   "title": "How-to guides for the owner, customers and account agents",
+   "decision": "Two editable how-to guides: one for the admin/owner (clients, briefs, credit, CRM, email, troubleshooting) and one for customers (sign-in, questions, skills, dashboards, packs, own data, plans, help). A third guide for account agents covers working leads, the POPIA email rule, the Outbox, recording replies and a daily routine.",
    "why": "Clients and future staff need step-by-step instructions separate from the architecture and platform explainers.",
    "alternatives": "Rely on the platform guide alone.",
    "note": "Kept as live docs that can be shared, commented on and exported to Word or PDF."
