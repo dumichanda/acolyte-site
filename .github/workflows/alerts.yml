@@ -1,10 +1,10 @@
 name: Owner alerts and sales funnel
 
-# Hourly: ask the analyst server for new alerts (AI credit running low or exhausted, AI errors) and open a
+# Every 2 hours: ask the analyst server for new alerts (AI credit running low or exhausted, AI errors) and open a
 # GitHub issue for each, which GitHub emails to the repo owner. Alerts are marked as sent so each arrives once.
 on:
   schedule:
-    - cron: "23 * * * *"
+    - cron: "23 */2 * * *"   # every 2 hours: keeps a private repo inside GitHub's 2,000 free Actions minutes
   workflow_dispatch:
     inputs:
       balance_usd:
