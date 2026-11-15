@@ -229,7 +229,12 @@ def ask(body: Ask, req: Request):
                     ui["artifacts"].append(a["id"])
                     s.ui_artifacts[a["id"]] = a
                 elif t == "usage":
-                    rec["usage"] = ui["usage"] = ev
+                    rec["usage"] = ev   # full cost and tokens stay server-side (usage log, admin page)
+                    # The browser only sees the tier and the share of the daily allowance this answer used.
+                    daily = (acc.PLANS[account["plan"]]["daily_usd"] if account else budget.daily) or 1
+                    ev = {"type": "usage", "tier": ev.get("tier"), "final": ev.get("final"),
+                          "used_pct": round(100 * (ev.get("cost_usd") or 0) / daily, 1)}
+                    ui["usage"] = ev
                 elif t == "error":
                     rec["status"], rec["error"] = "error", ev.get("detail") or ev.get("text")
                     if ev.get("kind"):

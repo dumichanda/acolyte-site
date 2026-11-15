@@ -244,14 +244,13 @@ const STYLE_HELP: Record<Style, string> = {
   balanced: "Balanced: expert analysis with plain-language explanations; web context when it helps",
   creative: "Creative: story-led and vivid, explains every term, researches the web and quotes sources",
 };
-interface Usage { tier: string; models: string[]; cost_usd: number; tokens: { input: number; cache_read: number; cache_write: number; output: number } }
+interface Usage { tier: string; used_pct?: number }
 const TIER_LABEL: Record<string, string> = { fast: "Quick", standard: "Balanced", deep: "Deep thinking" };
+/** Under each answer: how hard the analyst thought and how much of today's allowance it used (costs stay on the admin page). */
 function UsageLine({ u }: { u: Usage }) {
-  const t = u.tokens, total = t.input + t.cache_read + t.cache_write + t.output;
-  const cost = u.cost_usd < 0.01 ? `${(u.cost_usd * 100).toFixed(2)} US cents` : `$${u.cost_usd.toFixed(3)}`;
-  return <div className="usage" title={`input ${t.input} / cached ${t.cache_read} / cache write ${t.cache_write} / output ${t.output} tokens`}>
-    {TIER_LABEL[u.tier] ?? "Analyst"} · {cost} · {(total / 1000).toFixed(1)}k tokens ({Math.round(100 * t.cache_read / Math.max(total, 1))}% cached)
-  </div>;
+  const pct = u.used_pct;
+  const share = pct === undefined ? "" : ` · ${pct < 0.1 ? "under 0.1" : pct.toFixed(pct < 10 ? 1 : 0)}% of today's allowance`;
+  return <div className="usage">{TIER_LABEL[u.tier] ?? "Analyst"}{share}</div>;
 }
 
 /** Tiny, safe markdown: paragraphs, - bullets, **bold**. Everything is escaped first. */
