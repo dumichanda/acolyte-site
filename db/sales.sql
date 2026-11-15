@@ -43,3 +43,58 @@ CREATE TABLE IF NOT EXISTS sales.suppression (   -- businesses or addresses that
     reason     TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- ---------------------------------------------------------------- the team and the funnel
+-- Account agents: the people who work the leads. They sign in to the CRM with their own PIN and see only their leads.
+CREATE TABLE IF NOT EXISTS sales.agents (
+    id         SERIAL PRIMARY KEY,
+    name       TEXT NOT NULL,
+    email      TEXT NOT NULL UNIQUE,         -- where assignment and task emails go (ZeptoMail)
+    analysts   TEXT[] NOT NULL DEFAULT '{property,retail,marketplace,jobs}',   -- which analysts they sell
+    max_open   INT NOT NULL DEFAULT 25,      -- most open leads at once (auto-assignment stops there)
+    active     BOOLEAN NOT NULL DEFAULT TRUE,
+    pin_hash   TEXT, pin_salt TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_login TIMESTAMPTZ
+);
+ALTER TABLE sales.prospects ADD COLUMN IF NOT EXISTS agent_id INT REFERENCES sales.agents(id) ON DELETE SET NULL;
+ALTER TABLE sales.prospects ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMPTZ;
+-- POPIA s69: one unsolicited email asking permission; anything further only after a yes.
+ALTER TABLE sales.prospects ADD COLUMN IF NOT EXISTS consent TEXT NOT NULL DEFAULT 'unknown';
+ALTER TABLE sales.prospects ADD COLUMN IF NOT EXISTS consent_at TIMESTAMPTZ;
+ALTER TABLE sales.prospects ADD COLUMN IF NOT EXISTS last_emailed_at TIMESTAMPTZ;
+DO $$ BEGIN
+  ALTER TABLE sales.prospects ADD CONSTRAINT prospects_consent_check
+    CHECK (consent IN ('unknown', 'requested', 'granted', 'declined', 'no_response', 'opted_out'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+CREATE INDEX IF NOT EXISTS sales_prospects_agent ON sales.prospects (agent_id, stage);
+
+-- Every outreach email: drafted by the platform, approved by the agent (or auto-approved), then sent.
+CREATE TABLE IF NOT EXISTS sales.outbox (
+    id          SERIAL PRIMARY KEY,
+    prospect_id INT NOT NULL REFERENCES sales.prospects(id) ON DELETE CASCADE,
+    agent_id    INT REFERENCES sales.agents(id) ON DELETE SET NULL,
+    kind        TEXT NOT NULL CHECK (kind IN ('permission', 'pack', 'followup')),
+    step        INT NOT NULL DEFAULT 1,
+    to_email    TEXT NOT NULL,
+    subject     TEXT NOT NULL,
+    body        TEXT NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'approved', 'sent', 'manual', 'skipped', 'failed')),
+    due_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    sent_at     TIMESTAMPTZ,
+    transport   TEXT,                       -- smtp | brevo | manual (sent by the agent from their own mail app)
+    error       TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (prospect_id, kind, step)
+);
+CREATE INDEX IF NOT EXISTS sales_outbox_queue ON sales.outbox (status, due_at);
+
+-- Funnel switches, set on the CRM's Team & settings panel.
+CREATE TABLE IF NOT EXISTS sales.settings (
+    key   TEXT PRIMARY KEY,
+    value JSONB NOT NULL
+);
+INSERT INTO sales.settings (key, value) VALUES
+  ('auto_assign', 'true'), ('assign_per_run', '5'), ('auto_draft', 'true'), ('auto_send', 'false'),
+  ('daily_send_cap', '20'), ('followup_days', '[3, 10]'), ('no_reply_days', '14'), ('notify_agents', 'true')
+ON CONFLICT (key) DO NOTHING;

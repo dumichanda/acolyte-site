@@ -690,7 +690,10 @@ def admin_alerts_ack(body: AckIn, req: Request):
     return {"ok": True}
 
 
-# ---------------------------------------------------------------- Acolyte's own sales CRM (admin only)
+# ---------------------------------------------------------------- Acolyte's own sales CRM
+# The owner uses the admin key; account agents sign in with their own PIN and see and change only their leads.
+# Agent session tokens reuse the signed-token format with a negative id (client accounts are positive).
+from . import funnel, mail
 from . import prospects as sales
 
 
@@ -703,12 +706,54 @@ def _sales(fn):
         raise HTTPException(400, str(e))
 
 
+def sales_actor(req: Request) -> dict:
+    token = bearer(req)
+    if ADMIN_TOKEN and token and hmac.compare_digest(token, ADMIN_TOKEN):
+        return {"admin": True, "agent_id": None, "name": "Owner"}
+    tid = acc.read_token(token) if token else None
+    if tid is not None and tid < 0:
+        ag = sales.get_agent(ADMIN_DB_URL, -tid)
+        if ag:
+            return {"admin": False, "agent_id": ag["id"], "name": ag["name"], "analysts": ag["analysts"]}
+    raise HTTPException(401, "Please sign in to the CRM.")
+
+
+def _own(actor: dict, pid: int) -> None:
+    if not actor["admin"] and _sales(lambda: sales.owner_of(ADMIN_DB_URL, pid)) != actor["agent_id"]:
+        raise HTTPException(403, "This lead is assigned to someone else.")
+
+
+class PinIn(BaseModel):
+    pin: str = Field(min_length=4, max_length=12)
+
+
+@app.post("/sales/login")
+def sales_login(body: PinIn):
+    """An account agent signs in to the CRM with their PIN."""
+    for aid, name, h, salt in sales.agent_pins(ADMIN_DB_URL):
+        try:
+            ok = hmac.compare_digest(acc.hash_pin(body.pin, salt)[1], h)
+        except ValueError:   # a damaged PIN record must not block everyone else
+            continue
+        if ok:
+            sales.agent_seen(ADMIN_DB_URL, aid)
+            return {"token": acc.make_token(-aid), "name": name}
+    time.sleep(1)
+    raise HTTPException(401, "That PIN isn't right.")
+
+
+@app.get("/sales/me")
+def sales_me(req: Request):
+    actor = sales_actor(req)
+    return {**actor, "mail": mail.status() if actor["admin"] else None}
+
+
 @app.get("/admin/sales")
 def sales_board(req: Request, analyst: str = "property"):
-    require_admin(req)
+    actor = sales_actor(req)
     if analyst not in sales.ANALYSTS:
         raise HTTPException(400, "Unknown analyst.")
-    return sales.board(ADMIN_DB_URL, analyst)
+    return sales.board(ADMIN_DB_URL, analyst, agent_id=actor["agent_id"])
 
 
 @app.post("/admin/sales/score")
@@ -735,12 +780,18 @@ class ProspectPatch(BaseModel):
     next_date: str | None = Field(default=None, pattern=r"^(\d{4}-\d{2}-\d{2})?$")
     value_zar: float | None = Field(default=None, ge=0, le=10_000_000)
     notes: str | None = Field(default=None, max_length=5000)
+    consent: str | None = Field(default=None, pattern="^(unknown|requested|granted|declined|no_response|opted_out)$")
+    agent_id: int | None = None
+    unassign: bool | None = None
 
 
 @app.patch("/admin/sales/{pid}")
 def sales_update(pid: int, body: ProspectPatch, req: Request):
-    require_admin(req)
+    actor = sales_actor(req)
+    _own(actor, pid)
     patch = body.model_dump(exclude_unset=True)
+    if not actor["admin"]:
+        patch.pop("agent_id", None); patch.pop("unassign", None)   # only the owner reassigns
     if patch.get("next_date") == "":
         patch["next_date"] = None
     return _sales(lambda: sales.update(ADMIN_DB_URL, pid, patch))
@@ -748,7 +799,8 @@ def sales_update(pid: int, body: ProspectPatch, req: Request):
 
 @app.get("/admin/sales/{pid}")
 def sales_get(pid: int, req: Request):
-    require_admin(req)
+    actor = sales_actor(req)
+    _own(actor, pid)
     p = sales.get(ADMIN_DB_URL, pid)
     if not p:
         raise HTTPException(404, "Prospect not found.")
@@ -762,34 +814,39 @@ class ActivityIn(BaseModel):
 
 @app.post("/admin/sales/{pid}/activities")
 def sales_activity(pid: int, body: ActivityIn, req: Request):
-    require_admin(req)
-    sales.add_activity(ADMIN_DB_URL, pid, body.kind, body.text)
+    actor = sales_actor(req)
+    _own(actor, pid)
+    sales.add_activity(ADMIN_DB_URL, pid, body.kind, (f"{actor['name']}: " if not actor["admin"] else "") + body.text)
     return {"activities": sales.activities(ADMIN_DB_URL, pid)}
+
+
+def _ai_text(prompt: str, label: str) -> str:
+    """One short AI writing call (email drafts), logged so it counts toward the credit tracker."""
+    t0, model = time.time(), TIERS["standard"]["model"]
+    msg = client().messages.create(model=model, max_tokens=1200, messages=[{"role": "user", "content": prompt}])
+    usd, t = cost_of(msg.model or model, msg.usage)
+    log_usage({"account_id": None, "visitor": label, "session_id": label, "country": None, "question": f"[{label}]",
+               "mode": "standard", "tier": "standard", "models": [msg.model or model], "status": "done", "error": None,
+               "queries": "[]", "charts": 0, "report": False, "cost_usd": usd, "input": t["input"], "cache_read": t["cache_read"],
+               "cache_write": t["cache_write"], "output": t["output"], "duration_ms": int((time.time() - t0) * 1000)})
+    return "".join(b.text for b in msg.content if b.type == "text").strip()
 
 
 @app.post("/admin/sales/{pid}/draft")
 def sales_draft(pid: int, req: Request):
-    """Draft a first email from the prospect's data-backed reasons. Never sends anything."""
-    require_admin(req)
+    """Draft a one-off email from the prospect's data-backed reasons. Never sends anything."""
+    actor = sales_actor(req)
+    _own(actor, pid)
     p = sales.get(ADMIN_DB_URL, pid)
     if not p:
         raise HTTPException(404, "Prospect not found.")
     if p["suppressed"]:
         raise HTTPException(409, "This business or address asked not to be contacted.")
-    t0 = time.time()
-    model = TIERS["standard"]["model"]
     try:
-        msg = client().messages.create(model=model, max_tokens=1200, messages=[{"role": "user", "content": sales.draft_prompt(p)}])
+        text = _ai_text(sales.draft_prompt(p), "sales-draft")
     except Exception as e:
         acc.add_alert(ADMIN_DB_URL, "ai_error", f"[sales draft] {e.__class__.__name__}: {str(e)[:400]}")
         raise HTTPException(503, "The AI service is unavailable right now. Try again shortly.")
-    text = "".join(b.text for b in msg.content if b.type == "text").strip()
-    usd, t = cost_of(msg.model or model, msg.usage)
-    log_usage({"account_id": None, "visitor": "sales-draft", "session_id": f"sales-{pid}", "country": None,
-               "question": f"[sales draft] {p['name']}", "mode": "standard", "tier": "standard", "models": [msg.model or model],
-               "status": "done", "error": None, "queries": "[]", "charts": 0, "report": False, "cost_usd": usd,
-               "input": t["input"], "cache_read": t["cache_read"], "cache_write": t["cache_write"], "output": t["output"],
-               "duration_ms": int((time.time() - t0) * 1000)})
     sales.add_activity(ADMIN_DB_URL, pid, "email_draft", text)
     return {"draft": text, "activities": sales.activities(ADMIN_DB_URL, pid)}
 
@@ -801,9 +858,105 @@ class SuppressIn(BaseModel):
 
 @app.post("/admin/sales/suppress")
 def sales_suppress(body: SuppressIn, req: Request):
-    require_admin(req)
+    sales_actor(req)
     sales.suppress(ADMIN_DB_URL, body.value, body.reason)
     return {"ok": True}
+
+
+# ---- outbox (the funnel's emails)
+@app.get("/admin/sales-outbox")
+def sales_outbox(req: Request, status: str | None = None):
+    actor = sales_actor(req)
+    return {"emails": sales.outbox(ADMIN_DB_URL, actor["agent_id"], status), "mail": mail.status()}
+
+
+class OutboxAction(BaseModel):
+    action: str = Field(pattern="^(edit|approve|skip|sent_manually)$")
+    subject: str | None = Field(default=None, max_length=250)
+    body: str | None = Field(default=None, max_length=8000)
+
+
+@app.post("/admin/sales-outbox/{oid}")
+def sales_outbox_action(oid: int, body: OutboxAction, req: Request):
+    actor = sales_actor(req)
+    item = _sales(lambda: sales.outbox_item(ADMIN_DB_URL, oid))
+    _own(actor, item["prospect_id"])
+    _sales(lambda: sales.outbox_update(ADMIN_DB_URL, oid, body.action, body.subject, body.body))
+    return {"ok": True}
+
+
+# ---- team and funnel settings (owner only)
+@app.get("/admin/sales-team")
+def sales_team(req: Request):
+    require_admin(req)
+    return {"agents": sales.agents(ADMIN_DB_URL), "settings": funnel.settings(ADMIN_DB_URL), "mail": mail.status()}
+
+
+class AgentIn(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=80)
+    email: str | None = Field(default=None, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$", max_length=200)
+    analysts: list[str] | None = None
+    max_open: int | None = Field(default=None, ge=1, le=500)
+    active: bool | None = None
+    new_pin: bool = False
+
+
+@app.post("/admin/sales-team")
+def sales_team_add(body: AgentIn, req: Request):
+    require_admin(req)
+    if not body.name or not body.email:
+        raise HTTPException(400, "Name and email are needed.")
+    pin = acc.new_pin()
+    try:
+        aid = sales.save_agent(ADMIN_DB_URL, {**body.model_dump(), "analysts": body.analysts or list(sales.ANALYSTS)}, acc.hash_pin(pin))
+    except Exception as e:
+        raise HTTPException(400, f"Could not add the agent ({e.__class__.__name__}): is that email already in the team?")
+    return {"id": aid, "pin": pin}
+
+
+@app.patch("/admin/sales-team/{aid}")
+def sales_team_update(aid: int, body: AgentIn, req: Request):
+    require_admin(req)
+    pin = acc.new_pin() if body.new_pin else None
+    sales.save_agent(ADMIN_DB_URL, body.model_dump(exclude={"new_pin"}), acc.hash_pin(pin) if pin else None, aid)
+    return {"ok": True, **({"pin": pin} if pin else {})}
+
+
+@app.put("/admin/sales-settings")
+def sales_settings(body: dict, req: Request):
+    require_admin(req)
+    return funnel.set_settings(ADMIN_DB_URL, body)
+
+
+@app.post("/admin/sales-funnel/run")
+def sales_funnel_run(req: Request):
+    """Run the funnel now: assign, draft, send, close, notify. Called hourly by the Owner alerts workflow."""
+    require_admin(req)
+    try:
+        return funnel.run(ADMIN_DB_URL, lambda prompt: _ai_text(prompt, "sales-funnel"))
+    except Exception as e:
+        acc.add_alert(ADMIN_DB_URL, "ai_error", f"[sales funnel] {e.__class__.__name__}: {str(e)[:400]}")
+        raise HTTPException(500, f"The funnel run failed: {e.__class__.__name__}")
+
+
+class MailTest(BaseModel):
+    to: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$", max_length=200)
+
+
+@app.post("/admin/mail/test")
+def mail_test(body: MailTest, req: Request):
+    require_admin(req)
+    out = {}
+    try:
+        out["system"] = mail.send_system([(body.to, "")], "Acolyte: test email", "This is a test of Acolyte's system email.\n\nIf you can read this, lead and task emails will reach your agents.")
+    except RuntimeError as e:
+        out["system"] = f"failed: {e}"
+    if mail.smtp_ready():
+        try:
+            out["sales_mailbox"] = mail.send_outreach(body.to, "", "Acolyte: sales mailbox test", "This is a test from Acolyte's sales mailbox.", None, "test")
+        except RuntimeError as e:
+            out["sales_mailbox"] = f"failed: {e}"
+    return out
 
 
 @app.get("/admin/stats")

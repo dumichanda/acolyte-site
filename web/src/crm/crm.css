@@ -75,3 +75,34 @@
   .ranked .score, .ranked .acts-col { grid-column: 2; justify-self: start; width: 100%; }
   .grid2 { grid-template-columns: 1fr; }
 }
+
+/* Outbox, team and settings */
+.outbox, .team { display: grid; gap: 16px; }
+.outbox section { display: grid; gap: 10px; }
+.outbox h3 { margin: 0; font-size: 15px; } .outbox h3 em { font-style: normal; color: var(--muted); font-size: 12px; margin-left: 4px; }
+.mail { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 12px 14px; display: grid; gap: 8px; }
+.mail.failed { border-color: #ff6a3d; }
+.mail-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.mail-head > div { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.mail .name { font-weight: 600; color: var(--ink); }
+.mail .subj { font-size: 14px; }
+.mail-edit { display: grid; gap: 6px; }
+.mail-edit textarea { font: inherit; font-size: 13.5px; }
+.crm a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+.deal .consent { color: var(--muted); }
+.team .card { display: grid; gap: 10px; }
+.team h3 { margin: 0; }
+.team table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.team th, .team td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.team td.num, .team th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.add-agent { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.add-agent input[type="text"], .add-agent input:not([type]) { flex: 1 1 160px; }
+.add-agent input[type="email"] { flex: 2 1 240px; }
+.add-agent .checks { display: flex; gap: 10px; flex-wrap: wrap; }
+.add-agent label input[type="number"] { width: 70px; margin-left: 4px; }
+.settings { display: grid; gap: 8px; }
+.setting { display: flex; gap: 10px; align-items: center; font-size: 14px; }
+.setting input[type="number"] { width: 80px; }
+.mailst { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.banner.ok { border-color: var(--accent); }
+.banner.pin { font-family: "JetBrains Mono", monospace; }

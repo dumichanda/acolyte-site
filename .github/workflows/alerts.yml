@@ -1,4 +1,4 @@
-name: Owner alerts
+name: Owner alerts and sales funnel
 
 # Hourly: ask the analyst server for new alerts (AI credit running low or exhausted, AI errors) and open a
 # GitHub issue for each, which GitHub emails to the repo owner. Alerts are marked as sent so each arrives once.
@@ -37,6 +37,11 @@ jobs:
           for i in 1 2 3 4 5 6; do code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$API/health") || true; [ "$code" = "200" ] && break; sleep 20; done
           curl -sS --fail-with-body --max-time 60 -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
             -d "{\"balance_usd\": $BAL, \"step_pct\": ${TH:-10}}" "$API/admin/credit"; echo
+
+      - name: Run the sales funnel (assign, draft, send, close, notify agents)
+        run: |
+          for i in 1 2 3 4 5 6; do code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$API/health") || true; [ "$code" = "200" ] && break; sleep 20; done
+          echo "funnel: $(curl -sS --max-time 600 -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/sales-funnel/run")" || true
 
       - name: Send new alerts
         run: |

@@ -210,7 +210,8 @@ def score(data_db: str, admin_db: str, analyst: str) -> int:
     return len(items)
 
 
-FIELDS = ("stage", "pinned", "website", "contact_name", "contact_role", "contact_email", "next_step", "next_date", "value_zar", "notes")
+FIELDS = ("stage", "pinned", "website", "contact_name", "contact_role", "contact_email", "next_step", "next_date", "value_zar", "notes",
+          "agent_id", "consent")
 
 
 def _rows(conn, sql, params=()):
@@ -219,19 +220,30 @@ def _rows(conn, sql, params=()):
     return [dict(zip(cols, r)) for r in cur.fetchall()]
 
 
-def board(db: str, analyst: str, limit: int = 100) -> dict:
+def board(db: str, analyst: str, limit: int = 100, agent_id: int | None = None) -> dict:
+    """The ranked list for one analyst and the pipeline board. An agent sees only their own leads."""
+    mine = "AND p.agent_id = %(agent)s" if agent_id else ""
+    q = {"analyst": analyst, "limit": limit, "agent": agent_id}
+    sel = "SELECT p.*, a.name AS agent_name FROM sales.prospects p LEFT JOIN sales.agents a ON a.id = p.agent_id"
     with psycopg.connect(db) as conn:
-        ranked = _rows(conn, """SELECT * FROM sales.prospects WHERE analyst = %s AND (rank IS NOT NULL OR pinned)
-                                ORDER BY pinned DESC, rank NULLS LAST LIMIT %s""", (analyst, limit))
-        pinned = _rows(conn, "SELECT * FROM sales.prospects WHERE pinned ORDER BY updated_at DESC")
-        totals = _rows(conn, """SELECT stage, count(*) AS n, coalesce(sum(value_zar), 0) AS value_zar FROM sales.prospects
-                                WHERE pinned GROUP BY stage""")
-        counts = _rows(conn, "SELECT analyst, count(*) AS n, max(scored_at) AS scored_at FROM sales.prospects WHERE rank IS NOT NULL GROUP BY analyst")
+        ranked = _rows(conn, f"""{sel} WHERE p.analyst = %(analyst)s AND (p.rank IS NOT NULL OR p.pinned) {mine}
+                                ORDER BY p.pinned DESC, p.rank NULLS LAST LIMIT %(limit)s""", q)
+        pinned = _rows(conn, f"{sel} WHERE p.pinned {mine} ORDER BY p.updated_at DESC", q)
+        totals = _rows(conn, f"""SELECT stage, count(*) AS n, coalesce(sum(value_zar), 0) AS value_zar FROM sales.prospects p
+                                WHERE pinned {mine} GROUP BY stage""", q)
+        counts = _rows(conn, f"""SELECT analyst, count(*) AS n, max(scored_at) AS scored_at FROM sales.prospects p
+                                WHERE (rank IS NOT NULL {'OR pinned' if agent_id else ''}) {mine} GROUP BY analyst""", q)
     return json.loads(json.dumps({"ranked": ranked, "board": pinned, "totals": totals, "counts": counts}, default=str))
 
 
 def update(db: str, pid: int, patch: dict) -> dict:
     sets = {k: v for k, v in patch.items() if k in FIELDS and v is not None}
+    if patch.get("unassign"):
+        sets["agent_id"] = None
+    if "agent_id" in sets:
+        sets["assigned_at"] = "now()"
+    if sets.get("consent") in ("granted", "declined", "opted_out"):
+        sets["consent_at"] = "now()"
     if not sets:
         raise ValueError("Nothing to change.")
     with psycopg.connect(db) as conn:
@@ -240,8 +252,20 @@ def update(db: str, pid: int, patch: dict) -> dict:
             raise LookupError("Prospect not found.")
         if sets.get("stage") and sets["stage"] != "prospect":
             sets["pinned"] = True
-        cols = ", ".join(f"{k} = %s" for k in sets)
-        conn.execute(f"UPDATE sales.prospects SET {cols}, updated_at = now() WHERE id = %s", (*sets.values(), pid))
+        raw = {k for k, v in sets.items() if v == "now()"}
+        cols = ", ".join(f"{k} = now()" if k in raw else f"{k} = %s" for k in sets)
+        conn.execute(f"UPDATE sales.prospects SET {cols}, updated_at = now() WHERE id = %s",
+                     (*[v for k, v in sets.items() if k not in raw], pid))
+        if "consent" in sets:
+            conn.execute("INSERT INTO sales.activities (prospect_id, kind, text) VALUES (%s, 'stage', %s)",
+                         (pid, f"Consent: {sets['consent'].replace('_', ' ')}"))
+            if sets["consent"] in ("declined", "opted_out"):
+                conn.execute("UPDATE sales.outbox SET status = 'skipped', error = 'declined' WHERE prospect_id = %s AND status IN ('draft', 'approved')", (pid,))
+                conn.execute("UPDATE sales.prospects SET stage = 'lost' WHERE id = %s", (pid,))
+        if "agent_id" in sets:
+            who = conn.execute("SELECT name FROM sales.agents WHERE id = %s", (sets["agent_id"],)).fetchone() if sets["agent_id"] else None
+            conn.execute("INSERT INTO sales.activities (prospect_id, kind, text) VALUES (%s, 'stage', %s)",
+                         (pid, f"Assigned to {who[0]}" if who else "Unassigned"))
         if "stage" in sets and sets["stage"] != old[0]:
             conn.execute("INSERT INTO sales.activities (prospect_id, kind, text) VALUES (%s, 'stage', %s)",
                          (pid, f"Moved from {old[0]} to {sets['stage']}"))
@@ -264,7 +288,8 @@ def add_activity(db: str, pid: int, kind: str, text: str) -> None:
 
 def get(db: str, pid: int) -> dict | None:
     with psycopg.connect(db) as conn:
-        r = _rows(conn, "SELECT * FROM sales.prospects WHERE id = %s", (pid,))
+        r = _rows(conn, """SELECT p.*, a.name AS agent_name FROM sales.prospects p LEFT JOIN sales.agents a ON a.id = p.agent_id
+                           WHERE p.id = %s""", (pid,))
         if not r:
             return None
         p = r[0]
@@ -292,3 +317,100 @@ Lead with: {p.get('pitch')}
 Rules: plain, specific, no hype, no made-up numbers or claims, one clear ask (a 20-minute demo on their own market), and a one-line
 opt-out at the end ("Reply 'no thanks' and we won't contact you again."). South African English. Give a subject line first as "Subject: ...".
 """
+
+
+# ---------------------------------------------------------------- agents, outbox
+def agents(db: str) -> list[dict]:
+    with psycopg.connect(db) as conn:
+        return json.loads(json.dumps(_rows(conn, """
+            SELECT a.id, a.name, a.email, a.analysts, a.max_open, a.active, a.last_login, a.created_at,
+                   count(p.*) FILTER (WHERE p.stage NOT IN ('won', 'lost')) AS open_leads,
+                   count(p.*) FILTER (WHERE p.stage = 'won') AS won, coalesce(sum(p.value_zar) FILTER (WHERE p.stage = 'won'), 0) AS won_zar
+            FROM sales.agents a LEFT JOIN sales.prospects p ON p.agent_id = a.id
+            GROUP BY a.id ORDER BY a.active DESC, a.name"""), default=str))
+
+
+def save_agent(db: str, data: dict, pin_hash: tuple[str, str] | None, aid: int | None = None) -> int:
+    cols = {k: data[k] for k in ("name", "email", "analysts", "max_open", "active") if k in data and data[k] is not None}
+    if pin_hash:
+        cols["pin_salt"], cols["pin_hash"] = pin_hash   # hash_pin returns (salt, hash)
+    with psycopg.connect(db) as conn:
+        if aid:
+            if cols:
+                conn.execute(f"UPDATE sales.agents SET {', '.join(f'{k} = %s' for k in cols)} WHERE id = %s", (*cols.values(), aid))
+            return aid
+        return conn.execute(f"INSERT INTO sales.agents ({', '.join(cols)}) VALUES ({', '.join(['%s'] * len(cols))}) RETURNING id",
+                            tuple(cols.values())).fetchone()[0]
+
+
+def agent_pins(db: str) -> list[tuple]:
+    with psycopg.connect(db) as conn:
+        return conn.execute("SELECT id, name, pin_hash, pin_salt FROM sales.agents WHERE active AND pin_hash IS NOT NULL").fetchall()
+
+
+def agent_seen(db: str, aid: int) -> None:
+    with psycopg.connect(db) as conn:
+        conn.execute("UPDATE sales.agents SET last_login = now() WHERE id = %s", (aid,))
+
+
+def get_agent(db: str, aid: int) -> dict | None:
+    with psycopg.connect(db) as conn:
+        r = _rows(conn, "SELECT id, name, email, analysts, active FROM sales.agents WHERE id = %s AND active", (aid,))
+    return r[0] if r else None
+
+
+def owner_of(db: str, pid: int) -> int | None:
+    with psycopg.connect(db) as conn:
+        r = conn.execute("SELECT agent_id FROM sales.prospects WHERE id = %s", (pid,)).fetchone()
+    if not r:
+        raise LookupError("Prospect not found.")
+    return r[0]
+
+
+def outbox(db: str, agent_id: int | None = None, status: str | None = None) -> list[dict]:
+    where, q = ["TRUE"], {}
+    if agent_id:
+        where.append("o.agent_id = %(agent)s"); q["agent"] = agent_id
+    if status:
+        where.append("o.status = %(status)s"); q["status"] = status
+    else:
+        where.append("(o.status IN ('draft', 'approved', 'failed') OR o.sent_at > now() - interval '14 days')")
+    with psycopg.connect(db) as conn:
+        return json.loads(json.dumps(_rows(conn, f"""
+            SELECT o.*, p.name AS prospect, p.analyst, p.contact_name, p.consent, a.name AS agent_name
+            FROM sales.outbox o JOIN sales.prospects p ON p.id = o.prospect_id LEFT JOIN sales.agents a ON a.id = o.agent_id
+            WHERE {' AND '.join(where)} ORDER BY (o.status = 'draft') DESC, o.due_at LIMIT 200""", q), default=str))
+
+
+def outbox_item(db: str, oid: int) -> dict:
+    with psycopg.connect(db) as conn:
+        r = _rows(conn, "SELECT * FROM sales.outbox WHERE id = %s", (oid,))
+    if not r:
+        raise LookupError("Email not found.")
+    return r[0]
+
+
+def outbox_update(db: str, oid: int, action: str, subject: str | None = None, body: str | None = None) -> None:
+    from .funnel import mark_sent
+    with psycopg.connect(db) as conn:
+        o = _rows(conn, "SELECT * FROM sales.outbox WHERE id = %s", (oid,))
+        if not o:
+            raise LookupError("Email not found.")
+        o = o[0]
+        if action == "edit":
+            if o["status"] not in ("draft", "approved", "failed"):
+                raise ValueError("Only unsent emails can be edited.")
+            conn.execute("UPDATE sales.outbox SET subject = COALESCE(%s, subject), body = COALESCE(%s, body) WHERE id = %s", (subject, body, oid))
+        elif action == "approve":
+            if o["status"] not in ("draft", "failed"):
+                raise ValueError("This email is not waiting for approval.")
+            conn.execute("UPDATE sales.outbox SET status = 'approved', error = NULL, due_at = GREATEST(due_at, now()) WHERE id = %s", (oid,))
+            conn.execute("INSERT INTO sales.activities (prospect_id, kind, text) VALUES (%s, 'email', %s)", (o["prospect_id"], f"Approved: {o['subject']}"))
+        elif action == "skip":
+            conn.execute("UPDATE sales.outbox SET status = 'skipped' WHERE id = %s AND status IN ('draft', 'approved', 'failed')", (oid,))
+        elif action == "sent_manually":
+            if o["status"] not in ("draft", "approved", "failed"):
+                raise ValueError("This email was already handled.")
+            mark_sent(conn, o, "manual")
+        else:
+            raise ValueError("Unknown action.")
