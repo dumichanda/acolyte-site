@@ -4,6 +4,11 @@
 {
   "name": "acolyte-site",
   "compatibility_date": "2026-11-01",
+  // The site's own domain: Cloudflare creates the DNS records and certificate on deploy.
+  "routes": [
+    { "pattern": "acolytegroup.co.za", "custom_domain": true },
+    { "pattern": "www.acolytegroup.co.za", "custom_domain": true }
+  ],
   "assets": {
     "directory": "./web/dist",
     "html_handling": "auto-trailing-slash",
