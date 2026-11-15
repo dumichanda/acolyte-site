@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-15T14:10",
+ "updated": "2026-11-15T21:45",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -432,6 +432,16 @@
     "FE": 1,
     "UX": 0.5
    }
+  },
+  {
+   "at": "2026-11-15T21:30",
+   "title": "Move to acolytegroup.co.za",
+   "what": "Private repo, Cloudflare DNS and Worker hosting, new links and CORS, legacy Pages deploy, guides and pages updated.",
+   "days": {
+    "OPS": 1.5,
+    "FE": 0.5,
+    "CW": 0.5
+   }
   }
  ],
  "decisions": [
@@ -536,12 +546,12 @@
    "at": "2026-11-12T22:43",
    "kind": "Operations",
    "by": "You",
-   "status": "Active",
+   "status": "Superseded",
    "title": "Host on GitHub Pages",
    "decision": "Site deployed from the repo by GitHub Actions after each refresh.",
    "why": "Free, same place as the code and the daily job.",
    "alternatives": "Netlify, Vercel.",
-   "note": "Plan to move to Cloudflare Pages at launch (see production plan)."
+   "note": "Replaced on 15 Nov by Cloudflare at acolytegroup.co.za when the repo went private."
   },
   {
    "id": "D10",
@@ -860,12 +870,12 @@
    "at": "2026-11-14T17:22",
    "kind": "Operations",
    "by": "Claude",
-   "status": "Pending",
+   "status": "Active",
    "title": "Lowest-cost production setup",
    "decision": "A .co.za domain, Zoho Mail free, Cloudflare DNS and Pages, Render Starter, stay on Neon free for now (~R300–R600/month fixed).",
    "why": "Keeps fixed costs low until clients arrive.",
    "alternatives": "AWS/Azure stack; paid email.",
-   "note": "Waiting for your go-ahead."
+   "note": "Done in part on 15 Nov: domain acolytegroup.co.za on Cloudflare. Still to do: Render Starter, Zoho Mail."
   },
   {
    "id": "D37",
@@ -1238,6 +1248,30 @@
    "why": "A data-in-motion feel that matches the brand, without hurting readability.",
    "alternatives": "Static dot grid only; a stock image.",
    "note": "About 24 frames a second, paused when off screen or the tab is hidden; a still frame for people who prefer reduced motion; dimmer on phones."
+  },
+  {
+   "id": "D68",
+   "at": "2026-11-15T20:30",
+   "kind": "Security",
+   "by": "You",
+   "status": "Active",
+   "title": "Private repo",
+   "decision": "The GitHub repo is private; the website is no longer served from it.",
+   "why": "A public repo exposed prompts, scoring and limits to anyone (no secrets were in it: a full history scan found none).",
+   "alternatives": "Keep it public on GitHub Pages.",
+   "note": "Funnel and alerts moved to every 2 hours to stay inside the 2,000 free Actions minutes."
+  },
+  {
+   "id": "D69",
+   "at": "2026-11-15T21:30",
+   "kind": "Operations",
+   "by": "Both",
+   "status": "Active",
+   "title": "acolytegroup.co.za on Cloudflare",
+   "decision": "The domain (registered at GoDaddy) uses Cloudflare nameservers; the website is a Cloudflare Worker serving the static build at acolytegroup.co.za and www; the analyst server stays on Render.",
+   "why": "Free, fast from Johannesburg and Cape Town, automatic HTTPS, works with a private repo; a paid server adds upkeep for no gain on a static site.",
+   "alternatives": "A dedicated paid server; GitHub Pro for Pages.",
+   "note": "Render Starter (~R130/month) recommended next to stop cold starts; acolyte.co.za and acolyteai.co.za were suggested as alternatives."
   }
  ]
 }
