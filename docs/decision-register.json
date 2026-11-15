@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-15T04:20",
+ "updated": "2026-11-15T12:45",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -391,6 +391,17 @@
     "SEC": 1.5,
     "OPS": 1,
     "QA": 2
+   }
+  },
+  {
+   "at": "2026-11-15T12:40",
+   "title": "Admin pipeline card and deploy fix",
+   "what": "Sales summary in the admin stats endpoint, new Admin card, site deploy concurrency fix, guide and architecture updates.",
+   "days": {
+    "BE": 0.5,
+    "FE": 0.5,
+    "OPS": 0.5,
+    "CW": 0.5
    }
   }
  ],
@@ -1138,6 +1149,30 @@
    "why": "ZeptoMail's terms allow transactional email only, and it blocks marketing sends; Brevo allows email to people who opted in and covers both uses on one account.",
    "alternatives": "Send everything through ZeptoMail.",
    "note": "You asked to use ZeptoMail, then said a better service was fine."
+  },
+  {
+   "id": "D63",
+   "at": "2026-11-15T12:20",
+   "kind": "Operations",
+   "by": "Claude",
+   "status": "Active",
+   "title": "A running site deploy is never cancelled",
+   "decision": "Site deploys wait for each other instead of cancelling the one in progress; only the newest waiting deploy is kept.",
+   "why": "Pushes close together had cancelled every deploy, so the live site missed the new CRM screens (Team & settings).",
+   "alternatives": "Cancel the running deploy on every push.",
+   "note": ""
+  },
+  {
+   "id": "D64",
+   "at": "2026-11-15T12:35",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "Admin page shows the new sales pipeline",
+   "decision": "The Admin page's Sales pipeline card shows the sales CRM: open deals and value, deals and value by stage, Outbox counts, ranked prospects per analyst and each agent's open and won deals, with a link to the CRM.",
+   "why": "The old card showed the retired job-ad pipeline (748 'new' opportunities), which no longer reflects how Acolyte sells.",
+   "alternatives": "Keep the old table; add a second card.",
+   "note": "Supersedes the job-ad pipeline table on the Admin page."
   }
  ]
 }
