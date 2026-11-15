@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-14T22:40",
+ "updated": "2026-11-15T04:20",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -377,6 +377,20 @@
     "UX": 1.5,
     "SEC": 0.5,
     "QA": 1
+   }
+  },
+  {
+   "at": "2026-11-15T04:10",
+   "title": "Sales funnel, agents and email",
+   "what": "Agent accounts and PIN sign-in, per-agent permissions, auto-assignment, POPIA-safe email sequence, outbox with approval, Brevo/ZeptoMail/SMTP sending, hourly funnel run, team and settings screens.",
+   "days": {
+    "PM": 1.5,
+    "BE": 5,
+    "FE": 4,
+    "AI": 1,
+    "SEC": 1.5,
+    "OPS": 1,
+    "QA": 2
    }
   }
  ],
@@ -1088,6 +1102,42 @@
    "why": "POPIA and keeping sales data out of the public site and the analyst's reach.",
    "alternatives": "Store CRM data in the analyst schema.",
    "note": ""
+  },
+  {
+   "id": "D60",
+   "at": "2026-11-15T04:00",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "The platform runs the sales funnel and assigns leads to account agents",
+   "decision": "Hourly: assign top prospects to agents (least-loaded, within each agent's limit and the analysts they sell), draft emails into an Outbox, send approved ones, close leads with no reply, and email agents their new leads and tasks. Agents sign in with their own PIN and see only their leads.",
+   "why": "Scale outreach without the owner doing every step, while keeping a person accountable for each lead.",
+   "alternatives": "Owner works every lead by hand.",
+   "note": "Starts with approval required before any email goes out; auto-send is a switch."
+  },
+  {
+   "id": "D61",
+   "at": "2026-11-15T04:05",
+   "kind": "Security",
+   "by": "Claude",
+   "status": "Active",
+   "title": "One permission email, then only with a yes (POPIA s69)",
+   "decision": "The funnel sends at most one unsolicited email per contact, asking whether we may send our monthly report. The pack and follow-ups go only after a yes; no reply in 14 days closes the lead; opt-outs block everything.",
+   "why": "POPIA s69 allows one approach to request consent for electronic direct marketing; every reputable email provider also bans cold email.",
+   "alternatives": "A multi-step cold sequence.",
+   "note": ""
+  },
+  {
+   "id": "D62",
+   "at": "2026-11-15T04:10",
+   "kind": "Technical",
+   "by": "Both",
+   "status": "Active",
+   "title": "Brevo recommended over ZeptoMail; outreach from a real mailbox",
+   "decision": "System email (assignments, tasks, alerts) via Brevo or ZeptoMail over HTTPS; email to people who said yes via Brevo; the single permission email 1:1 from a sales mailbox (Zoho Mail SMTP), or from the agent's own mail app until one is set up.",
+   "why": "ZeptoMail's terms allow transactional email only, and it blocks marketing sends; Brevo allows email to people who opted in and covers both uses on one account.",
+   "alternatives": "Send everything through ZeptoMail.",
+   "note": "You asked to use ZeptoMail, then said a better service was fine."
   }
  ]
 }
