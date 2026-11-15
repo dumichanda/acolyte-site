@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-15T12:45",
+ "updated": "2026-11-15T12:55",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -402,6 +402,15 @@
     "FE": 0.5,
     "OPS": 0.5,
     "CW": 0.5
+   }
+  },
+  {
+   "at": "2026-11-15T12:55",
+   "title": "Admin and customer how-to guides",
+   "what": "Two step-by-step guides checked against the live screens.",
+   "days": {
+    "CW": 2,
+    "PM": 0.5
    }
   }
  ],
@@ -1173,6 +1182,18 @@
    "why": "The old card showed the retired job-ad pipeline (748 'new' opportunities), which no longer reflects how Acolyte sells.",
    "alternatives": "Keep the old table; add a second card.",
    "note": "Supersedes the job-ad pipeline table on the Admin page."
+  },
+  {
+   "id": "D65",
+   "at": "2026-11-15T12:55",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "How-to guides for the owner and for customers",
+   "decision": "Two editable how-to guides: one for the admin/owner (clients, briefs, credit, CRM, email, troubleshooting) and one for customers (sign-in, questions, skills, dashboards, packs, own data, plans, help).",
+   "why": "Clients and future staff need step-by-step instructions separate from the architecture and platform explainers.",
+   "alternatives": "Rely on the platform guide alone.",
+   "note": "Kept as live docs that can be shared, commented on and exported to Word or PDF."
   }
  ]
 }
