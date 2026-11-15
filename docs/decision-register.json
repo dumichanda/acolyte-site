@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-15T21:45",
+ "updated": "2026-11-15T21:50",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -441,6 +441,15 @@
     "OPS": 1.5,
     "FE": 0.5,
     "CW": 0.5
+   }
+  },
+  {
+   "at": "2026-11-15T21:50",
+   "title": "Allowance share instead of cost",
+   "what": "Server strips cost and tokens from the usage event; the answer line shows % of the daily allowance.",
+   "days": {
+    "BE": 0.25,
+    "FE": 0.25
    }
   }
  ],
@@ -1272,6 +1281,18 @@
    "why": "Free, fast from Johannesburg and Cape Town, automatic HTTPS, works with a private repo; a paid server adds upkeep for no gain on a static site.",
    "alternatives": "A dedicated paid server; GitHub Pro for Pages.",
    "note": "Render Starter (~R130/month) recommended next to stop cold starts; acolyte.co.za and acolyteai.co.za were suggested as alternatives."
+  },
+  {
+   "id": "D70",
+   "at": "2026-11-15T21:50",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "Answers show allowance used, not cost or tokens",
+   "decision": "Under each answer, clients see the thinking level and the share of today's allowance it used (e.g. 'Deep thinking · 4.9% of today's allowance'). Cost and token counts no longer reach the browser.",
+   "why": "Clients should not see our AI costs or token counts; a share of their allowance is what matters to them.",
+   "alternatives": "Show rand cost; show nothing.",
+   "note": "Costs and tokens are still logged and shown on the owner's Admin page."
   }
  ]
 }
