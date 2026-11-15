@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-15T13:15",
+ "updated": "2026-11-15T13:40",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -411,6 +411,17 @@
    "days": {
     "CW": 3,
     "PM": 0.5
+   }
+  },
+  {
+   "at": "2026-11-15T13:40",
+   "title": "Illustrated guide pages",
+   "what": "Three branded guide pages with side menus and 18 screenshots of the real screens using sample data.",
+   "days": {
+    "UX": 2,
+    "FE": 1.5,
+    "CW": 1,
+    "QA": 0.5
    }
   }
  ],
@@ -1194,6 +1205,18 @@
    "why": "Clients and future staff need step-by-step instructions separate from the architecture and platform explainers.",
    "alternatives": "Rely on the platform guide alone.",
    "note": "Kept as live docs that can be shared, commented on and exported to Word or PDF. Linked from the Platform Guide (Reference section) and the Architecture page (Where things live) on 15 Nov."
+  },
+  {
+   "id": "D66",
+   "at": "2026-11-15T13:40",
+   "kind": "Design",
+   "by": "You",
+   "status": "Active",
+   "title": "Illustrated, branded guide pages with screenshots",
+   "decision": "Each how-to guide also comes as a branded page (Acolyte dark and lime, Poppins and Inter) with a side menu of sections and a screenshot beside each main task, alongside the editable doc.",
+   "why": "People follow steps faster when they see the screen; a branded page is fit to send to clients and new agents.",
+   "alternatives": "Text-only docs.",
+   "note": "Screenshots come from the real site build with sample data only (Sample Realty, Thandi M); no real client data, PINs or keys."
   }
  ]
 }
