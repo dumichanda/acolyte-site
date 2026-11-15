@@ -1001,7 +1001,22 @@ def admin_stats(req: Request, days: int = 30):
                 "agents": rows(conn, "SELECT * FROM admin.agent_costs ORDER BY id DESC LIMIT 30"),
                 "agent_spend": rows(conn, """SELECT agent, count(*) AS runs, coalesce(sum(cost_usd), 0) AS cost_usd
                                              FROM admin.agent_costs WHERE started_at >= now() - make_interval(days => %s) GROUP BY 1""", (days,)),
-                "crm": rows(conn, "SELECT * FROM admin.crm_totals ORDER BY opportunities DESC"),
+                # the sales CRM (sales schema): the pipeline by stage, ranked prospects per analyst, agents and the outbox
+                "sales": {
+                    "stages": rows(conn, """SELECT stage, count(*) AS deals, coalesce(sum(value_zar), 0) AS value_zar
+                                            FROM sales.prospects WHERE pinned GROUP BY stage"""),
+                    "ranked": rows(conn, """SELECT analyst, count(*) AS prospects, max(scored_at) AS scored_at
+                                            FROM sales.prospects WHERE rank IS NOT NULL GROUP BY analyst"""),
+                    "agents": rows(conn, """SELECT a.name, count(p.*) FILTER (WHERE p.stage NOT IN ('won', 'lost')) AS open_leads,
+                                                   count(p.*) FILTER (WHERE p.stage = 'won') AS won
+                                            FROM sales.agents a LEFT JOIN sales.prospects p ON p.agent_id = a.id
+                                            WHERE a.active GROUP BY a.id ORDER BY open_leads DESC"""),
+                    "outbox": rows(conn, """SELECT count(*) FILTER (WHERE status = 'draft') AS drafts,
+                                                   count(*) FILTER (WHERE status = 'approved') AS approved,
+                                                   count(*) FILTER (WHERE status IN ('sent', 'manual') AND sent_at >= now() - interval '7 days') AS sent_7d,
+                                                   count(*) FILTER (WHERE status = 'failed') AS failed
+                                            FROM sales.outbox""")[0],
+                },
             }
     except psycopg.Error as e:
         print(f"admin stats failed: {e}", flush=True)

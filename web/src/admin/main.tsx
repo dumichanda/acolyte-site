@@ -4,7 +4,7 @@ import "../index.css";
 import "./admin.css";
 import ReactECharts from "../Chart";
 import PlatformNav from "../PlatformNav";
-import { SITE } from "../site";
+import { SITE, url } from "../site";
 import { CATEGORICAL, mode as themeMode } from "../viz";
 import Branding from "./Branding";
 
@@ -38,7 +38,8 @@ interface Stats {
   adzuna: { month: string; source: string; calls: number; results: number }[];
   agents: { id: number; agent: string; model: string; status: string; tool_calls: number; cost_usd: string; summary: string | null; error: string | null; started_at: string }[];
   agent_spend: { agent: string; runs: number; cost_usd: string }[];
-  crm: { stage: string; opportunities: number; with_draft: number; emailed: number }[];
+  sales?: { stages: { stage: string; deals: number; value_zar: string }[]; ranked: { analyst: string; prospects: number; scored_at: string | null }[];
+            agents: { name: string; open_leads: number; won: number }[]; outbox: { drafts: number; approved: number; sent_7d: number; failed: number } };
 }
 
 function KeyGate({ onKey, error }: { onKey: (k: string) => void; error: string }) {
@@ -260,13 +261,34 @@ function Dashboard({ s }: { s: Stats }) {
                 <td className="small">{a.error ? `Error: ${a.error}` : (a.summary ?? "").slice(0, 120)}</td></tr>)}</tbody></table>
           </div>
         </div>
-        <div className="card span-4">
-          <h2>Sales pipeline</h2>
-          <table><thead><tr><th>Stage</th><th className="num">Opportunities</th><th className="num">Drafts</th><th className="num">Emailed</th></tr></thead>
-            <tbody>{s.crm.map((c) => <tr key={c.stage}><td>{c.stage.replace("_", " ")}</td><td className="num">{c.opportunities}</td><td className="num">{c.with_draft}</td><td className="num">{c.emailed}</td></tr>)}</tbody></table>
-        </div>
+        <SalesCard s={s} />
       </section>
     </>
+  );
+}
+
+const STAGE_ORDER = ["prospect", "researching", "contacted", "meeting", "proposal", "won", "lost"];
+const STAGE_NAME: Record<string, string> = { prospect: "To approach", researching: "Researching", contacted: "Contacted", meeting: "Meeting",
+  proposal: "Proposal", won: "Won", lost: "Lost" };
+const ANALYST_NAME: Record<string, string> = { property: "Property", retail: "Retail Pricing", marketplace: "Marketplace", jobs: "Talent" };
+const zar = (v: string | number) => "R" + Math.round(Number(v || 0)).toLocaleString("en-ZA");
+
+/** The sales CRM at a glance; the work itself happens on the CRM page. */
+function SalesCard({ s }: { s: Stats }) {
+  const d = s.sales;
+  if (!d) return <div className="card span-4"><h2>Sales pipeline</h2><p className="muted">Not available yet.</p></div>;
+  const stages = STAGE_ORDER.map((k) => d.stages.find((x) => x.stage === k) || { stage: k, deals: 0, value_zar: "0" });
+  const open = stages.filter((x) => !["won", "lost"].includes(x.stage));
+  return (
+    <div className="card span-4">
+      <h2>Sales pipeline</h2>
+      <p className="desc">{open.reduce((a, x) => a + Number(x.deals), 0)} open deals worth {zar(open.reduce((a, x) => a + Number(x.value_zar), 0))} a month · <a href={url("/crm/")}>Open the CRM →</a></p>
+      <table><thead><tr><th>Stage</th><th className="num">Deals</th><th className="num">Value / month</th></tr></thead>
+        <tbody>{stages.map((x) => <tr key={x.stage}><td>{STAGE_NAME[x.stage]}</td><td className="num">{x.deals}</td><td className="num">{zar(x.value_zar)}</td></tr>)}</tbody></table>
+      <p className="desc">Outbox: {d.outbox.drafts} draft(s) waiting for approval · {d.outbox.approved} approved · {d.outbox.sent_7d} sent this week{d.outbox.failed ? ` · ${d.outbox.failed} failed` : ""}</p>
+      <p className="desc">Ranked prospects: {d.ranked.map((r) => `${ANALYST_NAME[r.analyst] || r.analyst} ${r.prospects}`).join(" · ") || "none yet"}</p>
+      <p className="desc">Agents: {d.agents.length ? d.agents.map((a) => `${a.name} (${a.open_leads} open, ${a.won} won)`).join(" · ") : "none yet. Add them in the CRM under Team & settings."}</p>
+    </div>
   );
 }
 
