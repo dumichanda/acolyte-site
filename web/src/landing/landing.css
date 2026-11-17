@@ -405,3 +405,64 @@ body:has(.lp) { background: #0c0c0e; }
 @media (max-width: 860px) { .lp .cf-page .contact, .lp .contact { grid-template-columns: 1fr; gap: 32px; } }
 @media (max-width: 560px) { .lp .cf-grid { grid-template-columns: 1fr; } .lp form.f.cf-card { padding: 20px; } }
 .lp form.f label.consent { display: flex; margin: 0; }
+
+/* ---------------- Big number band (BigStat.tsx): glowing lime card, receding grid, one live figure ---------------- */
+.lp .bigstat { padding: 56px 0 24px; }
+.lp .bigstat .pill-tag { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--signal);
+  color: var(--signal); font-weight: 600; font-size: 14px; margin-bottom: 18px; background: #c8f13512; }
+.lp .bigstat .pill-tag i { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 10px var(--signal); }
+.lp .bs-card { position: relative; overflow: hidden; border-radius: 36px; min-height: 560px; padding: 64px 32px 48px;
+  display: grid; place-items: center; align-content: center; isolation: isolate;
+  background: radial-gradient(ellipse 58% 52% at 50% 50%, #050605 0%, #0b1203 55%, #233805 78%, #6f9c0d 100%);
+  border: 2px solid #d9ff5c; box-shadow: 0 0 0 1px #c8f13566, 0 0 60px #c8f13566, inset 0 0 80px #c8f135aa, inset 0 0 22px #e6ff9a; }
+/* the tunnel: four planes in perspective, lime lines fading into the dark centre */
+.lp .bs-grid { position: absolute; inset: 0; perspective: 520px; z-index: -1; pointer-events: none; }
+.lp .bs-grid i { position: absolute; left: -10%; right: -10%; height: 70%; opacity: .55;
+  background-image: linear-gradient(#c8f13599 1px, transparent 1px), linear-gradient(90deg, #c8f13599 1px, transparent 1px);
+  background-size: 64px 64px; -webkit-mask-image: linear-gradient(to top, #000 10%, transparent 92%); mask-image: linear-gradient(to top, #000 10%, transparent 92%); }
+.lp .bs-grid .floor { bottom: -8%; transform-origin: bottom; transform: rotateX(72deg); animation: bs-run 3.2s linear infinite; }
+.lp .bs-grid .ceil { top: -8%; transform-origin: top; transform: rotateX(-72deg); animation: bs-run 3.2s linear infinite reverse;
+  -webkit-mask-image: linear-gradient(to bottom, #000 10%, transparent 92%); mask-image: linear-gradient(to bottom, #000 10%, transparent 92%); }
+.lp .bs-grid .wall { top: -10%; bottom: -10%; height: auto; width: 60%; left: auto; right: auto; opacity: .4; }
+.lp .bs-grid .wall.l { left: -6%; transform-origin: left; transform: rotateY(76deg);
+  -webkit-mask-image: linear-gradient(to left, transparent 8%, #000 90%); mask-image: linear-gradient(to left, transparent 8%, #000 90%); }
+.lp .bs-grid .wall.r { right: -6%; transform-origin: right; transform: rotateY(-76deg);
+  -webkit-mask-image: linear-gradient(to right, transparent 8%, #000 90%); mask-image: linear-gradient(to right, transparent 8%, #000 90%); }
+@keyframes bs-run { from { background-position: 0 0; } to { background-position: 0 64px; } }
+@media (prefers-reduced-motion: reduce) { .lp .bs-grid .floor, .lp .bs-grid .ceil { animation: none; } }
+
+.lp .bs-number { font-family: "Anton", "Impact", "Arial Narrow", sans-serif; font-size: clamp(110px, 16vw, 240px); line-height: .9; color: var(--signal);
+  letter-spacing: -.01em; text-shadow: 0 0 18px #c8f13599, 0 0 60px #c8f13566; }
+.lp .bs-sub { font-family: "Anton", "Impact", sans-serif; font-size: clamp(24px, 3.2vw, 44px); color: #e8ff8a; text-transform: uppercase;
+  letter-spacing: .01em; margin-top: 18px; text-shadow: 0 0 14px #c8f13580; text-align: center; }
+.lp .bs-cta { margin-top: 30px; }
+.lp .bs-cta .btn-signal { box-shadow: 0 6px 0 #6f9c0d, 0 0 30px #c8f13580; }
+.lp .bs-badge { position: absolute; top: 24px; left: 28px; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  color: #e9f5c8; background: #1d2a08cc; border: 1px solid #c8f13540; }
+.lp .bs-float { position: absolute; width: min(250px, 22%); padding: 18px; border-radius: 18px; color: #dfe8cf; font-size: 14px;
+  background: linear-gradient(160deg, #1b2a0bdd, #0a1004e6); border: 1px solid #c8f13533; backdrop-filter: blur(6px);
+  box-shadow: 0 20px 40px #0008, inset 0 1px 0 #ffffff14; }
+.lp .bs-float p { margin: 8px 0 0; color: #b9c6a6; }
+.lp .bs-fh { display: flex; justify-content: space-between; gap: 8px; } .lp .bs-fh span { color: #9fae8a; }
+.lp .bs-lines { display: flex; gap: 8px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #00000066; }
+.lp .bs-lines i { height: 6px; border-radius: 4px; background: #ffffff26; }
+.lp .bs-bar { height: 8px; border-radius: 6px; background: #ffffff1f; margin-top: 14px; } .lp .bs-bar i { display: block; height: 100%; border-radius: 6px; background: var(--signal); box-shadow: 0 0 10px var(--signal); }
+.lp .bs-chip { display: inline-block; margin-top: 12px; padding: 6px 12px; border-radius: 999px; font-weight: 600; font-size: 13px; }
+.lp .bs-chip.dark { background: #0c0c0e; color: var(--signal); border: 1px solid #c8f13540; }
+.lp .bs-chip.light { background: #fff; color: #0c0c0e; }
+.lp .bs-chip.lime { background: var(--signal); color: #0c0c0e; position: absolute; top: -16px; right: 16px; margin: 0; box-shadow: 0 0 18px #c8f13599; }
+.lp .bs-float small { display: block; color: #b9c6a6; font-weight: 600; }
+.lp .bs-mini { display: block; font-family: "Anton", "Impact", sans-serif; font-weight: 400; font-size: 44px; line-height: 1.05; color: var(--signal); text-shadow: 0 0 12px #c8f13580; }
+.lp .bs-float.tl { top: 150px; left: 36px; transform: rotate(-1deg); }
+.lp .bs-float.tr { top: 64px; right: 36px; transform: rotate(1deg); }
+.lp .bs-float.br { bottom: 36px; right: 36px; transform: rotate(-1.5deg); }
+.lp .bs-note { color: var(--mute); font-size: 13px; margin: 14px 4px 0; }
+@media (max-width: 1120px) {
+  .lp .bs-card { min-height: 0; padding: 70px 18px 36px; border-radius: 26px; }
+  .lp .bs-float { position: relative; inset: auto; width: 100%; max-width: 420px; transform: none; margin-top: 14px; }
+  .lp .bs-float.tl, .lp .bs-float.tr, .lp .bs-float.br { top: auto; left: auto; right: auto; bottom: auto; transform: none; width: 100%; }
+  .lp .bs-float.tl { order: 4; } .lp .bs-float.tr { order: 5; } .lp .bs-float.br { order: 6; margin-top: 30px; }
+  .lp .bs-card { background: radial-gradient(ellipse 80% 40% at 50% 30%, #050605 0%, #0b1203 60%, #233805 85%, #6f9c0d 100%); }
+  .lp .bs-number { order: 1; } .lp .bs-sub { order: 2; } .lp .bs-cta { order: 3; margin-bottom: 8px; }
+  .lp .bs-card { display: flex; flex-direction: column; align-items: center; }
+}

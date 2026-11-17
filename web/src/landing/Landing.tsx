@@ -4,6 +4,7 @@ import type { Snapshot } from "../types";
 import { rands } from "../types";
 import { SITE, url } from "../site";
 import MatrixRain from "./MatrixRain";
+import BigStat from "./BigStat";
 import { ANALYSTS as REPORT_ANALYSTS, latestPerAnalyst, loadIndex, monthLabel, type ReportCard } from "../reports/data";
 
 const reduced = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -474,6 +475,8 @@ export default function Landing() {
       <div className="marquee" aria-hidden="true">
         <div className="track">{[...MARQUEE, ...MARQUEE].map((m, k) => <span key={k}>{m}</span>)}</div>
       </div>
+
+      <BigStat s={s} />
 
       <section id="analytics">
         <div className="inner">

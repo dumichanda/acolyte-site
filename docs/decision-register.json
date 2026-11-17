@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17T18:00",
+ "updated": "2026-11-17T19:00",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -1552,6 +1552,18 @@
    "why": "Replies were invisible to the CRM; a person had to read sales@ and update every deal by hand.",
    "alternatives": "One paid mailbox with aliases and a Sales folder; free workarounds (Cloudflare Email Routing, Brevo).",
    "note": "Email text is treated as data, never instructions. Replies need approval unless auto_send_replies is switched on. Emails are kept 90 days."
+  },
+  {
+   "id": "D86",
+   "at": "2026-11-17T19:00",
+   "kind": "Design",
+   "by": "You",
+   "status": "Active",
+   "title": "Big live number band on the landing page",
+   "decision": "Below the ticker, a glowing lime card with a receding 3D grid shows one live figure from our data (property listings counted that morning, 224K on 16 Nov) in a large condensed type (Anton), with glass cards for the daily brief, live dashboards and plain-English answers, a 'Demonstration data' tag and a button to the Property Analyst. It hides itself if the data hasn't loaded, so no figure is ever made up.",
+   "why": "You liked the style of a big-number promo band; it makes the scale of the data felt at a glance and fits the lime-on-black brand.",
+   "alternatives": "Copy the reference design and its wording; use a static marketing number.",
+   "note": "Inspired by a design you shared; our own layout, words and data. The grid moves slowly and stops for people who prefer reduced motion."
   }
  ]
 }
