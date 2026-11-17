@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
+import ContactForm from "../contact/ContactForm";
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import type { Snapshot } from "../types";
 import { rands } from "../types";
 import { SITE, url } from "../site";
@@ -420,49 +421,7 @@ function Calculator() {
   );
 }
 
-/* ---------------- Contact ---------------- */
-
-type Status = "idle" | "sending" | "sent" | "error";
-const INTERESTS = ["SA market data (jobs, retail)", "Automated dashboards & reports", "Chat with your data", "Sentiment analysis", "Competitor intelligence", "Process automation", "Not sure yet"];
-
-function ContactForm() {
-  const [status, setStatus] = useState<Status>("idle");
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setStatus("sending");
-    const data = new FormData(e.currentTarget);
-    if (!SITE.formEndpoint) {
-      if (SITE.email) {
-        const body = [...data.entries()].filter(([k]) => k !== "_gotcha").map(([k, v]) => `${k}: ${v}`).join("\n");
-        location.href = `mailto:${SITE.email}?subject=${encodeURIComponent("Acolyte enquiry")}&body=${encodeURIComponent(body)}`;
-        setStatus("idle");
-      } else setStatus("error");
-      return;
-    }
-    try {
-      const r = await fetch(SITE.formEndpoint, { method: "POST", body: data, headers: { Accept: "application/json" } });
-      setStatus(r.ok ? "sent" : "error");
-    } catch { setStatus("error"); }
-  }
-  if (status === "sent") return <div className="msg ok">Thank you. We've got your message and will reply within one business day.</div>;
-  return (
-    <form className="f reveal d1" onSubmit={submit}>
-      <input type="text" name="_gotcha" tabIndex={-1} autoComplete="off" style={{ display: "none" }} />
-      <div><label htmlFor="name">Name</label><input id="name" name="name" required autoComplete="name" /></div>
-      <div><label htmlFor="company">Company</label><input id="company" name="company" required autoComplete="organization" /></div>
-      <div><label htmlFor="email">Work email</label><input id="email" name="email" type="email" required autoComplete="email" /></div>
-      <div><label htmlFor="phone">Phone / WhatsApp (optional)</label><input id="phone" name="phone" type="tel" autoComplete="tel" /></div>
-      <div className="full"><label htmlFor="interest">I'm interested in</label>
-        <select id="interest" name="interest" defaultValue=""><option value="" disabled>Choose one</option>{INTERESTS.map((x) => <option key={x}>{x}</option>)}</select></div>
-      <div className="full"><label htmlFor="message">What data do you have, and what do you want to know?</label>
-        <textarea id="message" name="message" placeholder="e.g. Sales in Sage and Shopify, reviews on Google. We want one weekly view by branch." /></div>
-      <label className="consent full"><input type="checkbox" name="consent" value="yes" required />
-        <span>I agree that Acolyte may use these details to respond to my enquiry, as set out in the <a href={url("/privacy/")}>privacy notice</a>. No mailing lists.</span></label>
-      {status === "error" && <div className="msg err full">That didn't send. Please try again{SITE.email ? <> or email <a href={`mailto:${SITE.email}`}>{SITE.email}</a></> : null}.</div>}
-      <div className="full"><button className="btn-signal" type="submit" disabled={status === "sending"}>{status === "sending" ? "Sending…" : <>Book a free data session <span className="arr">→</span></>}</button></div>
-    </form>
-  );
-}
+/* ---------------- Contact: the shared Contact sales form (src/contact/ContactForm.tsx) ---------------- */
 
 /* ---------------- Page ---------------- */
 

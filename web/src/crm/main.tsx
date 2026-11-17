@@ -183,6 +183,31 @@ function mailto(e: Email) {
 }
 const KIND_LABEL = { permission: "Permission email", pack: "Monthly pack", followup: "Follow-up" };
 
+interface Enquiry { id: number; at: string; first_name: string; last_name: string; email: string; phone: string; job_role: string; company: string;
+  company_type: string; industry: string; province: string; analyst: string; nature: string; message: string | null; marketing: boolean; prospect_id: number | null }
+const NATURE_NAME: Record<string, string> = { sales: "Sales", support: "Support", billing: "Billing / account", privacy: "Data & privacy" };
+
+/** Website Contact sales submissions (owner only). Sales enquiries about one analyst are already pinned prospects. */
+function Enquiries({ call, onOpen }: { call: ReturnType<typeof useAdmin>; onOpen: (pid: number) => void }) {
+  const [list, setList] = useState<Enquiry[] | null>(null), [err, setErr] = useState("");
+  useEffect(() => { call<{ enquiries: Enquiry[] }>("/admin/sales-enquiries").then((d) => setList(d.enquiries)).catch((e) => setErr(e.message)); }, [call]);
+  if (err) return <div className="banner">{err}</div>;
+  if (!list) return <p className="muted small">Loading…</p>;
+  if (!list.length) return <p className="muted small">No website enquiries yet. They arrive from the Contact sales form at acolytegroup.co.za/contact/.</p>;
+  return (
+    <div className="outbox">{list.map((e) => (
+      <article key={e.id} className="mail">
+        <header><b>{e.first_name} {e.last_name}</b> · {e.job_role} at {e.company} <span className="muted small">· E{e.id} · {when(e.at)}</span></header>
+        <p className="small">{e.company_type} · {e.industry} · {e.province} · about <b>{ANALYSTS.find((a) => a.key === e.analyst)?.label || e.analyst.replace("_", " ")}</b> · {NATURE_NAME[e.nature] || e.nature}
+          {e.marketing ? " · said yes to the monthly report" : ""}</p>
+        <p className="small"><a href={`mailto:${e.email}`}>{e.email}</a> · <a href={`tel:${e.phone.replace(/\s/g, "")}`}>{e.phone}</a></p>
+        {e.message && <p style={{ whiteSpace: "pre-wrap" }}>{e.message}</p>}
+        {e.prospect_id && <button className="btn sm" onClick={() => onOpen(e.prospect_id!)}>Open the deal</button>}
+      </article>))}
+    </div>
+  );
+}
+
 function Outbox({ call, me, onOpen }: { call: ReturnType<typeof useAdmin>; me: Me; onOpen: (pid: number) => void }) {
   const [list, setList] = useState<Email[] | null>(null), [mailSt, setMail] = useState<MailStatus | null>(null);
   const [edit, setEdit] = useState<Record<number, { subject: string; body: string }>>({}), [err, setErr] = useState(""), [busy, setBusy] = useState(0);
@@ -324,7 +349,7 @@ function App() {
       .catch((e) => setErr(`${(e as Error).message} The free analyst server can take a minute to wake up.`));
   }, [key, call]);
   const [analyst, setAnalyst] = useState<Analyst>(() => (["property", "retail", "marketplace", "jobs"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "property") as Analyst);
-  const [view, setView] = useState<"ranked" | "board" | "outbox" | "team">("ranked");
+  const [view, setView] = useState<"ranked" | "board" | "outbox" | "enquiries" | "team">("ranked");
   const [data, setData] = useState<BoardData | null>(null);
   const [open, setOpen] = useState<number | null>(null);
   const [busy, setBusy] = useState(""), [q, setQ] = useState(""), [boardAll, setBoardAll] = useState(true);
@@ -382,9 +407,10 @@ function App() {
             <button aria-pressed={view === "ranked"} onClick={() => setView("ranked")}>Ranked prospects</button>
             <button aria-pressed={view === "board"} onClick={() => setView("board")}>Board</button>
             <button aria-pressed={view === "outbox"} onClick={() => setView("outbox")}>Outbox</button>
+            {me.admin && <button aria-pressed={view === "enquiries"} onClick={() => setView("enquiries")}>Enquiries</button>}
             {me.admin && <button aria-pressed={view === "team"} onClick={() => setView("team")}>Team &amp; settings</button>}
           </div>
-          {view === "outbox" || view === "team" ? null : view === "ranked" ? <input id="crm-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${ANALYSTS.find((a) => a.key === analyst)?.who}`} />
+          {view === "outbox" || view === "team" || view === "enquiries" ? null : view === "ranked" ? <input id="crm-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${ANALYSTS.find((a) => a.key === analyst)?.who}`} />
             : <label className="small"><input type="checkbox" checked={boardAll} onChange={(e) => setBoardAll(e.target.checked)} /> All analysts</label>}
           {(view === "ranked" || view === "board") && <span className="muted small">{scoredAt ? `Ranked ${when(scoredAt)}` : "Not ranked yet"}</span>}
           {me.admin && view === "ranked" && <button className="btn sm" onClick={rescore} disabled={!!busy}>{busy ? "Ranking…" : "Re-rank from today's data"}</button>}
@@ -429,6 +455,7 @@ function App() {
         )}
         <p className="muted small foot">Prospects are businesses found in public market data. Add a contact person only from a business source, keep notes factual, and mark anyone who opts out as "Do not contact".</p>
         {view === "outbox" && <Outbox call={call} me={me} onOpen={setOpen} />}
+        {view === "enquiries" && me.admin && <Enquiries call={call} onOpen={setOpen} />}
         {view === "team" && me.admin && <Team call={call} onChanged={() => { load(); call<{ agents: Agent[] }>("/admin/sales-team").then((t) => setAgents(t.agents)).catch(() => {}); }} />}
         {open !== null && <><div className="scrim" onClick={() => setOpen(null)} /><Detail id={open} call={call} me={me} agents={agents} onClose={() => setOpen(null)} onChanged={load} /></>}
       </>)}

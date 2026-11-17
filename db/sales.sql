@@ -98,3 +98,20 @@ INSERT INTO sales.settings (key, value) VALUES
   ('auto_assign', 'true'), ('assign_per_run', '5'), ('auto_draft', 'true'), ('auto_send', 'false'),
   ('daily_send_cap', '20'), ('followup_days', '[3, 10]'), ('no_reply_days', '14'), ('notify_agents', 'true')
 ON CONFLICT (key) DO NOTHING;
+
+-- Website enquiries (the Contact sales form). Each one also becomes a pinned prospect for the analyst asked about.
+CREATE TABLE IF NOT EXISTS sales.enquiries (
+    id           SERIAL PRIMARY KEY,
+    at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+    first_name   TEXT NOT NULL, last_name TEXT NOT NULL,
+    email        TEXT NOT NULL, phone TEXT NOT NULL,
+    job_role     TEXT NOT NULL, company TEXT NOT NULL, company_type TEXT NOT NULL, industry TEXT NOT NULL,
+    province     TEXT NOT NULL, postal_code TEXT,
+    analyst      TEXT NOT NULL,            -- property | retail | marketplace | jobs | own_data | not_sure
+    nature       TEXT NOT NULL,            -- sales | support | billing | privacy
+    message      TEXT,
+    marketing    BOOLEAN NOT NULL DEFAULT FALSE,   -- ticked "send me the monthly report and news"
+    prospect_id  INT REFERENCES sales.prospects(id) ON DELETE SET NULL,
+    handled      BOOLEAN NOT NULL DEFAULT FALSE
+);
+CREATE INDEX IF NOT EXISTS sales_enquiries_at ON sales.enquiries (at DESC);

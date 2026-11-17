@@ -873,6 +873,58 @@ def sales_suppress(body: SuppressIn, req: Request):
 
 
 # ---- outbox (the funnel's emails)
+# ---------------------------------------------------------------- the website's Contact sales form
+contact_hits: dict[str, deque] = defaultdict(deque)
+CHOICE = r"^[A-Za-z0-9 &/,()'.+-]{1,60}$"
+
+
+class ContactIn(BaseModel):
+    first_name: str = Field(min_length=1, max_length=60)
+    last_name: str = Field(min_length=1, max_length=60)
+    phone: str = Field(min_length=7, max_length=30, pattern=r"^[0-9 +()-]+$")
+    email: str = Field(min_length=5, max_length=120, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    job_role: str = Field(pattern=CHOICE)
+    company: str = Field(min_length=1, max_length=120)
+    company_type: str = Field(pattern=CHOICE)
+    industry: str = Field(pattern=CHOICE)
+    province: str = Field(pattern=CHOICE)
+    postal_code: str | None = Field(default=None, max_length=10)
+    analyst: str = Field(pattern="^(property|retail|marketplace|jobs|own_data|not_sure)$")
+    nature: str = Field(pattern="^(sales|support|billing|privacy)$")
+    message: str | None = Field(default=None, max_length=3000)
+    marketing: bool = False
+    website: str | None = None          # honeypot: people never fill it in, bots do
+
+
+@app.post("/contact")
+def contact(body: ContactIn, req: Request):
+    """Public: a Contact sales form submission. Stored privately; the owner gets an alert without personal details."""
+    if body.website:                    # a bot: pretend it worked
+        return {"ok": True}
+    ip, now = visitor(req), time.time()
+    with lock:
+        q = contact_hits[ip]
+        while q and q[0] < now - 3600:
+            q.popleft()
+        if len(q) >= 5:
+            raise HTTPException(429, "Too many messages from this connection. Please try again later.")
+        q.append(now)
+    try:
+        ref = sales.add_enquiry(ADMIN_DB_URL, body.model_dump())
+    except Exception as e:
+        print(f"[contact] could not store: {e.__class__.__name__}: {e}", flush=True)
+        raise HTTPException(503, "We couldn't send that just now. Please try again in a minute.")
+    return {"ok": True, "ref": f"E{ref}"}
+
+
+@app.get("/admin/sales-enquiries")
+def sales_enquiries(req: Request):
+    actor = sales_actor(req)
+    if not actor["admin"]:
+        raise HTTPException(403, "Only the owner can see website enquiries.")
+    return {"enquiries": sales.enquiries(ADMIN_DB_URL)}
+
+
 @app.get("/admin/sales-outbox")
 def sales_outbox(req: Request, status: str | None = None):
     actor = sales_actor(req)

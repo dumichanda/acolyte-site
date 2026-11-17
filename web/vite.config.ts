@@ -29,6 +29,7 @@ export default defineConfig({
         dashboards: "dashboards/index.html",
         property: "property/index.html",
         reports: "reports/index.html",
+        contact: "contact/index.html",
       },
     },
   },

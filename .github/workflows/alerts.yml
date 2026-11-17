@@ -60,14 +60,17 @@ jobs:
           print(f"{len(alerts)} new alert(s)")
           titles = {"ai_credit": "AI credit exhausted: the analyst cannot answer",
                     "low_credit": "AI credit usage milestone",
-                    "ai_error": "AI service error"}
+                    "ai_error": "AI service error",
+                    "enquiry": "New website enquiry"}
           sent = []
           for a in alerts:
               title = titles.get(a["kind"], a["kind"])
               body = (f"**{title}** at {a['at'][:16]} UTC" + (f" (client reference {a['ref']})" if a.get("ref") else "") +
                       f"\n\n```\n{a['message']}\n```\n\n"
-                      "What to do: check the balance in the Anthropic Console (Billing), top up if needed, then enter the "
-                      "new balance on the Acolyte admin page so the low-credit estimate resets. Close this issue when done.")
+                      ("What to do: open the CRM (Enquiries) at https://acolytegroup.co.za/crm/ and reply within one business day. "
+                       "Close this issue when done." if a["kind"] == "enquiry" else
+                       "What to do: check the balance in the Anthropic Console (Billing), top up if needed, then enter the "
+                       "new balance on the Acolyte admin page so the low-credit estimate resets. Close this issue when done."))
               subprocess.run(["gh", "issue", "create", "--title", f"[Acolyte alert] {title}", "--body", body], check=True)
               sent.append(a["id"])
           json.dump({"ids": sent}, open("ack.json", "w"))

@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17T10:40",
+ "updated": "2026-11-17T11:30",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -478,6 +478,18 @@
    "days": {
     "FE": 0.75,
     "QA": 0.25
+   }
+  },
+  {
+   "at": "2026-11-17T11:30",
+   "title": "Contact sales form and CRM enquiries",
+   "what": "Grouped form page, /contact API with validation and rate limit, enquiries table, deal creation, owner alert, CRM Enquiries tab.",
+   "days": {
+    "FE": 1.5,
+    "BE": 1,
+    "UX": 0.5,
+    "SEC": 0.25,
+    "QA": 0.5
    }
   }
  ],
@@ -1369,6 +1381,18 @@
    "why": "Busy slides let the Detail box run into the footer. You asked for a general rule rather than a fix for one report.",
    "alternatives": "Trim one report by hand; shrink text below a readable size.",
    "note": "The full text stays on the website."
+  },
+  {
+   "id": "D75",
+   "at": "2026-11-17T11:30",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "Enterprise-style Contact sales form that feeds the CRM",
+   "decision": "A /contact/ page (and the landing page's contact section) with grouped required fields: contact, employment, address and project details, an optional tick box for the monthly report, and a privacy line. Submissions go to Acolyte's own API, are stored in the private sales schema, appear under CRM > Enquiries, and a sales enquiry about one analyst becomes a pinned deal. The owner gets a GitHub-issue alert without personal details.",
+   "why": "You wanted a form like AWS's Contact sales page; sending it to our own CRM avoids a third-party form service and puts warm leads at the top of the board.",
+   "alternatives": "Formspree; a mailto link.",
+   "note": "Limit of 5 submissions an hour per connection, plus a hidden bot trap. Ticking the box records POPIA consent for the monthly report."
   }
  ]
 }

@@ -12,6 +12,7 @@ touches the stage, notes or contact details the owner added.
 from __future__ import annotations
 
 import json
+from datetime import date
 
 import psycopg
 
@@ -414,3 +415,48 @@ def outbox_update(db: str, oid: int, action: str, subject: str | None = None, bo
             mark_sent(conn, o, "manual")
         else:
             raise ValueError("Unknown action.")
+
+
+# ---------------------------------------------------------------- website enquiries
+ANALYSTS = ("property", "retail", "marketplace", "jobs")
+
+
+def add_enquiry(db: str, e: dict) -> int:
+    """Store a Contact sales form submission. An enquiry about one analyst also becomes a pinned prospect
+    (a warm lead, top of the board) with the person as contact; a tick in the marketing box records consent."""
+    with psycopg.connect(db) as conn:
+        pid = None
+        if e["analyst"] in ANALYSTS and e["nature"] == "sales":
+            contact = f"{e['first_name']} {e['last_name']}".strip()
+            note = f"Website enquiry {date.today():%d %b %Y}: {e.get('message') or '(no message)'}"
+            row = conn.execute(
+                """INSERT INTO sales.prospects (analyst, name, segment, pinned, stage, contact_name, contact_role, contact_email,
+                                                notes, consent, consent_at, score)
+                   VALUES (%s, %s, %s, TRUE, 'prospect', %s, %s, %s, %s, %s, CASE WHEN %s THEN now() END, 100)
+                   ON CONFLICT (analyst, name) DO UPDATE SET pinned = TRUE, contact_name = EXCLUDED.contact_name,
+                       contact_role = EXCLUDED.contact_role, contact_email = EXCLUDED.contact_email,
+                       notes = concat_ws(E'\n\n', sales.prospects.notes, EXCLUDED.notes),
+                       consent = CASE WHEN %s THEN 'granted' ELSE sales.prospects.consent END,
+                       consent_at = CASE WHEN %s THEN now() ELSE sales.prospects.consent_at END, updated_at = now()
+                   RETURNING id""",
+                (e["analyst"], e["company"], e["company_type"], contact, e["job_role"], e["email"], note,
+                 "granted" if e["marketing"] else "unknown", e["marketing"], e["marketing"], e["marketing"])).fetchone()
+            pid = row[0]
+            conn.execute("INSERT INTO sales.activities (prospect_id, kind, text) VALUES (%s, 'enquiry', %s)",
+                         (pid, f"Website enquiry from {contact} ({e['job_role']}): {(e.get('message') or '')[:500]}"))
+        eid = conn.execute(
+            """INSERT INTO sales.enquiries (first_name, last_name, email, phone, job_role, company, company_type, industry,
+                                            province, postal_code, analyst, nature, message, marketing, prospect_id)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+            (e["first_name"], e["last_name"], e["email"], e["phone"], e["job_role"], e["company"], e["company_type"],
+             e["industry"], e["province"], e.get("postal_code"), e["analyst"], e["nature"], e.get("message"), e["marketing"], pid)).fetchone()[0]
+        # The owner's alert becomes a GitHub issue, so it carries no personal details: those stay in the CRM.
+        conn.execute("INSERT INTO admin.alerts (kind, ref, message) VALUES ('enquiry', %s, %s)",
+                     (f"E{eid}", f"{e['company']} ({e['company_type']}, {e['industry']}, {e['province']}); "
+                                 f"{e['job_role']}; about: {e['analyst']}; nature: {e['nature']}. Details in the CRM."))
+        return eid
+
+
+def enquiries(db: str, limit: int = 50) -> list[dict]:
+    with psycopg.connect(db) as conn:
+        return _rows(conn, "SELECT * FROM sales.enquiries ORDER BY at DESC LIMIT %s", (limit,))
