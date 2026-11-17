@@ -10,7 +10,7 @@ import { url } from "../site";
 import { CATEGORICAL, registerThemes } from "../viz";
 import { chartOption, fmt, type ChartArtifact, type ReportArtifact } from "./chart";
 import { buildStory, loadStoryImages } from "./story";
-import { approxWidth, brand, buildDeck, C, chartsDeck, DARK_BG, fitSize, H, setDeckBrand, shade, tableLayout, themed, W, type Brand, type DeckTheme, type Prim, type SlideSpec, type Variant } from "./deck";
+import { approxWidth, brand, buildDeck, C, chartsDeck, DARK_BG, fitList, fitSize, fitText, H, setDeckBrand, shade, tableLayout, themed, W, type Brand, type DeckTheme, type Prim, type SlideSpec, type Variant } from "./deck";
 
 const PALETTE = CATEGORICAL.light.map((c) => c.replace("#", "").toUpperCase());
 const FONT = "Poppins";   // brand font: embedded in PDFs; PowerPoint shows it where Poppins is installed (free, Google Fonts)
@@ -170,13 +170,16 @@ function drawPptx(pptx: Pptx, spec: SlideSpec, logo: string | null) {
         ...(p.radius ? { rectRadius: p.radius } : {}),
         ...(p.shadow ? { shadow: { type: "outer" as const, color: "000000", opacity: THEME === "dark" ? 0.55 : 0.16, blur: 10, offset: 3, angle: 90 } } : {}) });
     } else if (p.t === "text") {
-      const size = p.min ? fitSize(p.text, p.w, p.h, p.size, p.min, (t, pt) => approxWidth(t, pt, p.bold)) : p.size;
-      s.addText(p.text, { x: p.x, y: p.y, w: p.w, h: p.h, fontFace: FONT, fontSize: size, bold: !!p.bold, color: p.color,
+      const m = (t: string, pt: number) => approxWidth(t, pt, p.bold);
+      const text = p.min ? fitText(p.text, p.w, p.h, p.min, m) : p.text;
+      const size = p.min ? fitSize(text, p.w, p.h, p.size, p.min, m) : p.size;
+      s.addText(text, { x: p.x, y: p.y, w: p.w, h: p.h, fontFace: FONT, fontSize: size, bold: !!p.bold, color: p.color,
         align: p.align || "left", valign: p.valign || "top", margin: 0, charSpacing: p.spacing, lineSpacingMultiple: 1.05 });
     } else if (p.t === "list") {
       if (!p.items.length) continue;
-      const size = fitSize(p.items.join("\n"), p.w - 0.25, p.h - p.items.length * 0.06, p.size, p.min || 7);
-      s.addText(p.items.map((it) => ({ text: it, options: {
+      const items = fitList(p.items, p.w, p.h, p.min || 7);
+      const size = fitSize(items.join("\n"), p.w - 0.25, p.h - items.length * 0.07, p.size, p.min || 7);
+      s.addText(items.map((it) => ({ text: it, options: {
         bullet: p.marker === "" ? false : p.numbered ? { type: "number" as const } : { code: "25A0" },
         breakLine: true, paraSpaceAfter: 5 } })),
       { x: p.x, y: p.y, w: p.w, h: p.h, fontFace: FONT, fontSize: size, color: p.color, valign: "top", margin: 0, lineSpacingMultiple: 1.05 });
@@ -231,6 +234,7 @@ export async function reportToPdf(r: ReportArtifact, variant: PackVariant = "sta
 
   const drawText = (text: string, x: number, y: number, w: number, h: number, size: number, color: string, b = false,
                     align: "left" | "center" | "right" = "left", valign = "top", min?: number) => {
+    if (min) text = fitText(text, w, h, min, measure(b));
     const pt = min ? fitSize(text, w, h, size, min, measure(b)) : size;
     doc.setFont(PF, b ? "bold" : "normal"); doc.setFontSize(pt); doc.setTextColor(...hex(color));
     const lines: string[] = text.split("\n").flatMap((para) => doc.splitTextToSize(para, w));
@@ -284,10 +288,11 @@ export async function reportToPdf(r: ReportArtifact, variant: PackVariant = "sta
         if (p.spacing) doc.setCharSpace(0);
       } else if (p.t === "list") {
         if (!p.items.length) continue;
-        const pt = fitSize(p.items.join("\n"), p.w - 0.25, p.h - p.items.length * 0.06, p.size, p.min || 7, measure(false));
+        const items = fitList(p.items, p.w, p.h, p.min || 7, measure(false));
+        const pt = fitSize(items.join("\n"), p.w - 0.25, p.h - items.length * 0.07, p.size, p.min || 7, measure(false));
         doc.setFont(PF, "normal"); doc.setFontSize(pt);
         const lh = pt * 1.22 / 72; let yy = p.y;
-        p.items.forEach((it, i) => {
+        items.forEach((it, i) => {
           const indent = p.marker === "" ? 0 : 0.22;
           const lines: string[] = doc.splitTextToSize(it, p.w - indent);
           if (yy + lh > p.y + p.h) return;

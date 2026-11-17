@@ -79,6 +79,36 @@ export function fitSize(text: string, w: number, h: number, max: number, min: nu
   return min;
 }
 
+/** Does `text` wrap into the box at `pt`? */
+export function fitsAt(text: string, w: number, h: number, pt: number, measure: (s: string, pt: number) => number = approxWidth, lineGap = 1.25): boolean {
+  return fitSize(text, w, h, pt, pt, measure, lineGap) === pt && wrapLines(text, w, pt, measure) * pt * lineGap / 72 <= h;
+}
+function wrapLines(text: string, w: number, pt: number, measure: (s: string, pt: number) => number): number {
+  return text.split(/\n/).reduce((n, para) => {
+    let line = "", c = 1;
+    for (const wd of para.split(/\s+/)) { const t = line ? line + " " + wd : wd; if (measure(t, pt) > w && line) { c++; line = wd; } else line = t; }
+    return n + c;
+  }, 0);
+}
+
+/**
+ * The layout rule for every text box and list in every pack: nothing is drawn outside its box.
+ * If the content does not fit even at the smallest allowed size, whole bullets (lists) or whole sentences (text)
+ * are dropped from the end until it does, so a box never spills into the next box or the footer and never
+ * stops mid-sentence. The full text stays on the website and in the CSV/report data.
+ */
+export function fitList(items: string[], w: number, h: number, min: number, measure: (s: string, pt: number) => number = approxWidth): string[] {
+  const out = [...items];
+  while (out.length > 1 && !fitsAt(out.join("\n"), w - 0.25, h - out.length * 0.07, min, measure)) out.pop();
+  return out;
+}
+export function fitText(text: string, w: number, h: number, min: number, measure: (s: string, pt: number) => number = approxWidth): string {
+  if (fitsAt(text, w, h, min, measure)) return text;
+  const parts = text.split(/(?<=[.!?])\s+|\n/).filter(Boolean);
+  while (parts.length > 1) { parts.pop(); const t = parts.join(" ") + " …"; if (fitsAt(t, w, h, min, measure)) return t; }
+  return text;   // a single sentence: the renderer's own clipping is the last resort
+}
+
 /** Estimated height (inches) of wrapped text at a size. */
 export function textHeight(text: string, w: number, pt: number, bold = false): number {
   const lines = text.split(/\n/).reduce((n, para) => {

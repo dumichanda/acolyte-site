@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17T10:15",
+ "updated": "2026-11-17T10:40",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -468,6 +468,15 @@
    "what": "Full-width metric row on finding slides, two-line takeaways.",
    "days": {
     "FE": 0.5,
+    "QA": 0.25
+   }
+  },
+  {
+   "at": "2026-11-17T10:40",
+   "title": "Fit-to-box rule for packs",
+   "what": "Shared fitList/fitText used by the PowerPoint and PDF renderers.",
+   "days": {
+    "FE": 0.75,
     "QA": 0.25
    }
   }
@@ -1348,6 +1357,18 @@
    "why": "In the side column the three cards were squeezed and their labels overlapped the numbers.",
    "alternatives": "Keep the cards in the side column.",
    "note": ""
+  },
+  {
+   "id": "D74",
+   "at": "2026-11-17T10:40",
+   "kind": "Design",
+   "by": "You",
+   "status": "Active",
+   "title": "Layout rule: nothing is drawn outside its box",
+   "decision": "Every text box and list in every PowerPoint and PDF is checked at its smallest allowed font size before drawing; if it still does not fit, whole bullets or whole sentences are dropped from the end (text ends with …) until it does.",
+   "why": "Busy slides let the Detail box run into the footer. You asked for a general rule rather than a fix for one report.",
+   "alternatives": "Trim one report by hand; shrink text below a readable size.",
+   "note": "The full text stays on the website."
   }
  ]
 }
