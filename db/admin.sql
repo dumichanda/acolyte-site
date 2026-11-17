@@ -193,3 +193,17 @@ CREATE TABLE IF NOT EXISTS admin.connections (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (account_id, name)
 );
+
+-- Privacy controls for a client's connected databases (POPIA: minimality and retention).
+ALTER TABLE admin.connections ADD COLUMN IF NOT EXISTS pii_guard BOOLEAN NOT NULL DEFAULT TRUE;   -- mask personal information
+ALTER TABLE admin.connections ADD COLUMN IF NOT EXISTS guard_off_note TEXT;                       -- the client's written confirmation
+ALTER TABLE admin.connections ADD COLUMN IF NOT EXISTS guard_off_at TIMESTAMPTZ;
+ALTER TABLE admin.connections ADD COLUMN IF NOT EXISTS store_rows BOOLEAN NOT NULL DEFAULT TRUE;   -- keep query rows with conversations
+
+-- Retention: a client's conversations (with the query rows saved in them) are deleted this many days after the last message.
+ALTER TABLE admin.accounts ADD COLUMN IF NOT EXISTS retention_days INT NOT NULL DEFAULT 90;
+DO $$ BEGIN
+  ALTER TABLE admin.accounts ADD CONSTRAINT accounts_retention_check CHECK (retention_days BETWEEN 7 AND 730);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DELETE FROM admin.conversations c USING admin.accounts a
+ WHERE c.account_id = a.id AND c.updated_at < now() - make_interval(days => a.retention_days);

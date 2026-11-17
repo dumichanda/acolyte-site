@@ -7,6 +7,7 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 import os
 import secrets
 import threading
@@ -198,8 +199,48 @@ def get_conversation(db: str, account_id: int, cid: str, with_state=False) -> di
     return _jsonable(r[0]) if r else None
 
 
+def _forget(o, rx):
+    """Remove result rows that came from a connected database set to 'don't keep rows'. Keeps the chart and the answer."""
+    if isinstance(o, dict):
+        if isinstance(o.get("sql"), str) and rx.match(o["sql"]) and "rows" in o:
+            return {**{k: _forget(v, rx) for k, v in o.items() if k != "rows"}, "rows": [], "rows_removed": True}
+        return {k: _forget(v, rx) for k, v in o.items()}
+    if isinstance(o, list):
+        return [_forget(v, rx) for v in o]
+    return o
+
+
+def without_rows(s, state: dict, items: list, artifacts: dict) -> tuple[dict, list, dict]:
+    """Apply each connection's 'keep query rows' setting before a conversation is saved."""
+    no_keep = [str(c["id"]) for c in getattr(s, "connections", []) or [] if not c.get("store_rows", True)]
+    if not no_keep:
+        return state, items, artifacts
+    state = json.loads(json.dumps(state, default=str))   # never touch the live conversation
+    rx = re.compile(r"^/\*conn:(" + "|".join(no_keep) + r")\*/")
+    gone = {k for k, v in s.datasets.items() if rx.match(v.get("sql") or "")}
+
+    def trim(text: str) -> str:
+        for k in gone:
+            if text.startswith(f"dataset_id: {k}\n"):
+                return "\n".join(text.split("\n")[:3]) + "\n(rows from this database are not kept after the answer)"
+        return text
+    for m in state.get("messages", []):
+        if isinstance(m.get("content"), list):
+            for b in m["content"]:
+                if isinstance(b, dict) and b.get("type") == "tool_result":
+                    c = b.get("content")
+                    if isinstance(c, str):
+                        b["content"] = trim(c)
+                    elif isinstance(c, list):
+                        for part in c:
+                            if isinstance(part, dict) and isinstance(part.get("text"), str):
+                                part["text"] = trim(part["text"])
+    return _forget(state, rx), _forget(items, rx), _forget(artifacts, rx)
+
+
 def save_conversation(db: str, account_id: int, s, title: str, items: list, artifacts: dict) -> None:
     try:
+        state, items, artifacts = without_rows(s, dump_state(s), items, artifacts)
         with psycopg.connect(db) as conn:
             conn.execute("""INSERT INTO admin.conversations (id, account_id, title, items, artifacts, state, industry)
                             VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -207,7 +248,7 @@ def save_conversation(db: str, account_id: int, s, title: str, items: list, arti
                                 state = EXCLUDED.state, updated_at = now()
                             WHERE admin.conversations.account_id = EXCLUDED.account_id""",
                          (s.id, account_id, title[:120], json.dumps(items, default=str), json.dumps(artifacts, default=str),
-                          json.dumps(dump_state(s), default=str), getattr(s, "industry", "jobs") or "jobs"))
+                          json.dumps(state, default=str), getattr(s, "industry", "jobs") or "jobs"))
     except Exception as e:  # saving history must never break an answer
         print(f"conversation save failed: {e.__class__.__name__}: {e}", flush=True)
 
@@ -332,7 +373,8 @@ def dashboard_data(db: str, analyst_db: str, account_id: int, did: int, refresh:
 def admin_accounts(db: str) -> list[dict]:
     with psycopg.connect(db) as conn:
         return _jsonable(_rows(conn, """
-            SELECT a.id, a.name, a.plan, a.industry, a.active, a.created_at, a.last_login,
+            SELECT a.id, a.name, a.plan, a.industry, a.active, a.created_at, a.last_login, a.retention_days,
+                   (SELECT count(*) FROM admin.connections c WHERE c.account_id = a.id) AS databases,
                    a.brand IS NOT NULL AS branded, a.brand->>'accent' AS brand_accent, a.brand->>'dark' AS brand_dark,
                    (SELECT count(*) FROM admin.analyst_usage u WHERE u.account_id = a.id AND u.at >= now() - interval '30 days') AS questions_30d,
                    (SELECT coalesce(sum(cost_usd), 0) FROM admin.analyst_usage u WHERE u.account_id = a.id AND u.at >= now() - interval '30 days') AS cost_30d,
@@ -361,7 +403,7 @@ def admin_create_account(db: str, name: str, plan: str, pin: str | None, industr
 
 
 def admin_update_account(db: str, aid: int, plan: str | None, active: bool | None, reset_pin: bool,
-                         industry: str | None = None) -> dict:
+                         industry: str | None = None, retention_days: int | None = None) -> dict:
     from .industries import INDUSTRIES
     out = {}
     with psycopg.connect(db) as conn:
@@ -371,6 +413,10 @@ def admin_update_account(db: str, aid: int, plan: str | None, active: bool | Non
             conn.execute("UPDATE admin.accounts SET plan = %s WHERE id = %s", (plan, aid))
         if active is not None:
             conn.execute("UPDATE admin.accounts SET active = %s WHERE id = %s", (active, aid))
+        if retention_days is not None:
+            conn.execute("UPDATE admin.accounts SET retention_days = %s WHERE id = %s", (retention_days, aid))
+            conn.execute("DELETE FROM admin.conversations WHERE account_id = %s AND updated_at < now() - make_interval(days => %s)",
+                         (aid, retention_days))
         if reset_pin:
             pin = new_pin()
             salt, h = hash_pin(pin)

@@ -471,7 +471,7 @@ def run_connected_sql(s: Session, args: dict, admin_db: str) -> tuple[str, dict]
     if not s.account_id or not any(c["id"] == args.get("connection_id") for c in s.connections):
         raise ValueError("Unknown connection_id: use one listed in the client's databases section.")
     try:
-        cols, rows = connectors.run_for_account(admin_db, s.account_id, args["connection_id"], args.get("sql") or "")
+        cols, rows, masked = connectors.run_for_account(admin_db, s.account_id, args["connection_id"], args.get("sql") or "")
     except ValueError:
         raise
     except Exception as e:   # the client's database rejected the query (syntax, permissions, timeout): let the model fix it
@@ -485,7 +485,8 @@ def run_connected_sql(s: Session, args: dict, admin_db: str) -> tuple[str, dict]
     cell = lambda v: (t if len(t := (v if isinstance(v, str) else json.dumps(v, ensure_ascii=False))) <= CELL_CHARS else t[:CELL_CHARS] + "…")  # noqa: E731
     preview = "\n".join(" | ".join(cell(v) for v in r) for r in rows[:ROWS_TO_MODEL])
     text = (f"dataset_id: {ds_id}\ncolumns: {' | '.join(cols)}\n{len(rows)} rows{' (more rows exist; aggregate further)' if truncated else ''}"
-            f"\n{preview}" + (f"\n… {len(rows) - ROWS_TO_MODEL} more rows not shown" if len(rows) > ROWS_TO_MODEL else ""))
+            + (f" ({masked} cells of personal information hidden by the guard: describe groups, not people)" if masked else "")
+            + f"\n{preview}" + (f"\n… {len(rows) - ROWS_TO_MODEL} more rows not shown" if len(rows) > ROWS_TO_MODEL else ""))
     event = {"type": "query", "dataset": {"id": ds_id, "title": s.datasets[ds_id]["title"], "sql": sql,
                                           "columns": cols, "rows": rows[:200], "row_count": len(rows)}}
     return text, event

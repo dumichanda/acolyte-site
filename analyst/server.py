@@ -386,7 +386,8 @@ def dashboard_data(did: int, refresh: bool = False, account: dict = Depends(need
     def run(sql: str, db: str):   # a tile from a connected database refreshes from that database
         m = connectors.TAG.match(sql)
         if m:
-            return connectors.run_for_account(ADMIN_DB_URL, account["id"], int(m.group(1)), sql[m.end():])
+            cols, rows, _ = connectors.run_for_account(ADMIN_DB_URL, account["id"], int(m.group(1)), sql[m.end():])
+            return cols, rows
         return query(sql, db)
     return guard(lambda: acc.dashboard_data(ADMIN_DB_URL, url, account["id"], did, refresh, run))
 
@@ -1127,6 +1128,7 @@ class AccountIn(BaseModel):
     active: bool | None = None
     reset_pin: bool = False
     industry: str | None = Field(default=None, pattern="^(all|jobs|property|retail|marketplace)$")
+    retention_days: int | None = Field(default=None, ge=7, le=730)
 
 
 # ---------------------------------------------------------------- a client's own databases (connected read-only)
@@ -1139,6 +1141,9 @@ class ConnectionIn(BaseModel):
     username: str = Field(min_length=1, max_length=128)
     password: str | None = Field(default=None, max_length=256)   # blank on edit = keep the stored one
     ssl: bool = True
+    pii_guard: bool = True                       # mask personal information (switch off only with the client's confirmation)
+    guard_off_note: str | None = Field(default=None, max_length=500)
+    store_rows: bool = True                      # keep query rows with conversations (until retention ends)
     schemas: list[str] = Field(default_factory=list)
 
 
@@ -1198,4 +1203,4 @@ def admin_account_create(body: AccountIn, req: Request):
 def admin_account_update(aid: int, body: AccountIn, req: Request):
     require_admin(req)
     return guard(lambda: acc.admin_update_account(ADMIN_DB_URL, aid, body.plan, body.active, body.reset_pin,
-                                                    body.industry))
+                                                    body.industry, body.retention_days))

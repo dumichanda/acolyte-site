@@ -4,6 +4,7 @@ export interface ChartArtifact {
   kind: "chart"; id: string; dataset_id: string; type: string; x: string; y: string[];
   title: string; subtitle: string; value_format: string; columns: string[]; rows: unknown[][]; sql: string;
   annotations?: Annotation[];
+  rows_removed?: boolean;   // from a client database set to "don't keep rows": the rows weren't saved with the conversation
 }
 /** Analyst call-outs: a point (anomaly, record), a line (event, target, average) or a band (period, normal range). */
 export interface Annotation { kind: "point" | "line" | "band"; at: string; to: string; y: number | null; y_to: number | null; label: string; tone: string }

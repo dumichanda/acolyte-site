@@ -280,6 +280,9 @@ function ChartView({ c, height = 340, print = false }: { c: ChartArtifact; heigh
   const t = useTheme();
   const ref = useRef<any>(null);
   if (!t) return null;
+  if (c.rows_removed && !c.rows?.length) return (
+    <div className="muted small" style={{ padding: 16 }}><b>{c.title}</b><br />The rows behind this chart came from your own database and,
+      by your privacy setting, weren't kept after the answer. Ask again to see it, or pin it to a dashboard, which reads it live.</div>);
   const pt = print ? { ink: "#16140f", muted: "#6b6656", line: "#e7e2d6", panel: "#ffffff" } : t;
   const csv = () => download(`${c.title}.csv`, toCSV(c), "text/csv");
   const png = () => {

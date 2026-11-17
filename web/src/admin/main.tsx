@@ -63,7 +63,7 @@ function Kpi({ label, value, hint, tone }: { label: string; value: string; hint?
   return <div className="kpi"><div className="label">{label}</div><div className={"value " + (tone || "")}>{value}</div>{hint && <div className="hint">{hint}</div>}</div>;
 }
 
-interface AccountRow { id: number; name: string; plan: string; industry?: string; active: boolean; branded?: boolean; brand_accent?: string | null; brand_dark?: string | null; created_at: string; last_login: string | null;
+interface AccountRow { id: number; name: string; plan: string; industry?: string; active: boolean; retention_days?: number; databases?: number; branded?: boolean; brand_accent?: string | null; brand_dark?: string | null; created_at: string; last_login: string | null;
                      questions_30d: number; cost_30d: string; reports_30d: number; dashboards: number }
 const PLAN_LABEL: Record<string, string> = { junior: "Junior Analyst (R30k)", senior: "Senior AI & Data Science (R50k)", owner: "Owner" };
 const INDUSTRY_LABEL: Record<string, string> = { jobs: "Talent Analyst", property: "Property Analyst", retail: "Retail Pricing Analyst",
@@ -120,7 +120,7 @@ function Accounts({ adminKey }: { adminKey: string }) {
       <div className="table-scroll">
         <table>
           <thead><tr><th>Client</th><th>Analyst</th><th>Plan</th><th className="num">Questions 30d</th><th className="num">Reports 30d</th><th className="num">AI cost 30d</th>
-            <th className="num">Dashboards</th><th>Last sign-in</th><th>Status</th><th /></tr></thead>
+            <th className="num">Dashboards</th><th title="Conversations, with the query rows saved in them, are deleted this long after the last message">Keep chats</th><th>Last sign-in</th><th>Status</th><th /></tr></thead>
           <tbody>{rows.map((a) => (
             <tr key={a.id} className={a.active ? "" : "inactive"}>
               <td><b>{a.name}</b></td>
@@ -129,7 +129,11 @@ function Accounts({ adminKey }: { adminKey: string }) {
               <td><select value={a.plan} onChange={(e) => act(() => call(`/admin/accounts/${a.id}`, "PATCH", { plan: e.target.value }))}>
                 {Object.entries(PLAN_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></td>
               <td className="num">{a.questions_30d}</td><td className="num">{a.reports_30d}</td><td className="num">{usd(a.cost_30d)}</td>
-              <td className="num">{a.dashboards}</td><td className="small">{a.last_login ? when(a.last_login) : "never"}</td>
+              <td className="num">{a.dashboards}</td>
+              <td><select value={a.retention_days ?? 90} title="Delete conversations this long after the last message"
+                onChange={(e) => confirm(`Delete ${a.name}'s conversations older than ${e.target.value} days, now and from now on?`) && act(() => call(`/admin/accounts/${a.id}`, "PATCH", { retention_days: Number(e.target.value) }))}>
+                {[7, 30, 90, 180, 365, 730].map((d) => <option key={d} value={d}>{d} days</option>)}</select></td>
+              <td className="small">{a.last_login ? when(a.last_login) : "never"}</td>
               <td><button className="link" onClick={() => act(() => call(`/admin/accounts/${a.id}`, "PATCH", { active: !a.active }))}>
                 {a.active ? "Active · deactivate" : "Inactive · activate"}</button></td>
               <td><button className="link" onClick={() => confirm(`Give ${a.name} a new PIN? The old one stops working.`) && act(async () => {
@@ -138,9 +142,9 @@ function Accounts({ adminKey }: { adminKey: string }) {
                 <button className="link brand-btn" onClick={() => setBrandFor(a)}>
                   {a.branded && <i style={{ background: `linear-gradient(135deg, #${a.brand_dark} 55%, #${a.brand_accent} 55%)` }} />}
                   {a.branded ? "Branding" : "Add branding"}</button>
-                <button className="link" onClick={() => { setBrandFor(null); setDbFor(a); }}>Databases</button></td>
+                <button className="link" onClick={() => { setBrandFor(null); setDbFor(a); }}>Databases{a.databases ? ` (${a.databases})` : ""}</button></td>
             </tr>))}
-            {!rows.length && <tr><td colSpan={10} className="muted">No client accounts yet.</td></tr>}</tbody>
+            {!rows.length && <tr><td colSpan={11} className="muted">No client accounts yet.</td></tr>}</tbody>
         </table>
       </div>
       {brandFor && <Branding account={brandFor} call={call} onDone={() => { setBrandFor(null); load(); }} />}
