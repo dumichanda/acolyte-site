@@ -1,57 +1,48 @@
-import type { Snapshot } from "../types";
 import { url } from "../site";
 
 /**
- * The "big number" band: one live figure from Acolyte's market data, huge, in a glowing lime card with a receding grid,
- * and small glass cards around it showing what the analyst does with it. The number is real (read from snapshot.json);
- * it hides itself until the data has loaded rather than showing a made-up figure.
+ * Closing band before the contact form: a glowing lime card with a receding grid and one big claim about the analyst
+ * (always on), with small glass cards for what it does. About the analyst, not about our data.
  */
-type Prop = { for_sale?: number; to_rent?: number; regions?: number; day?: string };
-
-export default function BigStat({ s }: { s: Snapshot | null }) {
-  const p = (s as unknown as { property?: Prop } | null)?.property;
-  const total = (p?.for_sale ?? 0) + (p?.to_rent ?? 0);
-  if (!total) return null;
-  const big = total >= 1000 ? `${Math.floor(total / 1000)}K` : String(total);
-  const day = p?.day ? new Date(p.day).toLocaleDateString("en-ZA", { day: "numeric", month: "short" }) : "";
+export default function BigStat() {
   return (
-    <section className="bigstat" aria-label={`${total.toLocaleString("en-ZA")} property listings read every morning`}>
+    <section className="bigstat" aria-label="Your AI data analyst, always on">
       <div className="inner">
-        <span className="pill-tag"><i />Live market</span>
+        <span className="pill-tag"><i />Always on</span>
         <div className="bs-card">
           <div className="bs-grid" aria-hidden="true"><i className="floor" /><i className="ceil" /><i className="wall l" /><i className="wall r" /></div>
-          <span className="bs-badge">Demonstration data</span>
+          <span className="bs-badge">Your AI data analyst</span>
 
           <div className="bs-float tl" aria-hidden="true">
             <div className="bs-fh"><b>Daily brief</b><span>07:00</span></div>
             <div className="bs-lines"><i style={{ width: "72%" }} /><i style={{ width: "48%" }} /></div>
             <div className="bs-lines"><i style={{ width: "38%" }} /><i style={{ width: "64%" }} /></div>
-            <span className="bs-chip dark">Before the sales meeting</span>
+            <span className="bs-chip dark">Before your first meeting</span>
           </div>
 
           <div className="bs-float tr" aria-hidden="true">
-            <div className="bs-fh"><b>Live dashboards</b><span>{day ? `Updated ${day}` : "Daily"}</span></div>
+            <div className="bs-fh"><b>Live dashboards</b><span>Every day</span></div>
             <div className="bs-bar"><i style={{ width: "86%" }} /></div>
             <p>Every chart refreshes itself</p>
             <span className="bs-chip light">Your data, read-only</span>
           </div>
 
-          <div className="bs-number" aria-hidden="true">{big}</div>
-          <div className="bs-sub" aria-hidden="true">Listings read every morning</div>
+          <div className="bs-number" aria-hidden="true">24/7</div>
+          <div className="bs-sub" aria-hidden="true">Never clocks off. Shows its working.</div>
 
           <div className="bs-float br" aria-hidden="true">
             <span className="bs-chip lime">Ask in plain English</span>
             <small>Answers in</small>
             <b className="bs-mini">Seconds</b>
-            <p>+ the chart, dashboard or pack</p>
+            <p>+ the query behind every number</p>
           </div>
 
           <div className="bs-cta">
-            <a className="btn-signal" href={url("/property/")}>See the Property Analyst <span className="arr">→</span></a>
+            <a className="btn-signal" href="#contact">Book a free data session <span className="arr">→</span></a>
           </div>
         </div>
-        <p className="bs-note">{total.toLocaleString("en-ZA")} homes for sale and to rent across {p?.regions ?? "all"} regions on Private Property,
-          counted{day ? ` on ${day}` : " daily"}. Shown as a demonstration; your analyst works on your own data.</p>
+        <p className="bs-note">Ask it anything about your business, at any hour. It answers from your own data, shows its working, and hands over the chart,
+          dashboard or report pack. <a href={url("/analyst/")}>Try it now</a>.</p>
       </div>
     </section>
   );

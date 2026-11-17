@@ -447,7 +447,6 @@ export default function Landing() {
         <div className="track">{[...MARQUEE, ...MARQUEE].map((m, k) => <span key={k}>{m}</span>)}</div>
       </div>
 
-      <BigStat s={s} />
 
       <section id="analytics">
         <div className="inner">
@@ -557,6 +556,8 @@ export default function Landing() {
           <Calculator />
         </div>
       </section>
+
+      <BigStat />
 
       <section id="contact">
         <div className="inner contact">

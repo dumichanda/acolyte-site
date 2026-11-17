@@ -407,7 +407,7 @@ body:has(.lp) { background: #0c0c0e; }
 .lp form.f label.consent { display: flex; margin: 0; }
 
 /* ---------------- Big number band (BigStat.tsx): glowing lime card, receding grid, one live figure ---------------- */
-.lp .bigstat { padding: 56px 0 24px; }
+.lp .bigstat { padding: 40px 0 72px; }
 .lp .bigstat .pill-tag { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--signal);
   color: var(--signal); font-weight: 600; font-size: 14px; margin-bottom: 18px; background: #c8f13512; }
 .lp .bigstat .pill-tag i { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 10px var(--signal); }
@@ -456,7 +456,7 @@ body:has(.lp) { background: #0c0c0e; }
 .lp .bs-float.tl { top: 150px; left: 36px; transform: rotate(-1deg); }
 .lp .bs-float.tr { top: 64px; right: 36px; transform: rotate(1deg); }
 .lp .bs-float.br { bottom: 36px; right: 36px; transform: rotate(-1.5deg); }
-.lp .bs-note { color: var(--mute); font-size: 13px; margin: 14px 4px 0; }
+.lp .bs-note { color: var(--mute); font-size: 14px; margin: 14px 4px 0; } .lp .bs-note a { color: var(--signal); }
 @media (max-width: 1120px) {
   .lp .bs-card { min-height: 0; padding: 70px 18px 36px; border-radius: 26px; }
   .lp .bs-float { position: relative; inset: auto; width: 100%; max-width: 420px; transform: none; margin-top: 14px; }
