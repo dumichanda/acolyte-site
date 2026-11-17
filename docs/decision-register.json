@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17T19:00",
+ "updated": "2026-11-17T19:30",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -1559,11 +1559,11 @@
    "kind": "Design",
    "by": "You",
    "status": "Active",
-   "title": "Big live number band on the landing page",
-   "decision": "Below the ticker, a glowing lime card with a receding 3D grid shows one live figure from our data (property listings counted that morning, 224K on 16 Nov) in a large condensed type (Anton), with glass cards for the daily brief, live dashboards and plain-English answers, a 'Demonstration data' tag and a button to the Property Analyst. It hides itself if the data hasn't loaded, so no figure is ever made up.",
+   "title": "Big glowing band on the landing page: about the analyst",
+   "decision": "Just before the contact form, a glowing lime card with a receding 3D grid shows '24/7: never clocks off, shows its working', with glass cards for the 07:00 brief, live dashboards on the client's own data and plain-English answers in seconds, and a button to book a free data session.",
    "why": "You liked the style of a big-number promo band; it makes the scale of the data felt at a glance and fits the lime-on-black brand.",
    "alternatives": "Copy the reference design and its wording; use a static marketing number.",
-   "note": "Inspired by a design you shared; our own layout, words and data. The grid moves slowly and stops for people who prefer reduced motion."
+   "note": "Inspired by a design you shared; our own layout, words and data. The grid moves slowly and stops for people who prefer reduced motion. Changed on 17 Nov: first version showed 224K property listings, which advertised data; moved from below the ticker to the end of the page."
   }
  ]
 }
