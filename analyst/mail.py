@@ -1,11 +1,12 @@
 """Email for the platform.
 
 Three routes, because the rules differ:
-- System mail (lead assignments, agents' daily tasks, owner alerts): Brevo (recommended) or ZeptoMail, over HTTPS.
+- System mail (lead assignments, agents' daily tasks, owner alerts): Brevo or ZeptoMail over HTTPS if set up,
+  otherwise the sales mailbox. A paid Zoho Mail mailbox alone runs the whole funnel; Brevo is an optional extra.
 - Mail to prospects who said yes (the monthly pack, follow-ups): Brevo, which allows email to people who opted in;
   otherwise the sales mailbox. ZeptoMail is never used for this: its terms allow transactional email only.
 - The single permission email (POPIA s69: one unsolicited approach) is a 1:1 email from a real sales mailbox over
-  SMTP (e.g. Zoho Mail: smtp.zoho.com:465), at a low daily rate with the agent as reply-to. No email provider allows
+  SMTP (e.g. Zoho Mail: smtppro.zoho.com:465), at a low daily rate with the agent as reply-to. No email provider allows
   cold email to people who never opted in. Without a mailbox, the agent sends it from their own mail app.
 
 Settings (Render environment variables; secrets never in code):
@@ -42,11 +43,11 @@ def smtp_ready() -> bool:
 
 
 def system_ready() -> bool:
-    return brevo_ready() or zepto_ready()
+    return brevo_ready() or zepto_ready() or smtp_ready()
 
 
 def status() -> dict:
-    return {"system": "brevo" if brevo_ready() else "zeptomail" if zepto_ready() else None,
+    return {"system": "brevo" if brevo_ready() else "zeptomail" if zepto_ready() else "smtp" if smtp_ready() else None,
             "consented": "brevo" if brevo_ready() else "smtp" if smtp_ready() else None,
             "permission": "smtp" if smtp_ready() else "manual",
             "brevo_from": os.environ.get("BREVO_FROM", ""), "zeptomail_from": os.environ.get("ZEPTOMAIL_FROM", ""),
@@ -72,10 +73,12 @@ def send_brevo(to: list[tuple[str, str]], subject: str, text: str, reply_to: str
 
 
 def send_system(to: list[tuple[str, str]], subject: str, text: str, reference: str = "") -> str:
-    """Platform notifications: Brevo if set up, else ZeptoMail."""
+    """Platform notifications: Brevo if set up, else ZeptoMail, else the sales mailbox (Zoho alone is enough)."""
     if brevo_ready():
         return send_brevo(to, subject, text, tag="system")
-    return send_zepto(to, subject, text, reference)
+    if zepto_ready() or not smtp_ready():
+        return send_zepto(to, subject, text, reference)
+    return ", ".join(send_outreach(addr, name, subject, text, None, reference) for addr, name in to)
 
 
 def send_consented(to: str, to_name: str, subject: str, text: str, reply_to: str | None, reference: str) -> str:
