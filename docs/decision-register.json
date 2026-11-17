@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17T13:30",
+ "updated": "2026-11-17T14:30",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -1468,6 +1468,18 @@
    "why": "Puts legal responsibility where the data comes from, before the first client signs.",
    "alternatives": "Rely on generic SaaS terms.",
    "note": "For attorney review; open questions listed in the draft."
+  },
+  {
+   "id": "D81",
+   "at": "2026-11-17T14:30",
+   "kind": "Design",
+   "by": "You",
+   "status": "Active",
+   "title": "Short detail bullets at the source",
+   "decision": "The analyst writes 2-3 detail bullets per finding, each one sentence of at most 110 characters with one number, never repeating the takeaway or a KPI. The automatic report check rejects longer or extra bullets and the analyst rewrites them before publishing.",
+   "why": "The fit-to-box rule was dropping bullets on busy slides; writing them short means nothing needs dropping.",
+   "alternatives": "Rely on the fit-to-box rule alone.",
+   "note": "Applies from the next reports and packs written."
   }
  ]
 }

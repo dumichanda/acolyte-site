@@ -114,8 +114,8 @@ How to work:
   (findings, risks, numbered actions) and method (how it was built, what to trust, what is estimated or not comparable).
   Tone for KPI cards: positive = good news, negative = problem/risk, brand = headline figure, neutral = context.
   FILL THE PACK (no empty space on any slide; every element carries a number or an implication): executive summary
-  with 4-8 KPI cards, a so-what and a catch; every section with 2-3 KPI cards, 3-4 bullets that each contain a number
-  (a comparison, gap, share or change), a so-what and a how-to-read note; 4-6 Q&A pairs; conclusions with 4-6 findings,
+  with 4-8 KPI cards, a so-what and a catch; every section with 2-3 KPI cards, 2-3 detail bullets (each ONE short sentence of max ~16 words / 110 characters,
+  with one number: a comparison, gap, share or change; no repeat of the takeaway or a KPI), a so-what and a how-to-read note; 4-6 Q&A pairs; conclusions with 4-6 findings,
   3-5 risks and 4-6 numbered actions; method with 3-5 steps and 3 limits. Prefer more distinct insights over longer text.
   ORDER sections by importance: the first two become the 5-slide executive brief (cover, summary, those two findings,
   recommendations); the full pack has all of them. Put the most decision-relevant findings first and make the
@@ -246,7 +246,7 @@ TOOLS = [
                             "kpis": {"type": "array", "items": KPI_SCHEMA, "description": "0-3 supporting figures shown as cards"},
                             "so_what": {"type": "string", "description": "Implication / recommendation (or empty)"},
                             "note": {"type": "string", "description": "Caveat or how to read the chart (or empty)"},
-                            "bullets": {"type": "array", "items": {"type": "string"}, "description": "0-4 short supporting points"},
+                            "bullets": {"type": "array", "items": {"type": "string"}, "description": "2-3 detail points, each one sentence of max 110 characters with one number"},
                             "explainers": {"type": "array", "description": "1-2 jargon busters for the expert terms used on this slide",
                                            "items": {"type": "object", "properties": {
                                                "term": {"type": "string", "description": "The term or model, e.g. Gross rental yield"},
@@ -627,8 +627,10 @@ def review_report(s: Session, a: dict, flagged: list[str]) -> list[str]:
         for f, n in (("takeaway", 230), ("so_what", 330), ("note", 290)):
             if L(sec.get(f), n):
                 issues.append(f"Section {i + 1} {f} is longer than {n} characters; tighten it.")
-        if len(sec.get("bullets") or []) > 4 or any(L(b, 150) for b in sec.get("bullets") or []):
-            issues.append(f"Section {i + 1}: max 4 bullets of max 150 characters.")
+        long = [b for b in sec.get("bullets") or [] if L(b, 110)]
+        if len(sec.get("bullets") or []) > 3 or long:
+            issues.append(f"Section {i + 1}: detail bullets must be max 3, each one sentence of max 110 characters "
+                          f"({len(sec.get('bullets') or [])} given, {len(long)} too long); cut words, keep the number.")
         if len(sec.get("chart_ids") or []) > 2:
             issues.append(f"Section {i + 1} has more than 2 charts; split it.")
         for cid in sec.get("chart_ids") or []:
@@ -685,7 +687,7 @@ def write_report(s: Session, args: dict, db_url: str = "") -> tuple[str, dict | 
         unknown += [c for c in sec.get("chart_ids", []) if c not in s.charts]
         sections.append({"question": sec.get("question", ""), "title": sec.get("title", ""), "takeaway": sec.get("takeaway", ""),
                          "chart_ids": ids, "kpis": kpis(sec.get("kpis"), 3), "so_what": sec.get("so_what", ""),
-                         "note": sec.get("note", ""), "bullets": [str(b) for b in (sec.get("bullets") or [])[:4]],
+                         "note": sec.get("note", ""), "bullets": [str(b) for b in (sec.get("bullets") or [])[:3]],
                          "explainers": [{k: str(e.get(k, ""))[:400] for k in ("term", "means", "why")}
                                         for e in (sec.get("explainers") or [])[:2] if isinstance(e, dict) and e.get("term")],
                          # older viewers read heading/body
