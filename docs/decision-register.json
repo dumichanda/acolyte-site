@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17T15:40",
+ "updated": "2026-11-17T16:30",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -1071,7 +1071,7 @@
    "decision": "Generate ~50 tagged report images with an API image model, not a logged-in ChatGPT account.",
    "why": "A personal ChatGPT login can't be automated safely; the API is repeatable and logged.",
    "alternatives": "ChatGPT web app; stock photo licences.",
-   "note": "Waiting for OpenRouter credit (key limit)."
+   "note": "Now: a 6-image trial made by hand in ChatGPT and Gemini (logged-in apps), scored in docs/image-model-trial.json; the winner's API is used in production once OpenRouter or a direct key has credit."
   },
   {
    "id": "D47",
@@ -1516,6 +1516,18 @@
    "why": "POPIA requires keeping personal information no longer than needed; client conversations were previously kept until the client deleted them.",
    "alternatives": "Keep conversations indefinitely; delete everything after each answer.",
    "note": ""
+  },
+  {
+   "id": "D84",
+   "at": "2026-11-17T16:30",
+   "kind": "Security",
+   "by": "You",
+   "status": "Active",
+   "title": "Claude holds admin access through a network secret",
+   "decision": "The rotated admin token is saved as a network secret on this cloud environment for acolyte-site.onrender.com. The proxy adds it to Claude's requests, so admin tasks can be run from the phone without the token ever appearing in chat, code or logs.",
+   "why": "The old token was pasted in chat; you want Claude to run admin tasks for you on request.",
+   "alternatives": "Paste the token per session; no admin access for Claude.",
+   "note": "Every session in this environment can use it. If the token changes, update the secret in the environment's settings."
   }
  ]
 }

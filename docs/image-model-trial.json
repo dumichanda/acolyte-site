@@ -1,0 +1,15 @@
+{
+  "purpose": "Which image tool makes the best report pictures for Acolyte. Hand-made in the apps for now; the winner's API (via OpenRouter or direct) is used in production.",
+  "criteria": {
+    "style": "matches the house style: flat isometric, charcoal + lime palette (0-5)",
+    "sa": "recognisably South African, believable people and places (0-5)",
+    "no_text": "no letters, logos or garbled text anywhere (0-5)",
+    "space": "clear empty side for a headline, 16:9 (0-5)",
+    "quality": "no artefacts: hands, faces, warped objects (0-5)"
+  },
+  "prompts": ["property-01-jhb-skyline", "property-07-agent-viewing", "retail-01-supermarket-aisle",
+              "market-04-compare-phones", "talent-04-bookkeeper", "general-02-good-or-bad"],
+  "tools": {"chatgpt": {"how": "ChatGPT app, logged in"}, "gemini": {"how": "Gemini app, logged in"}},
+  "scores": [],
+  "verdict": null
+}
