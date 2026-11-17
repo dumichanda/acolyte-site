@@ -337,6 +337,8 @@ class Session:
     account_id: int | None = None
     industry: str = "all"
     client_guide: str = ""          # the client's own uploaded tables (private), appended to the system prompt
+    connections: list = field(default_factory=list)    # the client's own databases, connected read-only (id, name, kind)
+    admin_db: str = ""              # where the connection details live (set by the server)
     view_context: str = ""          # the dashboard view the question is about (filters + the data on screen)
     style: str = "balanced"         # creative range chosen by the user: formal | balanced | creative
     web: bool | None = None         # web research: None = decide per question, True/False = forced
@@ -440,6 +442,50 @@ def run_sql(s: Session, args: dict, db_url: str) -> tuple[str, dict]:
     text = f"dataset_id: {ds_id}\ncolumns: {' | '.join(cols)}\n{note}\n{preview}"
     if len(rows) > ROWS_TO_MODEL:
         text += f"\n… {len(rows) - ROWS_TO_MODEL} more rows not shown"
+    event = {"type": "query", "dataset": {"id": ds_id, "title": s.datasets[ds_id]["title"], "sql": sql,
+                                          "columns": cols, "rows": rows[:200], "row_count": len(rows)}}
+    return text, event
+
+
+CONNECTED_TOOL = {
+    "name": "run_connected_sql",
+    "description": "Run one read-only SELECT (or WITH ... SELECT) on one of the client's own connected databases, in that "
+                   "database's SQL dialect. Returns a dataset_id, the columns and the first rows, like run_sql.",
+    "strict": True,
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "connection_id": {"type": "integer", "description": "The connection_id from the client's databases section."},
+            "sql": {"type": "string", "description": "A single SELECT statement in that database's dialect. No semicolons."},
+            "title": {"type": "string", "description": "Short human title for this result."},
+        },
+        "required": ["connection_id", "sql", "title"],
+        "additionalProperties": False,
+    },
+}
+
+
+def run_connected_sql(s: Session, args: dict, admin_db: str) -> tuple[str, dict]:
+    """The client's own database: no showcase rule (it's their data), stored with a tag so dashboards refresh from it."""
+    from . import connectors
+    if not s.account_id or not any(c["id"] == args.get("connection_id") for c in s.connections):
+        raise ValueError("Unknown connection_id: use one listed in the client's databases section.")
+    try:
+        cols, rows = connectors.run_for_account(admin_db, s.account_id, args["connection_id"], args.get("sql") or "")
+    except ValueError:
+        raise
+    except Exception as e:   # the client's database rejected the query (syntax, permissions, timeout): let the model fix it
+        print(f"connected query failed: {e.__class__.__name__}", flush=True)
+        raise ValueError(f"The client's database returned an error: {str(e)[:300]}") from None
+    truncated = len(rows) > MAX_ROWS
+    rows = rows[:MAX_ROWS]
+    ds_id = f"d{len(s.datasets) + 1}"
+    sql = connectors.tagged(args["connection_id"], (args.get("sql") or "").strip().rstrip(";"))
+    s.datasets[ds_id] = {"id": ds_id, "title": args.get("title") or ds_id, "sql": sql, "columns": cols, "rows": rows}
+    cell = lambda v: (t if len(t := (v if isinstance(v, str) else json.dumps(v, ensure_ascii=False))) <= CELL_CHARS else t[:CELL_CHARS] + "…")  # noqa: E731
+    preview = "\n".join(" | ".join(cell(v) for v in r) for r in rows[:ROWS_TO_MODEL])
+    text = (f"dataset_id: {ds_id}\ncolumns: {' | '.join(cols)}\n{len(rows)} rows{' (more rows exist; aggregate further)' if truncated else ''}"
+            f"\n{preview}" + (f"\n… {len(rows) - ROWS_TO_MODEL} more rows not shown" if len(rows) > ROWS_TO_MODEL else ""))
     event = {"type": "query", "dataset": {"id": ds_id, "title": s.datasets[ds_id]["title"], "sql": sql,
                                           "columns": cols, "rows": rows[:200], "row_count": len(rows)}}
     return text, event
@@ -691,6 +737,8 @@ def execute(s: Session, name: str, args, db_url: str) -> tuple[str, dict | None,
     try:
         if name == "run_sql":
             text, ev = run_sql(s, args, db_url)
+        elif name == "run_connected_sql":
+            text, ev = run_connected_sql(s, args, s.admin_db)
         elif name == "make_chart":
             text, ev = make_chart(s, args)
         elif name == "write_report":
@@ -766,7 +814,7 @@ def _answer(client, s: Session, question: str, db_url: str, budget: Budget, mode
                            + ([{"type": "text", "text": STYLES[s.style]}] if STYLES.get(s.style) else [])
                            + ([{"type": "text", "text": VIEW_INTRO + s.view_context}] if s.view_context else []),
                     cache_control={"type": "ephemeral"},
-                    tools=TOOLS + ([{"type": "web_search_20260209", "name": "web_search", "max_uses": 5,
+                    tools=TOOLS + ([CONNECTED_TOOL] if s.connections else []) + ([{"type": "web_search_20260209", "name": "web_search", "max_uses": 5,
                                      "user_location": {"type": "approximate", "country": "ZA"}}] if web else []),
                     messages=s.messages,
                     output_config={"effort": cfg["effort"]},

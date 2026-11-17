@@ -198,6 +198,13 @@ def ask(body: Ask, req: Request):
                 db_url = cd.client_url(DB_URL, account["id"])
         except Exception as e:
             print(f"client data guide failed: {e.__class__.__name__}", flush=True)
+        try:   # the client's own databases, connected read-only
+            g, s.connections = connectors.guide(ADMIN_DB_URL, account["id"])
+            s.admin_db = ADMIN_DB_URL
+            if g:
+                s.client_guide = (s.client_guide + "\n\n" + g).strip()
+        except Exception as e:
+            print(f"connections guide failed: {e.__class__.__name__}", flush=True)
     s.view_context = (body.context or "").strip()
     s.style = body.style
     if s.turns >= MAX_TURNS:
@@ -375,7 +382,13 @@ def tile_update(tid: int, body: TilePatch, account: dict = Depends(need_account)
 @app.get("/dashboards/{did}/data")
 def dashboard_data(did: int, refresh: bool = False, account: dict = Depends(need_account)):
     url = cd.client_url(DB_URL, account["id"]) if cd.has_space(ADMIN_DB_URL, account["id"]) else DB_URL
-    return guard(lambda: acc.dashboard_data(ADMIN_DB_URL, url, account["id"], did, refresh, query))
+
+    def run(sql: str, db: str):   # a tile from a connected database refreshes from that database
+        m = connectors.TAG.match(sql)
+        if m:
+            return connectors.run_for_account(ADMIN_DB_URL, account["id"], int(m.group(1)), sql[m.end():])
+        return query(sql, db)
+    return guard(lambda: acc.dashboard_data(ADMIN_DB_URL, url, account["id"], did, refresh, run))
 
 
 # ---------------------------------------------------------------- the client's own data (CSV / Excel uploads)
@@ -702,7 +715,7 @@ def admin_alerts_ack(body: AckIn, req: Request):
 # ---------------------------------------------------------------- Acolyte's own sales CRM
 # The owner uses the admin key; account agents sign in with their own PIN and see and change only their leads.
 # Agent session tokens reuse the signed-token format with a negative id (client accounts are positive).
-from . import funnel, mail
+from . import connectors, funnel, mail
 from . import prospects as sales
 
 
@@ -1114,6 +1127,57 @@ class AccountIn(BaseModel):
     active: bool | None = None
     reset_pin: bool = False
     industry: str | None = Field(default=None, pattern="^(all|jobs|property|retail|marketplace)$")
+
+
+# ---------------------------------------------------------------- a client's own databases (connected read-only)
+class ConnectionIn(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    kind: str = Field(pattern="^(postgres|mysql|mssql)$")
+    host: str = Field(min_length=3, max_length=253)
+    port: int | None = Field(default=None, ge=1, le=65535)
+    database: str = Field(min_length=1, max_length=128)
+    username: str = Field(min_length=1, max_length=128)
+    password: str | None = Field(default=None, max_length=256)   # blank on edit = keep the stored one
+    ssl: bool = True
+    schemas: list[str] = Field(default_factory=list)
+
+
+def _conn_call(fn):
+    try:
+        return fn()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/admin/accounts/{aid}/connections")
+def admin_connections(aid: int, req: Request):
+    require_admin(req)
+    return {"connections": connectors.list_for(ADMIN_DB_URL, aid), "kinds": connectors.KINDS}
+
+
+@app.post("/admin/accounts/{aid}/connections")
+def admin_connection_add(aid: int, body: ConnectionIn, req: Request):
+    require_admin(req)
+    return _conn_call(lambda: connectors.save(ADMIN_DB_URL, aid, body.model_dump()))
+
+
+@app.put("/admin/accounts/{aid}/connections/{cid}")
+def admin_connection_edit(aid: int, cid: int, body: ConnectionIn, req: Request):
+    require_admin(req)
+    return _conn_call(lambda: connectors.save(ADMIN_DB_URL, aid, body.model_dump(), cid))
+
+
+@app.post("/admin/accounts/{aid}/connections/{cid}/test")
+def admin_connection_test(aid: int, cid: int, req: Request):
+    require_admin(req)
+    return _conn_call(lambda: connectors.test(ADMIN_DB_URL, cid))
+
+
+@app.delete("/admin/accounts/{aid}/connections/{cid}")
+def admin_connection_remove(aid: int, cid: int, req: Request):
+    require_admin(req)
+    connectors.remove(ADMIN_DB_URL, aid, cid)
+    return {"ok": True}
 
 
 @app.get("/admin/accounts")

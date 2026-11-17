@@ -7,6 +7,7 @@ import PlatformNav from "../PlatformNav";
 import { SITE, url } from "../site";
 import { CATEGORICAL, mode as themeMode } from "../viz";
 import Branding from "./Branding";
+import Databases from "./Databases";
 
 // Private admin page: reads /admin/stats from the analyst API with the admin key (kept only in this browser).
 const API = (() => {
@@ -72,7 +73,7 @@ function Accounts({ adminKey }: { adminKey: string }) {
   const [rows, setRows] = useState<AccountRow[]>([]);
   const [name, setName] = useState(""), [plan, setPlan] = useState("junior"), [pin, setPin] = useState(""), [industry, setIndustry] = useState("property");
   const [brief, setBrief] = useState("");
-  const [brandFor, setBrandFor] = useState<AccountRow | null>(null);
+  const [brandFor, setBrandFor] = useState<AccountRow | null>(null), [dbFor, setDbFor] = useState<AccountRow | null>(null);
   const [notice, setNotice] = useState(""), [err, setErr] = useState("");
   const call = useCallback(async (path: string, method = "GET", body?: unknown) => {
     const r = await fetch(`${API}${path}`, { method, headers: { Authorization: `Bearer ${adminKey}`, ...(body ? { "Content-Type": "application/json" } : {}) },
@@ -136,12 +137,14 @@ function Accounts({ adminKey }: { adminKey: string }) {
               })}>Reset PIN</button>
                 <button className="link brand-btn" onClick={() => setBrandFor(a)}>
                   {a.branded && <i style={{ background: `linear-gradient(135deg, #${a.brand_dark} 55%, #${a.brand_accent} 55%)` }} />}
-                  {a.branded ? "Branding" : "Add branding"}</button></td>
+                  {a.branded ? "Branding" : "Add branding"}</button>
+                <button className="link" onClick={() => { setBrandFor(null); setDbFor(a); }}>Databases</button></td>
             </tr>))}
             {!rows.length && <tr><td colSpan={10} className="muted">No client accounts yet.</td></tr>}</tbody>
         </table>
       </div>
       {brandFor && <Branding account={brandFor} call={call} onDone={() => { setBrandFor(null); load(); }} />}
+      {dbFor && <Databases account={dbFor} call={call} onDone={() => setDbFor(null)} />}
     </section>
   );
 }

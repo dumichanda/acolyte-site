@@ -470,7 +470,12 @@ function YourData({ onAsk, onChange }: { onAsk: (q: string) => void; onChange: (
   return (
     <details className="your-data" open>
       <summary>Your data <span className="muted">({tables.length}/{limit})</span></summary>
-      <p className="muted small">Upload a CSV or Excel file. It stays private to your account, and your analyst can compare it with the market.</p>
+      <p className="muted small">Upload a CSV or Excel file. It stays private to your account, and your analyst can compare it with the market.
+        Upload exports as they are (Takealot Seller Portal, Amazon Seller Central, your CRM or till system), or start from a template:{" "}
+        {[["takealot-seller-sales", "Takealot sales"], ["amazon-seller-business-report", "Amazon business report"], ["marketplace-stock", "Marketplace stock"],
+          ["agency-listings-and-sales", "Agency listings and sales"], ["store-sales", "Store sales"]].map(([f, l], i) =>
+          <span key={f}>{i ? " · " : ""}<a href={url(`/templates/${f}.csv`)} download>{l}</a></span>)}.
+        For a database (PostgreSQL, MySQL or SQL Server), ask us to connect it read-only.</p>
       <label className={"btn sm upload" + (busy ? " busy" : "")}>
         {busy ? "Uploading…" : "Upload CSV or Excel"}
         <input ref={fileRef} type="file" id="data-upload" accept=".csv,.txt,.xlsx,.xlsm" hidden disabled={busy}

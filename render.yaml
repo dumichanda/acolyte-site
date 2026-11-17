@@ -14,6 +14,8 @@ services:
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: CONNECTIONS_KEY          # encrypts client database passwords; keep it stable (changing it means re-entering them)
+        generateValue: true
       - key: ANALYST_DATABASE_URL
         sync: false
       - key: ALLOWED_ORIGINS

@@ -174,3 +174,22 @@ CREATE TABLE IF NOT EXISTS admin.credit (
 );
 ALTER TABLE admin.credit ADD COLUMN IF NOT EXISTS step_pct INT NOT NULL DEFAULT 10;   -- alert at every N% of the top-up used
 ALTER TABLE admin.credit ADD COLUMN IF NOT EXISTS alerted_pct INT NOT NULL DEFAULT 0; -- highest % used already alerted
+
+-- A client's own database, connected read-only (Postgres, MySQL/MariaDB or SQL Server). The analyst queries it in place;
+-- nothing is copied out. The password is encrypted with the server key (CONNECTIONS_KEY) and never returned by the API.
+CREATE TABLE IF NOT EXISTS admin.connections (
+    id           SERIAL PRIMARY KEY,
+    account_id   INT NOT NULL REFERENCES admin.accounts(id) ON DELETE CASCADE,
+    name         TEXT NOT NULL,                       -- e.g. 'Sales warehouse'
+    kind         TEXT NOT NULL CHECK (kind IN ('postgres', 'mysql', 'mssql')),
+    host         TEXT NOT NULL, port INT NOT NULL, database TEXT NOT NULL, username TEXT NOT NULL,
+    password_enc TEXT NOT NULL,
+    ssl          BOOLEAN NOT NULL DEFAULT TRUE,
+    schemas      TEXT[] NOT NULL DEFAULT '{}',        -- limit the analyst to these schemas (empty = all it can see)
+    status       TEXT NOT NULL DEFAULT 'new',         -- new | ok | error
+    error        TEXT,
+    tested_at    TIMESTAMPTZ,
+    catalog      JSONB NOT NULL DEFAULT '[]',         -- tables and columns found at the last test
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (account_id, name)
+);

@@ -1,0 +1,2 @@
+Order date,Order ID,Offer ID,TSIN,SKU,Product title,Brand,Category,Quantity,Selling price (R),Success fee (R),Fulfilment fee (R),Net payout (R),Fulfilment,Region
+2026-11-01,EXAMPLE-1001,EXAMPLE-OFFER-1,EXAMPLE-TSIN-1,MY-SKU-001,Example product 500g,Example Brand,Groceries,2,89.99,10.80,25.00,144.18,Takealot DC,Gauteng
