@@ -65,9 +65,12 @@ def assign(db: str, per_run: int) -> list[dict]:
             if not team:
                 continue
             leads = _rows(conn, """SELECT id, name, contact_email FROM sales.prospects
-                                   WHERE analyst = %s AND agent_id IS NULL AND rank IS NOT NULL AND stage = 'prospect'
+                                   WHERE analyst = %s AND agent_id IS NULL AND stage = 'prospect'
+                                     AND (rank IS NOT NULL OR EXISTS (SELECT 1 FROM sales.enquiries e WHERE e.prospect_id = sales.prospects.id))
                                      AND consent NOT IN ('declined', 'opted_out')
-                                   ORDER BY rank LIMIT %s""", (analyst, per_run))
+                                   -- website enquiries first (warm leads), oldest first; then the ranked list
+                                   ORDER BY (SELECT min(e.at) FROM sales.enquiries e WHERE e.prospect_id = sales.prospects.id) NULLS LAST, rank
+                                   LIMIT %s""", (analyst, per_run))
             for p in leads:
                 if _suppressed(conn, {**p}):
                     continue
