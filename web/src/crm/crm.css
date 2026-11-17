@@ -1,3 +1,4 @@
+.pcip { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
 /* Sales CRM: builds on index.css tokens (--panel, --line, --muted, --accent, --ink, --bg). */
 .crm .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .crm .btn.sm { padding: 5px 10px; font-size: 13px; }
@@ -106,3 +107,6 @@
 .mailst { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
 .banner.ok { border-color: var(--accent); }
 .banner.pin { font-family: "JetBrains Mono", monospace; }
+.mail.done { opacity: .6; }
+.mail .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.pcip.yes { background: #c8f13533; } .pcip.unsubscribe, .pcip.no, .pcip.bounce { background: #ff6a3d26; } .pcip.question { background: #38a3ff26; }

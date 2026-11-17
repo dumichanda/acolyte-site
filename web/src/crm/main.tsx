@@ -39,7 +39,7 @@ interface Me { admin: boolean; agent_id: number | null; name: string; mail?: Mai
 interface MailStatus { system: string | null; consented: string | null; permission: string; brevo_from: string; zeptomail_from: string; outreach_from: string }
 interface Agent { id: number; name: string; email: string; analysts: Analyst[]; max_open: number; active: boolean; last_login: string | null;
   open_leads: number; won: number; won_zar: number }
-interface Email { id: number; prospect_id: number; prospect: string; analyst: Analyst; kind: "permission" | "pack" | "followup"; step: number;
+interface Email { id: number; prospect_id: number; prospect: string; analyst: Analyst; kind: "permission" | "pack" | "followup" | "reply"; step: number;
   to_email: string; subject: string; body: string; status: string; due_at: string; sent_at: string | null; transport: string | null;
   error: string | null; agent_name: string | null; contact_name: string | null; consent: Consent }
 interface Activity { id: number; at: string; kind: string; text: string }
@@ -181,7 +181,65 @@ function Detail({ id, call, me, agents, onClose, onChanged }: { id: number; call
 function mailto(e: Email) {
   return `mailto:${encodeURIComponent(e.to_email)}?subject=${encodeURIComponent(e.subject)}&body=${encodeURIComponent(e.body)}`;
 }
-const KIND_LABEL = { permission: "Permission email", pack: "Monthly pack", followup: "Follow-up" };
+const KIND_LABEL = { permission: "Permission email", pack: "Monthly pack", followup: "Follow-up", reply: "Reply" };
+
+interface InMail { id: number; received_at: string; from_email: string; from_name: string | null; subject: string | null; body: string | null;
+  intent: string | null; summary: string | null; handled: boolean; prospect_id: number | null; prospect: string | null; agent: string | null;
+  reply_outbox_id: number | null; reply_status: string | null }
+const INTENT: Record<string, string> = { yes: "Said yes", no: "Not interested", unsubscribe: "Opted out", question: "Question",
+  out_of_office: "Out of office", bounce: "Bounced", other: "Other" };
+
+/** The sales@ inbox: replies matched to deals and sorted by the platform; questions get a drafted reply in the Outbox. */
+function Inbox({ call, me, onOpen }: { call: ReturnType<typeof useAdmin>; me: Me; onOpen: (pid: number) => void }) {
+  const [list, setList] = useState<InMail[] | null>(null), [all, setAll] = useState(false), [ready, setReady] = useState(true);
+  const [err, setErr] = useState(""), [msg, setMsg] = useState(""), [busy, setBusy] = useState(0), [open, setOpen] = useState<number | null>(null);
+  const load = useCallback(() => call<{ emails: InMail[]; mail: { inbox: string | null } }>(`/admin/sales-inbox?show=${all ? "all" : "open"}`)
+    .then((d) => { setList(d.emails); setReady(!!d.mail?.inbox); }).catch((e) => setErr(e.message)), [call, all]);
+  useEffect(() => { load(); }, [load]);
+  const act = async (m: InMail, body: object, note = "") => {
+    setBusy(m.id); setErr(""); setMsg("");
+    try { await call(`/admin/sales-inbox/${m.id}`, "POST", body); if (note) setMsg(note); await load(); }
+    catch (x) { setErr((x as Error).message); } finally { setBusy(0); }
+  };
+  const check = async () => {
+    setBusy(-1); setErr(""); setMsg("");
+    try { const r = await call<{ read: number; matched: number; replies_drafted: number; error: string | null }>("/admin/sales-inbox-check", "POST");
+      setMsg(r.error ? r.error : `${r.read} new email(s), ${r.matched} matched to deals, ${r.replies_drafted} reply draft(s) in the Outbox.`); await load(); }
+    catch (x) { setErr((x as Error).message); } finally { setBusy(0); }
+  };
+  return (
+    <div className="outbox">
+      <div className="crm-bar">
+        <label className="small"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> Show handled emails too</label>
+        {me.admin && <button className="btn sm" onClick={check} disabled={!!busy || !ready}>{busy === -1 ? "Checking…" : "Check the inbox now"}</button>}
+      </div>
+      {!ready && <p className="muted small">The sales inbox isn't connected yet. It needs the paid sales@ mailbox and its app password on the server
+        (INBOX_IMAP_HOST). Until then, replies arrive in the sales@ mailbox as usual.</p>}
+      {err && <div className="banner">{err}</div>}{msg && <p className="small">{msg}</p>}
+      {list === null ? <p className="muted small">Loading…</p> : !list.length ? <p className="muted small">No emails waiting. Replies to sales@ appear here within the hour.</p> :
+        list.map((m) => (
+          <article key={m.id} className={"mail" + (m.handled ? " done" : "")}>
+            <header className="mail-head"><span><b>{m.from_name || m.from_email}</b> <span className="muted small">{m.from_email} · {when(m.received_at)}</span></span>
+              <span className={"pcip " + (m.intent || "other")}>{INTENT[m.intent || "other"]}</span></header>
+            <p className="small"><b>{m.subject || "(no subject)"}</b>{m.summary ? ` · ${m.summary}` : ""}</p>
+            <p className="small muted">{m.prospect ? <>Deal: <button className="link" onClick={() => onOpen(m.prospect_id!)}>{m.prospect}</button>{m.agent ? ` · ${m.agent}` : " · unassigned"}</>
+              : "Not matched to a deal: add this address as the contact on the right deal and future emails link by themselves."}
+              {m.reply_outbox_id ? ` · Reply ${m.reply_status === "sent" ? "sent" : "drafted: approve it in the Outbox"}` : ""}</p>
+            {open === m.id ? <p style={{ whiteSpace: "pre-wrap" }}>{m.body}</p> : <button className="link small" onClick={() => setOpen(m.id)}>Read the email</button>}
+            <div className="row">
+              {m.prospect_id && <button className="btn sm" disabled={busy === m.id} onClick={() => {
+                const extra = prompt("Anything the reply should say? (optional, e.g. 'offer Tuesday 10:00 for a demo')") ?? null;
+                if (extra !== null) act(m, { action: "draft_reply", instructions: extra }, "Reply drafted: approve it in the Outbox.");
+              }}>{m.reply_outbox_id ? "Draft a new reply" : "Draft a reply"}</button>}
+              {m.prospect_id && <select value="" onChange={(e) => e.target.value && act(m, { action: "set_intent", intent: e.target.value })} aria-label="Correct the sorting">
+                <option value="">Correct the sorting…</option>{Object.entries(INTENT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>}
+              <button className="btn sm" disabled={busy === m.id} onClick={() => act(m, { action: m.handled ? "reopen" : "handled" })}>{m.handled ? "Reopen" : "Mark handled"}</button>
+            </div>
+          </article>))}
+      <p className="muted small">Email text is treated as information, never as instructions. "Opted out" blocks the address for good (POPIA).</p>
+    </div>
+  );
+}
 
 interface Enquiry { id: number; at: string; first_name: string; last_name: string; email: string; phone: string; job_role: string; company: string;
   company_type: string; industry: string; province: string; analyst: string; nature: string; message: string | null; marketing: boolean; prospect_id: number | null }
@@ -219,7 +277,7 @@ function Outbox({ call, me, onOpen }: { call: ReturnType<typeof useAdmin>; me: M
     try { await call(`/admin/sales-outbox/${e.id}`, "POST", { action, ...extra }); setEdit((m) => { const n = { ...m }; delete n[e.id]; return n; }); await load(); }
     catch (x) { setErr((x as Error).message); } finally { setBusy(0); }
   };
-  const manual = (e: Email) => e.kind === "permission" ? mailSt?.permission === "manual" : !mailSt?.consented;
+  const manual = (e: Email) => e.kind === "permission" || e.kind === "reply" ? mailSt?.permission === "manual" : !mailSt?.consented;
   if (!list) return <p className="muted">{err || "Loading the outbox…"}</p>;
   const groups: [string, Email[]][] = [["Waiting for approval", list.filter((e) => e.status === "draft" || e.status === "failed")],
     ["Approved, going out", list.filter((e) => e.status === "approved")], ["Sent in the last 14 days", list.filter((e) => ["sent", "manual"].includes(e.status))]];
@@ -349,7 +407,7 @@ function App() {
       .catch((e) => setErr(`${(e as Error).message} The free analyst server can take a minute to wake up.`));
   }, [key, call]);
   const [analyst, setAnalyst] = useState<Analyst>(() => (["property", "retail", "marketplace", "jobs"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "property") as Analyst);
-  const [view, setView] = useState<"ranked" | "board" | "outbox" | "enquiries" | "team">("ranked");
+  const [view, setView] = useState<"ranked" | "board" | "outbox" | "inbox" | "enquiries" | "team">("ranked");
   const [data, setData] = useState<BoardData | null>(null);
   const [open, setOpen] = useState<number | null>(null);
   const [busy, setBusy] = useState(""), [q, setQ] = useState(""), [boardAll, setBoardAll] = useState(true);
@@ -407,10 +465,11 @@ function App() {
             <button aria-pressed={view === "ranked"} onClick={() => setView("ranked")}>Ranked prospects</button>
             <button aria-pressed={view === "board"} onClick={() => setView("board")}>Board</button>
             <button aria-pressed={view === "outbox"} onClick={() => setView("outbox")}>Outbox</button>
+            <button aria-pressed={view === "inbox"} onClick={() => setView("inbox")}>Inbox</button>
             {me.admin && <button aria-pressed={view === "enquiries"} onClick={() => setView("enquiries")}>Enquiries</button>}
             {me.admin && <button aria-pressed={view === "team"} onClick={() => setView("team")}>Team &amp; settings</button>}
           </div>
-          {view === "outbox" || view === "team" || view === "enquiries" ? null : view === "ranked" ? <input id="crm-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${ANALYSTS.find((a) => a.key === analyst)?.who}`} />
+          {view === "outbox" || view === "inbox" || view === "team" || view === "enquiries" ? null : view === "ranked" ? <input id="crm-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${ANALYSTS.find((a) => a.key === analyst)?.who}`} />
             : <label className="small"><input type="checkbox" checked={boardAll} onChange={(e) => setBoardAll(e.target.checked)} /> All analysts</label>}
           {(view === "ranked" || view === "board") && <span className="muted small">{scoredAt ? `Ranked ${when(scoredAt)}` : "Not ranked yet"}</span>}
           {me.admin && view === "ranked" && <button className="btn sm" onClick={rescore} disabled={!!busy}>{busy ? "Ranking…" : "Re-rank from today's data"}</button>}
@@ -455,6 +514,7 @@ function App() {
         )}
         <p className="muted small foot">Prospects are businesses found in public market data. Add a contact person only from a business source, keep notes factual, and mark anyone who opts out as "Do not contact".</p>
         {view === "outbox" && <Outbox call={call} me={me} onOpen={setOpen} />}
+        {view === "inbox" && <Inbox call={call} me={me} onOpen={setOpen} />}
         {view === "enquiries" && me.admin && <Enquiries call={call} onOpen={setOpen} />}
         {view === "team" && me.admin && <Team call={call} onChanged={() => { load(); call<{ agents: Agent[] }>("/admin/sales-team").then((t) => setAgents(t.agents)).catch(() => {}); }} />}
         {open !== null && <><div className="scrim" onClick={() => setOpen(null)} /><Detail id={open} call={call} me={me} agents={agents} onClose={() => setOpen(null)} onChanged={load} /></>}

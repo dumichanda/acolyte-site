@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17T16:30",
+ "updated": "2026-11-17T18:00",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -517,6 +517,18 @@
     "SEC": 1.5,
     "QA": 1,
     "CW": 0.5
+   }
+  },
+  {
+   "at": "2026-11-17T18:00",
+   "title": "AI sales agent for the inbox",
+   "what": "IMAP reader, reply classification, consent and stage updates, threaded reply drafts and sending, inbox API, CRM Inbox tab, tests.",
+   "days": {
+    "BE": 3,
+    "AI": 1,
+    "FE": 1.5,
+    "SEC": 0.5,
+    "QA": 1
    }
   }
  ],
@@ -1528,6 +1540,18 @@
    "why": "The old token was pasted in chat; you want Claude to run admin tasks for you on request.",
    "alternatives": "Paste the token per session; no admin access for Claude.",
    "note": "Every session in this environment can use it. If the token changes, update the secret in the environment's settings."
+  },
+  {
+   "id": "D85",
+   "at": "2026-11-17T18:00",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "AI sales agent reads and answers the sales@ inbox",
+   "decision": "Two paid Zoho mailboxes: sales@ (the platform reads and sends from it) and admin@ (or support@) for you. Each hour the funnel reads new mail to sales@ (IMAP, read-only), matches it to deals by thread or address, sorts it (yes, not interested, opted out, question, out of office, bounce), updates consent and stage, blocks opt-outs for good, and drafts a threaded reply to questions into the Outbox for approval. A CRM Inbox tab shows it all; Claude can run it from your phone through the admin API.",
+   "why": "Replies were invisible to the CRM; a person had to read sales@ and update every deal by hand.",
+   "alternatives": "One paid mailbox with aliases and a Sales folder; free workarounds (Cloudflare Email Routing, Brevo).",
+   "note": "Email text is treated as data, never instructions. Replies need approval unless auto_send_replies is switched on. Emails are kept 90 days."
   }
  ]
 }

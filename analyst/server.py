@@ -23,6 +23,7 @@ import time
 import uuid
 from collections import defaultdict, deque
 
+import psycopg
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -939,6 +940,79 @@ def sales_enquiries(req: Request):
     return {"enquiries": sales.enquiries(ADMIN_DB_URL)}
 
 
+# ---------------------------------------------------------------- the sales@ inbox (read by the funnel; paid mailbox)
+@app.get("/admin/sales-inbox")
+def sales_inbox(req: Request, show: str = "open"):
+    """Owner: every email, matched or not. Agent: emails on their own deals."""
+    actor = sales_actor(req)
+    with psycopg.connect(ADMIN_DB_URL) as conn:
+        rows = sales._rows(conn, f"""
+            SELECT i.id, i.received_at, i.sent_at, i.from_email, i.from_name, i.subject, i.body, i.intent, i.summary, i.handled,
+                   i.prospect_id, p.name AS prospect, p.analyst, p.agent_id, a.name AS agent, i.reply_outbox_id,
+                   o.status AS reply_status
+            FROM sales.inbox i LEFT JOIN sales.prospects p ON p.id = i.prospect_id LEFT JOIN sales.agents a ON a.id = p.agent_id
+            LEFT JOIN sales.outbox o ON o.id = i.reply_outbox_id
+            WHERE (%(all)s OR NOT i.handled) AND (%(admin)s OR p.agent_id = %(agent)s)
+            ORDER BY i.received_at DESC LIMIT 200""",
+            {"all": show == "all", "admin": actor["admin"], "agent": actor["agent_id"]})
+    return {"emails": acc._jsonable(rows), "mail": mail.status()}
+
+
+class InboxAction(BaseModel):
+    action: str = Field(pattern="^(handled|reopen|draft_reply|set_intent|link)$")
+    intent: str | None = Field(default=None, pattern="^(yes|no|unsubscribe|question|out_of_office|bounce|other)$")
+    instructions: str | None = Field(default=None, max_length=1000)   # e.g. "offer Tuesday 10:00 for the demo"
+    prospect_id: int | None = None
+
+
+@app.post("/admin/sales-inbox/{iid}")
+def sales_inbox_action(iid: int, body: InboxAction, req: Request):
+    actor = sales_actor(req)
+    with psycopg.connect(ADMIN_DB_URL) as conn:
+        r = sales._rows(conn, "SELECT * FROM sales.inbox WHERE id = %s", (iid,))
+        if not r:
+            raise HTTPException(404, "No such email.")
+        m = r[0]
+        if m["prospect_id"]:
+            _own(actor, m["prospect_id"])
+        elif not actor["admin"]:
+            raise HTTPException(403, "Only the owner can sort unmatched emails.")
+        if body.action == "link":
+            if not actor["admin"] or not body.prospect_id:
+                raise HTTPException(400, "Choose a deal to link this email to.")
+            conn.execute("UPDATE sales.inbox SET prospect_id = %s WHERE id = %s", (body.prospect_id, iid))
+            conn.execute("UPDATE sales.prospects SET contact_email = COALESCE(NULLIF(contact_email, ''), %s) WHERE id = %s",
+                         (m["from_email"], body.prospect_id))
+            return {"ok": True}
+        if body.action in ("handled", "reopen"):
+            conn.execute("UPDATE sales.inbox SET handled = %s WHERE id = %s", (body.action == "handled", iid))
+            return {"ok": True}
+        p = sales._rows(conn, "SELECT * FROM sales.prospects WHERE id = %s", (m["prospect_id"],))
+        if not p:
+            raise HTTPException(409, "Link this email to a deal first.")
+        if body.action == "set_intent":
+            conn.execute("UPDATE sales.inbox SET intent = %s WHERE id = %s", (body.intent, iid))
+            funnel.apply_intent(conn, iid, p[0], body.intent, m["from_email"])
+            funnel._log(conn, p[0]["id"], "email_in", f"Email from {m['from_email']} marked as {body.intent} by {actor['name']}")
+            return {"ok": True}
+        try:   # draft_reply
+            oid = funnel.draft_reply(conn, lambda prompt: _ai_text(prompt, "sales-reply"), m, p[0], False, body.instructions or "")
+        except Exception as e:
+            acc.add_alert(ADMIN_DB_URL, "ai_error", f"[inbox reply] {e.__class__.__name__}: {str(e)[:300]}")
+            raise HTTPException(503, "Couldn't draft a reply just now. Please try again.")
+        return {"ok": True, "outbox_id": oid}
+
+
+@app.post("/admin/sales-inbox-check")
+def sales_inbox_check(req: Request):
+    """Owner: read the sales mailbox now instead of waiting for the hourly run."""
+    if not sales_actor(req)["admin"]:
+        raise HTTPException(403, "Only the owner can do that.")
+    if not mail.imap_ready():
+        raise HTTPException(409, "The sales inbox isn't set up yet (INBOX_IMAP_HOST on Render, paid mailbox).")
+    return funnel.read_inbox(ADMIN_DB_URL, lambda prompt: _ai_text(prompt, "sales-inbox"), funnel.settings(ADMIN_DB_URL))
+
+
 @app.get("/admin/sales-outbox")
 def sales_outbox(req: Request, status: str | None = None):
     actor = sales_actor(req)
@@ -1031,6 +1105,11 @@ def mail_test(body: MailTest, req: Request):
             out["sales_mailbox"] = mail.send_outreach(body.to, "", "Acolyte: sales mailbox test", "This is a test from Acolyte's sales mailbox.", None, "test")
         except RuntimeError as e:
             out["sales_mailbox"] = f"failed: {e}"
+    if mail.imap_ready():
+        try:
+            out["inbox"] = f"ok: {len(mail.fetch_inbox(days=3))} email(s) in the last 3 days"
+        except RuntimeError as e:
+            out["inbox"] = f"failed: {e}"
     return out
 
 

@@ -115,3 +115,31 @@ CREATE TABLE IF NOT EXISTS sales.enquiries (
     handled      BOOLEAN NOT NULL DEFAULT FALSE
 );
 CREATE INDEX IF NOT EXISTS sales_enquiries_at ON sales.enquiries (at DESC);
+
+-- The sales@ inbox, read by the platform (IMAP, paid mailbox): replies are matched to deals, classified, and answered
+-- with drafts in the Outbox. Email text is data, never instructions. Kept 90 days.
+CREATE TABLE IF NOT EXISTS sales.inbox (
+    id           SERIAL PRIMARY KEY,
+    message_id   TEXT NOT NULL UNIQUE,
+    sent_at      TIMESTAMPTZ,                          -- the email's own date
+    received_at  TIMESTAMPTZ NOT NULL DEFAULT now(),   -- when Acolyte read it
+    from_email   TEXT NOT NULL, from_name TEXT,
+    subject      TEXT, body TEXT,                      -- plain text, quoted history removed, max 8,000 characters
+    in_reply_to  TEXT, refs TEXT,
+    prospect_id  INT REFERENCES sales.prospects(id) ON DELETE SET NULL,
+    intent       TEXT CHECK (intent IN ('yes', 'no', 'unsubscribe', 'question', 'out_of_office', 'bounce', 'other')),
+    summary      TEXT,
+    handled      BOOLEAN NOT NULL DEFAULT FALSE,
+    reply_outbox_id INT
+);
+CREATE INDEX IF NOT EXISTS sales_inbox_open ON sales.inbox (handled, received_at DESC);
+DELETE FROM sales.inbox WHERE received_at < now() - interval '90 days';
+
+-- Replies go out threaded under the email they answer.
+ALTER TABLE sales.outbox ADD COLUMN IF NOT EXISTS in_reply_to TEXT;
+ALTER TABLE sales.outbox ADD COLUMN IF NOT EXISTS refs TEXT;
+ALTER TABLE sales.outbox ADD COLUMN IF NOT EXISTS message_id TEXT;   -- ours, so replies to it can be matched
+ALTER TABLE sales.outbox DROP CONSTRAINT IF EXISTS outbox_kind_check;
+ALTER TABLE sales.outbox ADD CONSTRAINT outbox_kind_check CHECK (kind IN ('permission', 'pack', 'followup', 'reply'));
+INSERT INTO sales.settings (key, value) VALUES ('read_inbox', 'true'), ('draft_replies', 'true')
+ON CONFLICT (key) DO NOTHING;
