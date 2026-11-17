@@ -18,10 +18,10 @@ function Privacy() {
           <p className="muted">This notice explains how {who} processes personal information under the Protection of Personal Information Act (POPIA).</p>
 
           <h3>What we collect</h3>
-          <p>When you use our contact form: your name, company, work email, phone number (if given) and your message. The Automation Index uses job postings published by employers via Adzuna; it does not contain information about individual job seekers.</p>
+          <p>When you use our Contact sales form: your name, business email and phone number, job role, company name, type and industry, province and work postal code (if given), which analyst you're interested in, the nature of your enquiry, your message, and whether you ticked the box to receive our monthly report. The Automation Index uses job postings published by employers via Adzuna; it does not contain information about individual job seekers.</p>
 
           <h3>Why we use it</h3>
-          <p>Only to reply to your enquiry and arrange a conversation you asked for. We rely on your consent, given when you submit the form. We do not add you to a mailing list or sell or share your details for marketing.</p>
+          <p>To reply to your enquiry and arrange a conversation you asked for; we rely on your consent, given when you submit the form. We send you our monthly report and occasional news only if you ticked that box, and every such email has an unsubscribe link. We never sell or share your details.</p>
 
           <h3>Business contact details from public sources</h3>
           <p>When an organisation advertises a vacancy that our services could help with, we record the organisation's name, its public job ads, and contact details it has published for enquiries (for example a general info@ address or switchboard number on its own website). We use these only to send one short message asking whether the organisation would like to hear more. We do not collect personal email addresses from websites. If you reply that you are not interested, or ask us not to contact you, we add the address to a do-not-contact list and will not contact it again. You can make that request at any time by replying to our message or contacting {contact}.</p>
