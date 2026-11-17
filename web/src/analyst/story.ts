@@ -2,12 +2,12 @@
  * Story style: an image-led, plain-language version of a report pack, made for everyday readers and
  * the basis of social posts and explainer videos ("What's going on with Gauteng property prices? Good or bad?").
  *
- * Slides: hero cover · the short answer · one slide per finding (picture + verdict + one big number) ·
- * the one chart that explains it · good news vs watch-outs · what to do now · close.
+ * Slides: hero cover · the short answer · per finding: a picture slide (verdict + one big number) then its charts,
+ * the same charts as the report on the site · good news vs watch-outs · what to do now · close.
  * Pictures come from the Acolyte image library (web/public/assets/library/index.json), matched by tags.
  * When no picture fits, the slide draws its own simple illustration from shapes, so a deck never has a hole.
  */
-import { brand, C, dataSource, H, M, W, type Prim, type SlideSpec } from "./deck";
+import { brand, C, chartBlock, dataSource, H, M, W, type Prim, type SlideSpec } from "./deck";
 import type { ChartArtifact, Kpi, ReportArtifact, Section } from "./chart";
 import { url } from "../site";
 
@@ -156,7 +156,7 @@ export function buildStory(r: ReportArtifact, images: StoryImage[]): SlideSpec[]
   const src = dataSource(r);
   const month = new Date(r.generated || Date.now()).toLocaleDateString("en-ZA", { month: "long", year: "numeric" });
   const foot = `${brand() ? `Prepared for ${brand()!.name} · ` : "Acolyte · "}${src.data} · ${month}`;
-  const sections = r.sections.filter((s) => s.title || s.takeaway).slice(0, 5);
+  const sections = r.sections.filter((s) => s.title || s.takeaway);   // every finding, as on the site
   const exec = r.exec;
   const LIGHT_INK = C.ink;
 
@@ -199,6 +199,7 @@ export function buildStory(r: ReportArtifact, images: StoryImage[]): SlideSpec[]
     slides.push({ bg: C.ink, prims: p });
   }
 
+  const shown = new Set<ChartArtifact>();
   // 3. One slide per finding: picture on one side, verdict + big number + plain words on the other.
   sections.forEach((s, i) => {
     const p: Prim[] = [];
@@ -230,11 +231,24 @@ export function buildStory(r: ReportArtifact, images: StoryImage[]): SlideSpec[]
       p.push({ t: "text", x: tx + 0.22, y: y + 0.45, w: tw - 0.44, h: H - 0.6 - y - 0.55, text: clean(s.so_what), size: 12, min: 8, color: ink });
     }
     slides.push({ bg: dark ? C.ink : MINT, prims: p });
+
+    // 3b. The evidence: this finding's charts, the same ones the report shows on the site (two per slide).
+    const own = (s.chart_ids || []).map((id) => r.charts?.[id]).filter((c): c is ChartArtifact => !!c && c.type !== "kpi");
+    own.forEach((c) => shown.add(c));
+    for (let k = 0; k < own.length; k += 2) {
+      const pair = own.slice(k, k + 2), q: Prim[] = [];
+      q.push({ t: "text", x: M, y: 0.4, w: W - 2 * M, h: 0.35, text: `THE EVIDENCE · ${i + 1} of ${sections.length}`, size: 11, bold: true, color: C.olive, spacing: 2 });
+      q.push({ t: "text", x: M, y: 0.8, w: W - 2 * M, h: 0.75, text: clean(s.title || s.heading), size: 22, min: 14, bold: true, color: LIGHT_INK, valign: "top" });
+      const gap = 0.3, cw = (W - 2 * M - gap * (pair.length - 1)) / pair.length;
+      pair.forEach((c, j) => chartBlock(q, c, M + j * (cw + gap), 1.7, cw, H - 1.7 - 0.6));
+      footer(q, foot, slides.length + 1, false);
+      slides.push({ bg: MINT, prims: q });
+    }
   });
 
-  // 4. The one chart that explains it (the first annotated line/bar chart).
+  // 4. The one chart that explains it: only when no finding carried a chart of its own.
   const charts = Object.values(r.charts || {}) as ChartArtifact[];
-  const hero = charts.find((c) => c.annotations?.length && c.type !== "table" && c.type !== "kpi")
+  const hero = shown.size ? undefined : charts.find((c) => c.annotations?.length && c.type !== "table" && c.type !== "kpi")
     || charts.find((c) => ["line", "area", "bar", "hbar"].includes(c.type));
   if (hero) {
     const p: Prim[] = [];

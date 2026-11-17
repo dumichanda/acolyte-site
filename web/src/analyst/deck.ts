@@ -139,7 +139,7 @@ function box(prims: Prim[], kind: "so_what" | "note" | "plain", title: string, t
   else prims.push({ t: "text", ...body, text: clean(text), size: 10, min: 7, color: dark ? C.white : C.ink });
 }
 
-function chartBlock(prims: Prim[], c: ChartArtifact, x: number, y: number, w: number, h: number) {
+export function chartBlock(prims: Prim[], c: ChartArtifact, x: number, y: number, w: number, h: number) {
   // Every chart sits on a raised, rounded tile (title included).
   prims.push({ t: "rect", x, y, w, h, fill: C.white, radius: 0.16, shadow: true });
   x += 0.16; y += 0.12; w -= 0.32; h -= 0.22;

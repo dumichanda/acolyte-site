@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-15T21:50",
+ "updated": "2026-11-17T09:30",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -450,6 +450,16 @@
    "days": {
     "BE": 0.25,
     "FE": 0.25
+   }
+  },
+  {
+   "at": "2026-11-17T09:30",
+   "title": "Email fallback and Story charts",
+   "what": "Sales mailbox can send system mail; Story deck evidence slides with each finding's charts.",
+   "days": {
+    "FE": 1,
+    "BE": 0.5,
+    "QA": 0.5
    }
   }
  ],
@@ -1293,6 +1303,30 @@
    "why": "Clients should not see our AI costs or token counts; a share of their allowance is what matters to them.",
    "alternatives": "Show rand cost; show nothing.",
    "note": "Costs and tokens are still logged and shown on the owner's Admin page."
+  },
+  {
+   "id": "D71",
+   "at": "2026-11-17T09:00",
+   "kind": "Technical",
+   "by": "Both",
+   "status": "Active",
+   "title": "Email starts on Zoho Mail's free plan; agents press Send",
+   "decision": "Mailboxes on Zoho Mail Forever Free. The CRM drafts every email and the agent sends it with 'Open in my email', then 'I sent it'. A paid Zoho mailbox (about R14 a month) can be added later, and the platform then sends by itself; Brevo is no longer required.",
+   "why": "Agents work the outbox anyway at today's volume, so a paid mailbox buys little yet.",
+   "alternatives": "Paid Mail Lite now; Brevo plus Zoho.",
+   "note": ""
+  },
+  {
+   "id": "D72",
+   "at": "2026-11-17T09:30",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "Story downloads carry every finding and its charts",
+   "decision": "The Story PowerPoint and PDF now include all findings and, after each one, an evidence slide with the same charts and tables as the report on the site.",
+   "why": "The Story download showed 5 findings and one chart, so it no longer matched the report on the site.",
+   "alternatives": "Keep one hero chart.",
+   "note": ""
   }
  ]
 }
