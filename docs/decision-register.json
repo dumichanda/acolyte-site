@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17T14:30",
+ "updated": "2026-11-17T15:40",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -505,6 +505,18 @@
     "SEC": 2,
     "QA": 1.5,
     "OPS": 0.5
+   }
+  },
+  {
+   "at": "2026-11-17T15:40",
+   "title": "Privacy controls for client data",
+   "what": "Personal-information guard, don't-keep-rows option, per-account retention, admin controls, corrected wording in pages and the clauses draft.",
+   "days": {
+    "BE": 2.5,
+    "FE": 1,
+    "SEC": 1.5,
+    "QA": 1,
+    "CW": 0.5
    }
   }
  ],
@@ -1480,6 +1492,30 @@
    "why": "The fit-to-box rule was dropping bullets on busy slides; writing them short means nothing needs dropping.",
    "alternatives": "Rely on the fit-to-box rule alone.",
    "note": "Applies from the next reports and packs written."
+  },
+  {
+   "id": "D82",
+   "at": "2026-11-17T15:30",
+   "kind": "Security",
+   "by": "Both",
+   "status": "Active",
+   "title": "Personal-information guard on client databases, on by default",
+   "decision": "Before results from a client's connected database reach the AI, the browser or storage, personal information is hidden: personal columns by name (and a plain 'name' column in a table that holds personal details), any text derived from them, and values that look like emails, SA phone numbers, SA ID numbers or card numbers (product codes exempt). Counting and grouping still work. The owner can switch it off per connection only by recording the client's written confirmation.",
+   "why": "Query results go to the AI provider in the USA and are saved with conversations; masking keeps customers' personal information out of both even if a client connects the wrong table.",
+   "alternatives": "Rely on the client giving us views without personal data; block personal tables entirely.",
+   "note": "Correction: earlier wording said 'nothing is copied out'; only the database isn't copied, query results do leave it."
+  },
+  {
+   "id": "D83",
+   "at": "2026-11-17T15:40",
+   "kind": "Security",
+   "by": "Both",
+   "status": "Active",
+   "title": "Retention for client conversations and an option not to keep rows",
+   "decision": "Each client account has a retention period (default 90 days, 7 to 730): conversations and the query rows saved in them are deleted that long after the last message, daily and immediately when changed. Each connection can be set not to keep rows after the answer; dashboards store only the query and read live.",
+   "why": "POPIA requires keeping personal information no longer than needed; client conversations were previously kept until the client deleted them.",
+   "alternatives": "Keep conversations indefinitely; delete everything after each answer.",
+   "note": ""
   }
  ]
 }
