@@ -28,7 +28,7 @@ export default function BigStat() {
           </div>
 
           <div className="bs-number" aria-hidden="true">24/7</div>
-          <div className="bs-sub" aria-hidden="true">Never clocks off. Shows its working.</div>
+          <div className="bs-sub" aria-hidden="true">Never sleeps.</div>
 
           <div className="bs-float br" aria-hidden="true">
             <span className="bs-chip lime">Ask in plain English</span>
