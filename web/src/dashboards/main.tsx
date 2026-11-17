@@ -168,7 +168,7 @@ function App() {
             {current ? (
               <>
                 <header className="top">
-                  <div><h1>{name || "Dashboard"}</h1><p className="sub">Live from Acolyte's SA datasets. Data refreshes every 15 minutes, or on demand.</p></div>
+                  <div><h1>{name || "Dashboard"}</h1><p className="sub">Live from your connected data and Acolyte's public SA market data (a demonstration, shown as summaries). Refreshes every 15 minutes, or on demand.</p></div>
                   <div className="actions">
                     <button className="btn" onClick={() => loadTiles(true)} disabled={loading}>{loading ? "Refreshing…" : "Refresh data"}</button>
                     <button className="btn" onClick={exportPptx} disabled={!tiles.length}>PowerPoint</button>

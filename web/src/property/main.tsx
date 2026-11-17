@@ -96,8 +96,8 @@ function App() {
             <span className="eyebrow reveal in">Acolyte for Property</span>
             <h1 className="reveal d1 in">Your own AI<br /><em>property analyst.</em></h1>
             <p className="lede reveal d2 in">
-              For South African estate agencies, developers and investors. Every morning it reads the market across all
-              9 provinces, writes your brief, keeps your dashboards live, and answers any question in plain English.
+              For South African estate agencies, developers and investors. It works on your listings, valuations and sales, writes your
+              brief, keeps your dashboards live, and answers any question in plain English. See it here on the market across all 9 provinces.
             </p>
             <div className="actions reveal d3 in">
               <a className="btn-signal" href={url("/#contact")}>Book a demo <span className="arr">→</span></a>
@@ -115,7 +115,7 @@ function App() {
         <div className="inner">
           <span className="eyebrow">What you get</span>
           <h2>Before your <em>morning sales meeting.</em></h2>
-          <p className="lede">One analyst, working only on property, with the whole market in front of it every day.</p>
+          <p className="lede">One analyst, working only on property, on your agency's own data. Shown below on public South African listings.</p>
           <div className="pp-cards">
             {MORNING.map((m, k) => (
               <article key={m.t} className="pp-card"><span className="mono">0{k + 1}</span><h3>{m.t}</h3><p>{m.x}</p></article>
@@ -128,9 +128,9 @@ function App() {
         <div className="inner">
           <div className="row">
             <div>
-              <span className="eyebrow">Live market</span>
+              <span className="eyebrow">Demonstration: the live market</span>
               <h2>The whole market, <em>counted every morning.</em></h2>
-              <p className="lede">Full listing counts for every province and region, plus a daily sample of listings with asking prices, rents, sizes and agencies.</p>
+              <p className="lede">To show the analyst at work: listing counts for every province and region and price trends from a daily sample, summarised. For your agency it reads your own listings and sales.</p>
             </div>
             <a className="btn-signal" href={ASK}>Ask about your area <span className="arr">→</span></a>
           </div>
@@ -175,7 +175,7 @@ function App() {
         <div className="inner">
           <span className="eyebrow">About the data</span>
           <div className="pp-facts">
-            <div><b>Source</b><p>Public listings on Private Property, collected every morning. Stock counts are complete; prices come from a daily sample of the first listings in each region.</p></div>
+            <div><b>Source</b><p>Public listings on Private Property, collected every morning and shown only as counts, medians and trends, to demonstrate the analyst. Acolyte does not sell or supply listing data; your analyst works on data you own or license.</p></div>
             <div><b>What it measures</b><p>Asking prices and rents, not transfer prices. Yields are indicative gross yields from asking prices.</p></div>
             <div><b>POPIA</b><p>No agent or seller personal details are stored, only agency and branch names. Your questions and dashboards stay in your account.</p></div>
           </div>

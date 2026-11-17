@@ -68,6 +68,7 @@ function Reader({ f, onBack }: { f: ReportFile; onBack: () => void }) {
       <div className="rp-meta"><span className="pill">{a?.name || f.analyst}</span><span className="muted">{monthLabel(f.period, f.month_to_date)}</span></div>
       <h1>{r.title}</h1>
       {r.scope && <p className="muted">{r.scope}</p>}
+      <p className="muted small">Demonstration report on public South African market data, shown as summaries and trends. Acolyte is an AI analyst, not a data supplier.</p>
       <Downloads r={r} />
       {ex?.takeaway && <section className="rp-exec">
         <h2>{ex.title || "Summary"}</h2>
@@ -179,7 +180,7 @@ function App() {
         <>
           <header className="rp-head">
             <h1>Reports &amp; dashboards</h1>
-            <p className="muted">Monthly report packs from each Acolyte analyst, written from live South African market data. A new edition arrives on the 1st of every month. Read them here, or download the PowerPoint and PDF.</p>
+            <p className="muted">Monthly report packs from each Acolyte analyst, written on public South African market data to show what an analyst can do. Your own analyst writes the same packs on your data. A new edition arrives on the 1st of every month. Read them here, or download the PowerPoint and PDF.</p>
             <div className="rp-filters" role="group" aria-label="Filter by analyst">
               {[["all", "All analysts"], ...Object.entries(ANALYSTS).map(([k, v]) => [k, v.name])].map(([k, label]) => (
                 <button key={k} className={filter === k ? "on" : ""} aria-pressed={filter === k} onClick={() => setFilter(k)}>{label}</button>))}

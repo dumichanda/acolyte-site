@@ -715,6 +715,7 @@ function App() {
             )}
             <h1>{W.name}</h1>
             <p className="sub">{W.sub}</p>
+            <p className="muted small">Market answers use public South African data as a demonstration, shown as summaries and trends. Your own uploaded or connected data stays private to your account.</p>
           </header>
           {health === "unconfigured" && <div className="banner">The analyst service isn't connected yet. It runs as a small server (see <code>analyst/</code> in the repo). Once it's deployed, its address goes in <code>site.ts → analystApi</code>.</div>}
           {health === "down" && <div className="banner">The analyst isn't responding. Please try again shortly.</div>}

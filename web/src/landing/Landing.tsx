@@ -158,7 +158,7 @@ function AskConsole({ s }: { s: Snapshot | null }) {
         ))}
       </div>
       <div className="src mono">
-        Answers computed live from Acolyte's SA jobs dataset{s ? ` · updated ${new Date(s.generated_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}` : ""}{s?.meta.has_demo ? " · sample data" : ""}
+        Demonstration: answers computed live on SA job-ad data{s ? ` · updated ${new Date(s.generated_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}` : ""}{s?.meta.has_demo ? " · sample data" : ""}
       </div>
     </div>
   );
@@ -284,16 +284,16 @@ function RotatingRole() {
 
 const ANALYSTS: { name: string; status: string; href?: string; cta?: string; text: string; points: string[] }[] = [
   { name: "Talent Analyst", status: "Live", href: "/analyst/?industry=jobs", cta: "Try the Talent Analyst",
-    text: "For HR, recruitment, training and B2B sales teams. Knows every SA job ad we track.",
+    text: "For HR, recruitment, training and B2B sales teams. Works on your hiring and HR data; shown here on SA job ads.",
     points: ["Hiring demand by role, sector and region", "Skills, tools and salaries employers ask for", "Who's hiring, and automation potential by role"] },
   { name: "Property Analyst", status: "Live", href: "/property/", cta: "See the Property Analyst",
-    text: "For estate agencies, developers, banks and investors. Reads the whole SA listings market every morning.",
+    text: "For estate agencies, developers, banks and investors. Works on your listings and sales; shown here on the SA listings market.",
     points: ["A Daily Property Brief, ready at 07:00", "Stock, asking prices, rents and gross yields", "Agency share and price cuts by region"] },
   { name: "Retail Pricing Analyst", status: "Live", href: "/analyst/?industry=retail", cta: "Try the Pricing Analyst",
-    text: "For FMCG brands, suppliers and category managers. Everyday-item prices across SA retailers, every morning.",
+    text: "For FMCG brands, suppliers and category managers. Works on your prices and sales; shown here on everyday-item prices across SA retailers.",
     points: ["Price index and basket cost by retailer", "Price gaps by channel: grocery, wholesale, pharmacy", "Price moves and likely promotions"] },
   { name: "Marketplace Analyst", status: "Live", href: "/analyst/?industry=marketplace", cta: "Try the Marketplace Analyst",
-    text: "For brands and sellers on Amazon.co.za and Takealot. Marketplace prices against the shops, every morning.",
+    text: "For brands and sellers on Amazon.co.za and Takealot. Works on your Seller Central and Seller Portal reports; shown here on marketplace vs shop prices.",
     points: ["Amazon.co.za vs Takealot head-to-head", "Marketplace vs cheapest store, by item", "Seller pricing, ratings and coverage"] },
 ];
 
@@ -308,6 +308,7 @@ const DOES = [
   { t: "Live dashboards", x: "pin any chart; it refreshes itself" },
   { t: "Report packs", x: "5-slide executive brief or full PowerPoint pack" },
   { t: "Checks its own work", x: "every figure traced back to the data" },
+  { t: "Your data, read-only", x: "spreadsheets, Google Sheets or your database; never copied out" },
 ];
 
 /* ---------------- Sample reports (monthly packs, published by the reports workflow) ---------------- */
@@ -322,7 +323,7 @@ function SampleReports() {
           <div>
             <span className="eyebrow">Sample reports</span>
             <h2>This month's reports, <em>free to read.</em></h2>
-            <p className="lede">Every analyst publishes a monthly report pack: what changed, trends and patterns, a 5-month look-back on demand, and actions for the month ahead. Download any of them as PowerPoint or PDF.</p>
+            <p className="lede">Every analyst publishes a monthly report pack on our demonstration market data: what changed, trends and patterns, a 5-month look-back on demand, and actions for the month ahead. It's the same pack it would write on your data. Download any of them as PowerPoint or PDF.</p>
           </div>
           <a className="btn-signal" href={url("/reports/")}>See all reports &amp; dashboards <span className="arr">→</span></a>
         </div>
@@ -454,8 +455,9 @@ export default function Landing() {
             <span className="eyebrow reveal">AI data analyst · South Africa</span>
             <h1 className="reveal d1">Your own AI<br /><RotatingRole /></h1>
             <p className="lede reveal d2">
-              Hire an AI analyst for your industry, already trained on South African market data: talent, property, retail pricing and marketplaces.
-              Ask in plain English and get answers, charts, live dashboards and board-ready report packs in minutes.
+              An AI data analyst for your data. Watch it work here on live South African market data (talent, property, retail pricing and
+              marketplaces), then point it at your own: a spreadsheet, a Google Sheet or your database. Ask in plain English and get answers,
+              charts, live dashboards and board-ready report packs in minutes.
             </p>
             <div className="actions reveal d3">
               <a className="btn-signal" href="#contact">Book a free data session <span className="arr">→</span></a>
@@ -486,8 +488,9 @@ export default function Landing() {
         <div className="inner">
           <span className="eyebrow reveal">Pick your analyst</span>
           <h2 className="reveal d1">One analyst per industry, <em>yours from day one.</em></h2>
-          <p className="lede reveal d2">Each analyst is a separate subscription, trained on its own South African market data. No hiring round,
-            no onboarding: it queries the data, shows its working, and hands over the chart, dashboard or pack you asked for.</p>
+          <p className="lede reveal d2">Each analyst is a separate subscription that knows its industry and works on your data: your listings, sales,
+            prices or hiring. Try it here first on South African market data. No hiring round, no onboarding: it queries the data, shows its working,
+            and hands over the chart, dashboard or pack you asked for.</p>
           <div className="roles2 four">
             {ANALYSTS.map((a, k) => (
               <article key={a.name} className={`role reveal d${k} ${a.href ? "" : "soon"}`}>
@@ -504,6 +507,8 @@ export default function Landing() {
             <span className="mono">Every analyst comes in two levels</span>
             {LEVELS.map((l) => <div key={l.level}><b>{l.level}</b><em>{l.text}</em><span>{l.points.join(" · ")}</span></div>)}
           </div>
+          <p className="more reveal">Plans are for the analyst and its tools, not for data. The South African market data on this site is there to show what an
+            analyst can do; for your business it works on data you own or license, connected read-only and kept private to your account.</p>
           <div className="does reveal">
             {DOES.map((d) => <div key={d.t}><b>{d.t}</b><span>{d.x}</span></div>)}
           </div>
@@ -520,16 +525,18 @@ export default function Landing() {
         <div className="inner">
           <div className="row">
             <div>
-              <span className="eyebrow reveal">Use cases on live SA data</span>
+              <span className="eyebrow reveal">Shown on live SA market data</span>
               <h2 className="reveal d1">One platform, <em>many</em> use cases.</h2>
-              <p className="lede reveal d2">We collect South African market data every morning, clean it and load it into one platform. Each use case is a view on that data, with its own dashboards, questions for the AI analyst and report packs. New datasets and use cases plug in without rebuilding anything.</p>
+              <p className="lede reveal d2">To show what each analyst can do, we run it every morning on public South African market data, summarised into trends,
+                indices and comparisons. Each use case has its own dashboards, questions and report packs. For your business, the same analyst reads
+                your own data instead: upload a spreadsheet, link a Google Sheet or connect your database read-only.</p>
             </div>
             <a className="btn-signal reveal" href={url("/analyst/")}>Ask the data <span className="arr">→</span></a>
           </div>
           <div className="datasets reveal">
             {DATASETS.map((d) => (
               <div key={d.name} className={`ds ${d.live ? "live" : ""}`}>
-                <span className="st mono">{d.live ? "Live dataset" : "Coming next"}</span>
+                <span className="st mono">{d.live ? "Live demonstration data" : "Coming next"}</span>
                 <b>{d.name}</b>
                 <span>{d.name === "SA jobs" && s ? `${s.kpis.jobs.toLocaleString("en-ZA")} job ads · ${s.kpis.companies.toLocaleString("en-ZA")} employers · refreshed daily` : d.text}</span>
               </div>
@@ -557,7 +564,7 @@ export default function Landing() {
                 : <div key={u.title} className={`use reveal d${k % 3}`}>{body}</div>;
             })}
           </div>
-          <p className="more reveal">Have a dataset, or a question no use case answers yet? <a href="#contact">Tell us</a> and we'll build it on the same platform.</p>
+          <p className="more reveal">Have your own data, or a question no use case answers yet? <a href="#contact">Tell us</a> and we'll connect your analyst to it.</p>
           {s?.meta.has_demo && <div className="note">Currently showing sample data while live collection starts.</div>}
         </div>
       </section>

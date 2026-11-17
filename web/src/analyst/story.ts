@@ -7,7 +7,7 @@
  * Pictures come from the Acolyte image library (web/public/assets/library/index.json), matched by tags.
  * When no picture fits, the slide draws its own simple illustration from shapes, so a deck never has a hole.
  */
-import { brand, C, chartBlock, dataSource, H, M, W, type Prim, type SlideSpec } from "./deck";
+import { brand, C, chartBlock, dataSource, H, isShowcase, M, SHOWCASE_NOTE, W, type Prim, type SlideSpec } from "./deck";
 import type { ChartArtifact, Kpi, ReportArtifact, Section } from "./chart";
 import { url } from "../site";
 
@@ -155,7 +155,7 @@ export function buildStory(r: ReportArtifact, images: StoryImage[]): SlideSpec[]
   const pick = picker(images, industry);
   const src = dataSource(r);
   const month = new Date(r.generated || Date.now()).toLocaleDateString("en-ZA", { month: "long", year: "numeric" });
-  const foot = `${brand() ? `Prepared for ${brand()!.name} · ` : "Acolyte · "}${src.data} · ${month}`;
+  const foot = `${brand() ? `Prepared for ${brand()!.name} · ` : "Acolyte · "}${src.data}${isShowcase(r) ? ` (${SHOWCASE_NOTE.toLowerCase()})` : ""} · ${month}`;
   const sections = r.sections.filter((s) => s.title || s.takeaway);   // every finding, as on the site
   const exec = r.exec;
   const LIGHT_INK = C.ink;

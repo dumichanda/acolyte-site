@@ -230,6 +230,10 @@ export function tableLayout(c: ChartArtifact, w: number, h: number): TableLayout
 export type Variant = "standard" | "executive";
 
 /** Which Acolyte dataset(s) a report draws on, from its charts' SQL. */
+/** True when a report rests only on Acolyte's public market data (no client data): it is then a demonstration. */
+export const isShowcase = (r: ReportArtifact) => !/\bclient_\d+\b/i.test(Object.values(r.charts || {}).map((c) => c.sql || "").join(" "));
+export const SHOWCASE_NOTE = "Demonstration on public market data, shown as summaries";
+
 export function dataSource(r: ReportArtifact): { data: string; caveat: string } {
   const sql = Object.values(r.charts || {}).map((c) => c.sql || "").join(" ");
   if (/retail_/.test(sql)) return { data: "online retail prices (Google Shopping South Africa)", caveat: "advertised online prices; not every retailer lists every item every day" };
@@ -247,7 +251,7 @@ export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): Sli
   const src = dataSource(r);
   const sections = full ? r.sections : r.sections.slice(0, 2);   // the AI orders findings by importance
   const date = fmtDate(r.generated || new Date().toISOString());
-  const footer = `${BRAND ? `Prepared for ${who()} · ` : "Acolyte · "}${src.data}${r.scope ? " · " + clean(r.scope) : ""} · ${date}`;
+  const footer = `${BRAND ? `Prepared for ${who()} · ` : "Acolyte · "}${src.data}${isShowcase(r) ? ` (${SHOWCASE_NOTE.toLowerCase()})` : ""}${r.scope ? " · " + clean(r.scope) : ""} · ${date}`;
   const exec = r.exec;
   const questions = full && r.questions?.length ? r.questions : sections.map((s) => s.question || s.title || s.heading).filter(Boolean);
 
