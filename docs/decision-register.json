@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17T11:30",
+ "updated": "2026-11-17T13:30",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -490,6 +490,21 @@
     "UX": 0.5,
     "SEC": 0.25,
     "QA": 0.5
+   }
+  },
+  {
+   "at": "2026-11-17T13:30",
+   "title": "Analyst-not-data positioning and client database connector",
+   "what": "Site and plan wording, showcase guard and labels, read-only database connector with admin panel and analyst tool, CSV templates, data-responsibility clauses draft.",
+   "days": {
+    "PM": 1,
+    "CW": 1.5,
+    "BE": 4,
+    "FE": 2,
+    "AI": 1,
+    "SEC": 2,
+    "QA": 1.5,
+    "OPS": 0.5
    }
   }
  ],
@@ -1393,6 +1408,66 @@
    "why": "You wanted a form like AWS's Contact sales page; sending it to our own CRM avoids a third-party form service and puts warm leads at the top of the board.",
    "alternatives": "Formspree; a mailto link.",
    "note": "Limit of 5 submissions an hour per connection, plus a hidden bot trap. Ticking the box records POPIA consent for the monthly report."
+  },
+  {
+   "id": "D76",
+   "at": "2026-11-17T12:00",
+   "kind": "Commercial",
+   "by": "You",
+   "status": "Active",
+   "title": "Sell the analyst, not the data",
+   "decision": "Acolyte's market data (Scrappa sources such as Property24, Private Property, Google Shopping, Amazon.co.za and Takealot; Adzuna jobs) is a demonstration of what an analyst can do. The site and plans sell an AI data analyst for the client's own data; nothing suggests data resale. Clients wanting full market records license them themselves and connect their analyst.",
+   "why": "Reselling scraped data risks the sources' terms and database rights; the analyst on the client's own data is harder to copy and worth more.",
+   "alternatives": "Package market data feeds with the analyst.",
+   "note": "Scrappa credit budget to be reduced to showcase needs (deferred)."
+  },
+  {
+   "id": "D77",
+   "at": "2026-11-17T12:20",
+   "kind": "Security",
+   "by": "Both",
+   "status": "Active",
+   "title": "Showcase rule enforced in code",
+   "decision": "Queries on market data drop link and ad-text columns and stop record-level results at 50 rows (aggregates are unlimited); the analyst is told to answer with aggregates and to explain that Acolyte is not a data supplier. Reports, decks, dashboards and Ask AI carry a demonstration label. A client's own data has no such limit.",
+   "why": "A prompt alone can be talked around; the guard applies whatever the AI writes.",
+   "alternatives": "Prompt-only rule; block market data for clients.",
+   "note": ""
+  },
+  {
+   "id": "D78",
+   "at": "2026-11-17T13:00",
+   "kind": "Technical",
+   "by": "You",
+   "status": "Active",
+   "title": "Read-only connector to a client's own database",
+   "decision": "PostgreSQL, MySQL/MariaDB and SQL Server. The owner adds a connection per client in Admin (Databases); the client creates a read-only login. The analyst queries it in place through its own tool in that database's dialect; dashboards refresh from it. Passwords are encrypted (CONNECTIONS_KEY), hosts on private networks are refused, one SELECT per query, 15 s and 500 rows.",
+   "why": "The demonstration model needs a real path for clients' own data; it was parked until a client needed it, and the new positioning makes it the core offer.",
+   "alternatives": "Copy client databases into Neon; build per-vendor connectors (Sage, ERP) first.",
+   "note": "PostgreSQL and MySQL/MariaDB tested end to end; SQL Server uses the same code path but is untested."
+  },
+  {
+   "id": "D79",
+   "at": "2026-11-17T13:10",
+   "kind": "Product",
+   "by": "Claude",
+   "status": "Active",
+   "title": "Seller and agency CSV templates",
+   "decision": "Templates for Takealot sales, Amazon business report, marketplace stock, agency listings and sales, and store sales, linked from the upload panel; exports upload as they are.",
+   "why": "Sellers own their Seller Portal and Seller Central data, the cleanest legal source for the Marketplace Analyst.",
+   "alternatives": "Build marketplace API integrations now.",
+   "note": ""
+  },
+  {
+   "id": "D80",
+   "at": "2026-11-17T13:30",
+   "kind": "Security",
+   "by": "Both",
+   "status": "Active",
+   "title": "Client data responsibility and POPIA operator clauses (draft)",
+   "decision": "A draft data schedule: the client owns and is responsible for its data and any licensed or scraped data; Acolyte is operator under POPIA s20-s21 with safeguards, breach notice, sub-operators and s72 transfers; demonstration data is not a data product; AI output needs review; liability cap.",
+   "why": "Puts legal responsibility where the data comes from, before the first client signs.",
+   "alternatives": "Rely on generic SaaS terms.",
+   "note": "For attorney review; open questions listed in the draft."
   }
  ]
 }
