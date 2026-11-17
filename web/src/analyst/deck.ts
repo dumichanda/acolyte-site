@@ -116,8 +116,10 @@ function heading(prims: Prim[], title: string, takeaway: string, chip?: string) 
     x = M + 0.62;
   }
   prims.push({ t: "text", x, y: 0.58, w: W - x - M, h: 0.5, text: clean(title), size: 22, min: 15, bold: true, color: C.ink, valign: "middle" });
-  if (takeaway) prims.push({ t: "text", x: M, y: 1.1, w: W - 2 * M, h: 0.42, text: clean(takeaway), size: 12, min: 9.5, bold: true, color: C.neutral, valign: "top" });
+  if (takeaway) prims.push({ t: "text", x: M, y: 1.1, w: W - 2 * M, h: takeawayH(takeaway), text: clean(takeaway), size: 12, min: 9.5, bold: true, color: C.neutral, valign: "top" });
 }
+/** Height of a slide's takeaway line(s) under the title: up to two lines. */
+const takeawayH = (t: string) => Math.min(0.62, Math.max(0.3, textHeight(clean(t), W - 2 * M, 12, true)));
 
 function kpiCard(prims: Prim[], k: Kpi, x: number, y: number, w: number, h: number, dark = false) {
   prims.push({ t: "rect", x, y, w, h, fill: dark ? C.darkCard : C.paper, radius: 0.06 });
@@ -125,8 +127,9 @@ function kpiCard(prims: Prim[], k: Kpi, x: number, y: number, w: number, h: numb
   const color = dark ? (k.tone === "negative" ? "FF8A70" : k.tone === "positive" ? "7FD8A2" : C.lime) : (TONE[k.tone] || C.olive);
   const v = clean(k.value), vmax = dark ? 28 : 26;
   const vsize = Math.max(11, Math.min(vmax, Math.floor((w - 0.3) * 72 / (Math.max(v.length, 1) * 0.7))));   // always one line
-  prims.push({ t: "text", x: x + 0.14, y: y + 0.32, w: w - 0.28, h: Math.min(0.62, h * 0.48), text: v, size: vsize, bold: true, color, valign: "middle" });
-  if (k.context) prims.push({ t: "text", x: x + 0.14, y: y + 0.32 + Math.min(0.62, h * 0.48), w: w - 0.28, h: h - 0.42 - Math.min(0.62, h * 0.48),
+  const vh = Math.min(0.62, h * 0.42);
+  prims.push({ t: "text", x: x + 0.14, y: y + 0.32, w: w - 0.28, h: vh, text: v, size: Math.min(vsize, Math.floor(vh * 72 / 1.15)), bold: true, color, valign: "middle" });
+  if (k.context) prims.push({ t: "text", x: x + 0.14, y: y + 0.32 + vh, w: w - 0.28, h: h - 0.32 - vh - 0.06,
     text: clean(k.context), size: 8, min: 6.5, color: dark ? C.darkMuted : C.muted });
 }
 
@@ -293,25 +296,27 @@ export function buildDeck(r: ReportArtifact, variant: Variant = "standard"): Sli
     const ex = (s.explainers || []).filter((e) => e.term);
     const noteText = [...ex.map((e) => `${clean(e.term)}: ${clean(e.means)} Why it matters: ${clean(e.why)}`), ...(s.note ? [clean(s.note)] : [])].join("\n");
     const noteTitle = ex.length ? "In plain words" : "How to read it";
-    const top = s.takeaway ? 1.68 : 1.3, bottom = 6.98;
-    const side: { kind: "kpis" | "so_what" | "note" | "bullets"; weight: number }[] = [];
-    if (kpis.length) side.push({ kind: "kpis", weight: 1.15 });
+    let top = s.takeaway ? 1.1 + takeawayH(s.takeaway) + 0.14 : 1.3;
+    const bottom = 6.98;
+    // The section's numbers sit in one full-width row under the takeaway, as on the website, never squeezed into the side column.
+    if (kpis.length) {
+      const gap = 0.2, kw = (W - 2 * M - gap * (kpis.length - 1)) / kpis.length;
+      kpis.forEach((k, j) => kpiCard(p, k, M + j * (kw + gap), top, kw, 1.05));
+      top += 1.05 + 0.18;
+    }
+    const side: { kind: "so_what" | "note" | "bullets"; weight: number }[] = [];
     if (s.so_what) side.push({ kind: "so_what", weight: 1.4 });
     if (noteText) side.push({ kind: "note", weight: 1.15 });
     if (bullets.length && charts.length) side.push({ kind: "bullets", weight: 1.3 });
 
     const drawSide = (x: number, w: number) => {
-      const need = side.map((it) => it.kind === "kpis" ? 1.2
-        : boxNeed(it.kind === "so_what" ? s.so_what! : it.kind === "note" ? noteText : bullets, w));
+      const need = side.map((it) => boxNeed(it.kind === "so_what" ? s.so_what! : it.kind === "note" ? noteText : bullets, w));
       const avail = bottom - top - 0.15 * (side.length - 1), sum = need.reduce((a, b) => a + b, 0);
       const scale = sum > avail ? avail / sum : 1;
       let y = top;
       side.forEach((it, n) => {
         const h = need[n] * scale;
-        if (it.kind === "kpis") {
-          const kw = (w - 0.12 * (kpis.length - 1)) / kpis.length;
-          kpis.forEach((k, j) => kpiCard(p, k, x + j * (kw + 0.12), y, kw, h));
-        } else if (it.kind === "so_what") box(p, "so_what", "So what", s.so_what!, x, y, w, h);
+        if (it.kind === "so_what") box(p, "so_what", "So what", s.so_what!, x, y, w, h);
         else if (it.kind === "note") box(p, "note", noteTitle, noteText, x, y, w, h);
         else box(p, "plain", "Detail", bullets, x, y, w, h);
         y += h + 0.15;

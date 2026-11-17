@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17T09:30",
+ "updated": "2026-11-17T10:15",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -460,6 +460,15 @@
     "FE": 1,
     "BE": 0.5,
     "QA": 0.5
+   }
+  },
+  {
+   "at": "2026-11-17T10:15",
+   "title": "Wider metric cards in packs",
+   "what": "Full-width metric row on finding slides, two-line takeaways.",
+   "days": {
+    "FE": 0.5,
+    "QA": 0.25
    }
   }
  ],
@@ -1326,6 +1335,18 @@
    "decision": "The Story PowerPoint and PDF now include all findings and, after each one, an evidence slide with the same charts and tables as the report on the site.",
    "why": "The Story download showed 5 findings and one chart, so it no longer matched the report on the site.",
    "alternatives": "Keep one hero chart.",
+   "note": ""
+  },
+  {
+   "id": "D73",
+   "at": "2026-11-17T10:15",
+   "kind": "Design",
+   "by": "You",
+   "status": "Active",
+   "title": "Metric cards in a full-width row on report slides",
+   "decision": "Each finding's numbers sit in one row of wide cards under the headline, as on the website, with the chart and the So what / In plain words / Detail boxes below.",
+   "why": "In the side column the three cards were squeezed and their labels overlapped the numbers.",
+   "alternatives": "Keep the cards in the side column.",
    "note": ""
   }
  ]
