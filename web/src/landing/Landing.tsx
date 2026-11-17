@@ -350,12 +350,6 @@ function SampleReports() {
 
 /* ---------------- Datasets and use cases ---------------- */
 
-const DATASETS = [
-  { name: "SA jobs", live: true, text: "" },
-  { name: "SA property", live: true, text: "Listings, asking prices, rents and stock across all 9 provinces and 48 regions, refreshed daily" },
-  { name: "SA retail prices", live: true, text: "Everyday-item prices across SA grocery chains, wholesalers, pharmacies, Amazon.co.za and Takealot, daily" },
-];
-
 const USE_CASES: { title: string; status: "Live" | "Proof of concept" | "Next" | "Retail data"; text: string; who: string; href?: string }[] = [
   { title: "SA Job Market Analysis", status: "Live", href: "/analyst/?industry=jobs",
     text: "Which roles, sectors and cities are hiring, and how demand is moving week to week.", who: "HR leaders · recruiters · investors · media" },
@@ -524,35 +518,36 @@ export default function Landing() {
 
       <SampleReports />
 
-      <section className="proof" id="use-cases">
+      <section id="how">
+        <div className="inner">
+          <span className="eyebrow reveal">How it works</span>
+          <h2 className="reveal d1">From scattered data to <em>answers</em> in weeks.</h2>
+          <div className="steps">
+            <div className="step reveal"><div className="n">i.</div><h3>Connect</h3><p>We plug into the systems you already use, with read-only access wherever possible.</p>
+              <div className="sources">{["Sage", "Pastel", "Xero", "Excel", "Google Sheets", "Shopify", "CRM", "Google reviews", "App stores", "Social"].map((x) => <span key={x}>{x}</span>)}</div></div>
+            <div className="step reveal d1"><div className="n">ii.</div><h3>Build</h3><p>We model your numbers, set up the dashboards, sentiment and competitor tracking, and train the AI analyst on your data.</p></div>
+            <div className="step reveal d2"><div className="n">iii.</div><h3>Ask</h3><p>Your team gets live dashboards, scheduled reports and an analyst on web or WhatsApp. We monitor and improve it monthly.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="proof ink" id="use-cases">
         <div className="inner">
           <div className="row">
             <div>
-              <span className="eyebrow reveal">Shown on live SA market data</span>
-              <h2 className="reveal d1">One platform, <em>many</em> use cases.</h2>
-              <p className="lede reveal d2">To show what each analyst can do, we run it every morning on public South African market data, summarised into trends,
-                indices and comparisons. Each use case has its own dashboards, questions and report packs. For your business, the same analyst reads
-                your own data instead: upload a spreadsheet, link a Google Sheet or connect your database read-only.</p>
+              <span className="eyebrow reveal">What your analyst can do</span>
+              <h2 className="reveal d1">One analyst, <em>many</em> jobs done.</h2>
+              <p className="lede reveal d2">Each analyst arrives knowing its industry: the questions to ask, the expert methods to answer them, the dashboards
+                to keep and the packs to write. Watch it work below, then give it your own data: a spreadsheet, a Google Sheet or a read-only database.</p>
             </div>
-            <a className="btn-signal reveal" href={url("/analyst/")}>Ask the data <span className="arr">→</span></a>
+            <a className="btn-signal reveal" href={url("/analyst/")}>Ask your analyst <span className="arr">→</span></a>
           </div>
-          <div className="datasets reveal">
-            {DATASETS.map((d) => (
-              <div key={d.name} className={`ds ${d.live ? "live" : ""}`}>
-                <span className="st mono">{d.live ? "Live demonstration data" : "Coming next"}</span>
-                <b>{d.name}</b>
-                <span>{d.name === "SA jobs" && s ? `${s.kpis.jobs.toLocaleString("en-ZA")} job ads · ${s.kpis.companies.toLocaleString("en-ZA")} employers · refreshed daily` : d.text}</span>
-              </div>
-            ))}
+          <div className="grid reveal">
+            <div className="stat"><div className="v">4</div><div className="l">industry analysts: talent, property, retail pricing, marketplaces</div></div>
+            <div className="stat"><div className="v">5</div><div className="l">expert skills each, from rental yield screens to price-gap checks</div></div>
+            <div className="stat"><div className="v">07:00</div><div className="l">a written brief, before your first meeting</div></div>
+            <div className="stat"><div className="v">Seconds</div><div className="l">from a plain-English question to a chart or a pack</div></div>
           </div>
-          {s && (
-            <div className="grid reveal">
-              <div className="stat"><div className="v"><CountUp to={s.kpis.jobs} /></div><div className="l">open roles tracked</div></div>
-              <div className="stat"><div className="v"><CountUp to={s.kpis.jobs_7d} /></div><div className="l">ads posted in the last 7 days</div></div>
-              <div className="stat"><div className="v"><CountUp to={s.kpis.companies} /></div><div className="l">employers profiled</div></div>
-              <div className="stat"><div className="v"><CountUp to={USE_CASES.filter((u) => u.href).length} /></div><div className="l">use cases live today</div></div>
-            </div>
-          )}
           <div className="uses">
             {USE_CASES.map((u, k) => {
               const body = <>
@@ -567,21 +562,8 @@ export default function Landing() {
                 : <div key={u.title} className={`use reveal d${k % 3}`}>{body}</div>;
             })}
           </div>
-          <p className="more reveal">Have your own data, or a question no use case answers yet? <a href="#contact">Tell us</a> and we'll connect your analyst to it.</p>
+          <p className="more reveal">Each of these is shown on public South African market data. Have a question none of them answers? <a href="#contact">Tell us</a> and we'll set your analyst up for it, on your own data.</p>
           {s?.meta.has_demo && <div className="note">Currently showing sample data while live collection starts.</div>}
-        </div>
-      </section>
-
-      <section id="how">
-        <div className="inner">
-          <span className="eyebrow reveal">How it works</span>
-          <h2 className="reveal d1">From scattered data to <em>answers</em> in weeks.</h2>
-          <div className="steps">
-            <div className="step reveal"><div className="n">i.</div><h3>Connect</h3><p>We plug into the systems you already use, with read-only access wherever possible.</p>
-              <div className="sources">{["Sage", "Pastel", "Xero", "Excel", "Google Sheets", "Shopify", "CRM", "Google reviews", "App stores", "Social"].map((x) => <span key={x}>{x}</span>)}</div></div>
-            <div className="step reveal d1"><div className="n">ii.</div><h3>Build</h3><p>We model your numbers, set up the dashboards, sentiment and competitor tracking, and train the AI analyst on your data.</p></div>
-            <div className="step reveal d2"><div className="n">iii.</div><h3>Ask</h3><p>Your team gets live dashboards, scheduled reports and an analyst on web or WhatsApp. We monitor and improve it monthly.</p></div>
-          </div>
         </div>
       </section>
 

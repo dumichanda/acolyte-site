@@ -466,3 +466,25 @@ body:has(.lp) { background: #0c0c0e; }
   .lp .bs-number { order: 1; } .lp .bs-sub { order: 2; } .lp .bs-cta { order: 3; margin-bottom: 8px; }
   .lp .bs-card { display: flex; flex-direction: column; align-items: center; }
 }
+
+/* The use-cases band on black (analyst-led, not data-led) */
+.lp .proof.ink { background: var(--ink); color: var(--text); border-top: 1px solid var(--line); }
+.lp .proof.ink .eyebrow { color: var(--signal); }
+.lp .proof.ink h2 em { color: var(--signal); }
+.lp .proof.ink .lede, .lp .proof.ink .more { color: var(--mute); }
+.lp .proof.ink .more a { color: var(--text); }
+.lp .proof.ink .btn-signal { background: var(--signal); color: var(--ink); }
+.lp .proof.ink .grid { border-top-color: var(--line); }
+.lp .proof.ink .stat + .stat { border-left-color: var(--line); }
+.lp .proof.ink .stat .v { color: var(--signal); }
+.lp .proof.ink .stat .l { color: var(--mute); }
+.lp .proof.ink .use { background: var(--ink-2); border-color: var(--line); color: var(--text); }
+.lp .proof.ink a.use:hover { border-color: #c8f13566; }
+.lp .proof.ink .use p { color: var(--mute); }
+.lp .proof.ink .use .who { color: #8a8a80; }
+.lp .proof.ink .use .go { color: var(--signal); }
+.lp .proof.ink .use .st { background: #ffffff12; color: var(--mute); }
+.lp .proof.ink .use .st.live { background: var(--signal); color: var(--ink); }
+.lp .proof.ink .use .st.proof-of-concept { background: transparent; color: var(--signal); border: 1px solid #c8f13566; }
+.lp .proof.ink .use .st.retail-data { border-color: var(--line); }
+.lp .proof.ink .note { color: var(--mute); }
