@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-19T09:00",
+ "updated": "2026-11-19T09:30",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -1575,7 +1575,7 @@
    "decision": "Reports, briefs, charts, decks, showcase results and the website say 'third-party data providers' instead of naming the listing portals, price services or data APIs. Enforced by an instruction to the analyst plus a scrubber on everything a report or brief carries, applied when written, when served and when exported to the site; the published November reports were cleaned. Companies being analysed (retailers, Amazon.co.za, Takealot, employers, agencies) keep their names, as do outside web sources the analyst quotes.",
    "why": "Suppliers are part of how Acolyte works, not what clients buy; naming them invites clients to go direct and ties our reports to their terms.",
    "alternatives": "Name every source in each report.",
-   "note": "Kept on purpose: Adzuna's attribution on the Automation Index (its licence requires it). The SQL shown under 'How this was calculated' still contains internal table and term names."
+   "note": "Kept on purpose: Adzuna's attribution on the Automation Index (its licence requires it). On 19 Nov the SQL boxes were hidden from clients (charts, query list, dashboard tiles; the owner's Admin page still shows queries) and the Customer guide no longer names a provider."
   }
  ]
 }
