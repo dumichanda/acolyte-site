@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-19T09:30",
+ "updated": "2026-11-19T11:00",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -529,6 +529,16 @@
     "FE": 1.5,
     "SEC": 0.5,
     "QA": 1
+   }
+  },
+  {
+   "at": "2026-11-19T11:00",
+   "title": "Dashboards with sheets and varied, animated charts",
+   "what": "Showcase dashboards with analyst and sheet tabs, five new chart forms, chart variety rules, on-view animation, page split.",
+   "days": {
+    "FE": 3,
+    "UX": 1,
+    "QA": 0.5
    }
   }
  ],
@@ -1576,6 +1586,18 @@
    "why": "Suppliers are part of how Acolyte works, not what clients buy; naming them invites clients to go direct and ties our reports to their terms.",
    "alternatives": "Name every source in each report.",
    "note": "Kept on purpose: Adzuna's attribution on the Automation Index (its licence requires it). On 19 Nov the SQL boxes were hidden from clients (charts, query list, dashboard tiles; the owner's Admin page still shows queries) and the Customer guide no longer names a provider."
+  },
+  {
+   "id": "D88",
+   "at": "2026-11-19T11:00",
+   "kind": "Design",
+   "by": "You",
+   "status": "Active",
+   "title": "Reports and dashboards on separate pages; dashboards with sheets, varied and animated charts",
+   "decision": "The Reports page holds only the report packs. The Dashboards page shows visitors a sample dashboard per analyst, built from its latest monthly work and split into sheets (an Overview with key insights and the Ask bar, then one sheet per topic with its figures, charts and 'So what'). Charts on dashboards are drawn in varied forms that suit the numbers (stacked bars, columns, treemaps, lollipop rankings, rose charts, donuts, lines) without changing the data; call-outs move to a caption where the new form has no axis. Charts in reports and dashboards draw in with animation when scrolled into view. The analyst is told to vary chart types in packs.",
+   "why": "One page mixing reports and dashboards was crowded; a single dashboard page of bar charts didn't show what the analyst can do.",
+   "alternatives": "Keep one combined page; leave every chart as the analyst drew it.",
+   "note": "Signed-in clients keep their own dashboards on the same page."
   }
  ]
 }
