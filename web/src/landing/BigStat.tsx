@@ -34,7 +34,7 @@ export default function BigStat() {
             <span className="bs-chip lime">Ask in plain English</span>
             <small>Answers in</small>
             <b className="bs-mini">Seconds</b>
-            <p>+ the query behind every number</p>
+            <p>+ the chart, dashboard or pack</p>
           </div>
 
           <div className="bs-cta">

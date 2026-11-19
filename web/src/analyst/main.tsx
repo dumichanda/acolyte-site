@@ -317,7 +317,6 @@ function ChartView({ c, height = 340, print = false }: { c: ChartArtifact; heigh
         </div>}
       </div>
       {body}
-      {!print && <details className="sql"><summary>How this was calculated</summary><pre>{c.sql}</pre></details>}
     </div>
   );
 }
@@ -752,7 +751,6 @@ function App() {
                     <details className="queries"><summary>{it.queries.length} quer{it.queries.length > 1 ? "ies" : "y"} run</summary>
                       {it.queries.map((d) => (
                         <div key={d.id} className="q"><b>{d.title}</b> <span className="muted">· {d.row_count} rows</span>
-                          <pre>{d.sql}</pre>
                           <button className="btn sm" onClick={() => download(`${d.title}.csv`, toCSV(d), "text/csv")}>Download CSV</button>
                         </div>
                       ))}

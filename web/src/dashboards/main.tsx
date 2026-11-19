@@ -58,7 +58,6 @@ function TileView({ t, view, onChange }: { t: Tile; view?: Filtered; onChange: (
       {body}
       <div className="tile-foot muted small">
         <span>{t.as_of && <>Data as of {when(t.as_of)}</>}{view?.note && <> · showing the {view.note}</>}</span>
-        <details><summary>Query</summary><pre>{t.spec.sql}</pre></details>
       </div>
     </div>
   );

@@ -281,7 +281,7 @@ const LEVELS = [
 ];
 
 const DOES = [
-  { t: "Answers in plain English", x: "and shows the SQL behind every number" },
+  { t: "Answers in plain English", x: "and explains where every number comes from" },
   { t: "Charts on request", x: "ranked, trended, mapped, compared" },
   { t: "Live dashboards", x: "pin any chart; it refreshes itself" },
   { t: "Report packs", x: "5-slide executive brief or full PowerPoint pack" },
