@@ -10,6 +10,7 @@ import { applyFilters, DEFAULT_FILTERS, dimensions, filterLabel, keyInsights, vi
 import { AskBar, FilterBar, KeyInsights } from "./view";
 import { loadClientBrand } from "../analyst/DeckStyle";
 import { readTheme } from "../charts";
+import Showcase from "./Showcase";
 import { url } from "../site";
 import { chartOption, download, fmt, toCSV, type ChartArtifact } from "../analyst/chart";
 
@@ -133,12 +134,15 @@ function App() {
     <div className="wrap dash">
       <PlatformNav active="/dashboards/" />
       {!me ? (
+        <>
+        <Showcase />
         <div className="card gate">
           <span className="tag">Clients</span>
-          <h1>Your live dashboards</h1>
+          <h1>Sign in to your own dashboards</h1>
           <p className="muted">Sign in with your PIN. Dashboards are built by pinning charts in <a href={url("/analyst/")}>Ask AI</a>; every chart re-runs its query on the live data.</p>
           <SignIn compact onDone={async (m) => { setMe(m); await loadBoards(); }} />
         </div>
+        </>
       ) : (
         <div className="dash-grid">
           <aside className="dash-side">

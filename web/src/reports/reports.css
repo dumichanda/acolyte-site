@@ -65,3 +65,26 @@
 .src-quote > p:first-child { font-size: 15px; font-style: italic; margin: 0; }
 .src-quote footer { font-size: 12px; color: var(--muted); }
 .src-quote a { color: var(--accent); }
+
+/* Sample dashboards (Dashboards page, signed out): analyst picker, sheet tabs, varied animated charts */
+.sc { display: grid; gap: 16px; margin-bottom: 28px; }
+.sc-head h1 { margin: 6px 0; }
+.sc-analysts { display: flex; gap: 8px; flex-wrap: wrap; }
+.sc-analysts button { font: inherit; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+.sc-analysts button.on { background: var(--accent); color: #0c0c0e; border-color: var(--accent); font-weight: 600; }
+.sc-book { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); overflow: hidden; }
+.sc-sheets { display: flex; gap: 2px; overflow-x: auto; padding: 8px 8px 0; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 70%, #000); }
+.sc-sheets button { font: inherit; font-size: 13px; white-space: nowrap; padding: 8px 14px; border: 1px solid transparent; border-bottom: none; border-radius: 10px 10px 0 0;
+  background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.sc-sheets button em { font-style: normal; font-size: 11px; padding: 0 6px; border-radius: 99px; background: #ffffff12; }
+.sc-sheets button.on { background: var(--panel); color: var(--ink); border-color: var(--line); font-weight: 600; margin-bottom: -1px; }
+.sc-sheets button.on em { background: var(--accent); color: #0c0c0e; }
+.sc-sheet { padding: 16px; display: grid; gap: 14px; animation: sc-in .35s ease both; }
+@keyframes sc-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sc-sheet { animation: none; } }
+.sc-intro { margin: 0; color: var(--ink); max-width: 90ch; }
+.sc-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; }
+.sc-tiles .rp-tile.wide { grid-column: 1 / -1; }
+.sc-sowhat { display: flex; gap: 12px; align-items: baseline; padding: 12px 14px; border-radius: 12px; background: #c8f13514; border: 1px solid #c8f13540; }
+.sc-sowhat b { color: var(--accent); white-space: nowrap; }
+.rp-to-dash { margin-top: 18px; }

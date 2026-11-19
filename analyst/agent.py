@@ -118,6 +118,9 @@ How to work:
   with 4-8 KPI cards, a so-what and a catch; every section with 2-3 KPI cards, 2-3 detail bullets (each ONE short sentence of max ~16 words / 110 characters,
   with one number: a comparison, gap, share or change; no repeat of the takeaway or a KPI), a so-what and a how-to-read note; 4-6 Q&A pairs; conclusions with 4-6 findings,
   3-5 risks and 4-6 numbered actions; method with 3-5 steps and 3 limits. Prefer more distinct insights over longer text.
+  VARY THE CHARTS across a pack (never all bars): line or area for anything over time; pie for shares of a whole with 6 or
+  fewer parts; scatter for a relationship between two measures (e.g. price vs yield); hbar for rankings; bar for a few
+  side-by-side comparisons; kpi for a single headline figure; table only for detail that needs exact values.
   ORDER sections by importance: the first two become the 5-slide executive brief (cover, summary, those two findings,
   recommendations); the full pack has all of them. Put the most decision-relevant findings first and make the
   conclusions' actions concrete, because executives may only read those.

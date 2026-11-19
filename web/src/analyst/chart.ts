@@ -69,6 +69,9 @@ export function chartOption(c: ChartArtifact, theme: { ink: string; muted: strin
   // Fonts, tooltip card, grid and mark specs come from the Acolyte ECharts theme (viz.ts).
   const base: EChartsOption = {
     animation: !print,
+    // Charts draw in: bars grow one after another, lines trace across, rings sweep round.
+    animationDuration: 1100, animationEasing: "cubicOut", animationDurationUpdate: 500,
+    animationDelay: (i: number) => Math.min(i * 45, 900),
     color: PALETTE(print),
     tooltip: { trigger: c.type === "pie" || c.type === "scatter" ? "item" : "axis", valueFormatter: (v: any) => fmt(v, c.value_format) },
     legend: yi.length > 1 ? { top: 0 } : undefined,
@@ -76,7 +79,34 @@ export function chartOption(c: ChartArtifact, theme: { ink: string; muted: strin
   const valAxis = { type: "value" as const, axisLabel: { formatter: (v: number) => fmt(v, c.value_format) } };
   const label = { show: rows.length <= 16, color: theme.muted, fontSize: 10, formatter: (p: any) => fmt(Array.isArray(p.value) ? p.value[1] : p.value, c.value_format) };
 
-  if (c.type === "pie") {
+  if (c.type === "treemap") {   // shares of a whole across many items: area = size
+    return { ...base, tooltip: { trigger: "item", valueFormatter: (v: any) => fmt(v, c.value_format) },
+      series: [{ type: "treemap", roam: false, nodeClick: false, breadcrumb: { show: false }, width: "100%", height: "100%", top: 0, left: 0,
+        itemStyle: { borderColor: theme.panel, borderWidth: 2, gapWidth: 2 },
+        levels: [{ color: ["#c8f135", "#a6cc24", "#86a81a", "#6b8a12", "#536d0c", "#3f5306"], colorMappingBy: "index" }],
+        label: { show: true, color: "#0c0c0e", fontWeight: 600, fontSize: 11, formatter: (p: any) => `${p.name}\n${fmt(p.value, c.value_format)}` },
+        data: rows.map((r) => ({ name: String(r[xi]), value: Math.max(0, num(r[yi[0]]) ?? 0) })) }] } as EChartsOption;
+  }
+  if (c.type === "radial") {   // a few categories as petals: each petal's length is its value (a rose chart)
+    return { ...base, tooltip: { trigger: "item", valueFormatter: (v: any) => fmt(v, c.value_format) },
+      series: [{ type: "pie", roseType: "radius", radius: ["14%", "72%"], center: ["50%", "52%"], padAngle: 1,
+        itemStyle: { borderRadius: 6, borderColor: theme.panel, borderWidth: 1 },
+        label: { color: theme.ink, fontSize: 10, formatter: (p: any) => `${p.name}\n${fmt(p.value, c.value_format)}` },
+        labelLine: { length: 6, length2: 6 },
+        data: rows.map((r, j) => ({ name: String(r[xi]), value: Math.max(0, num(r[yi[0]]) ?? 0),
+          itemStyle: { color: PALETTE(print)[j % PALETTE(print).length] } })) }] } as EChartsOption;
+  }
+  if (c.type === "lollipop") {   // a ranking without heavy bars: a thin stem and a dot
+    const vals = rows.map((r) => num(r[yi[0]]));
+    const rc = [...cats].reverse(), rv = [...vals].reverse();
+    const ACCL = theme.accent || (print ? "#5d7a0a" : "#c8f135");
+    return { ...base, grid: { left: 10, right: 54, top: 16, bottom: 10, containLabel: true },
+      xAxis: valAxis, yAxis: { type: "category", data: rc, axisTick: { show: false }, axisLabel: { color: theme.ink, fontSize: 12, width: 170, overflow: "truncate" } },
+      series: [{ type: "bar", data: rv, barWidth: 2, itemStyle: { color: theme.muted }, silent: true },
+               { type: "scatter", data: rv, symbolSize: 13, itemStyle: { color: ACCL, shadowBlur: print ? 0 : 10, shadowColor: "rgba(200,241,53,.5)" },
+                 label: { show: rows.length <= 16, position: "right", color: theme.muted, fontSize: 10, formatter: (p: any) => fmt(p.value, c.value_format) } }] } as EChartsOption;
+  }
+  if (c.type === "pie" || c.type === "donut") {
     return { ...base, legend: { bottom: 0 },
       series: [{ type: "pie", radius: ["50%", "76%"], padAngle: 1, center: ["50%", "45%"], itemStyle: { borderColor: theme.panel, borderWidth: 2 },
         label: { formatter: (p: any) => `${p.name}\n${fmt(p.value, c.value_format)}` },
@@ -87,7 +117,8 @@ export function chartOption(c: ChartArtifact, theme: { ink: string; muted: strin
       xAxis: { ...valAxis, name: c.x, nameLocation: "middle", nameGap: 26 }, yAxis: { ...valAxis, name: c.y[0] },
       series: [{ type: "scatter", symbolSize: 10, data: rows.map((r) => [num(r[xi]), num(r[yi[0]])]) }] };
   }
-  const horizontal = c.type === "hbar";
+  const stacked = c.type === "stacked";
+  const horizontal = c.type === "hbar" || stacked;
   const catAxis = { type: "category" as const, data: horizontal ? [...cats].reverse() : cats, axisTick: { show: false },
     axisLabel: { color: theme.ink, fontSize: 12, interval: 0, rotate: !horizontal && cats.length > 6 ? 35 : 0, width: horizontal ? 180 : 110, overflow: "truncate" as const },
   };
@@ -96,7 +127,7 @@ export function chartOption(c: ChartArtifact, theme: { ink: string; muted: strin
     colorStops: [{ offset: 0, color: h ? b : a }, { offset: 1, color: h ? a : b }] });
   const series = yi.map((i, k) => {
     const data = rows.map((r) => num(r[i]));
-    const t = c.type === "area" ? "line" : c.type === "hbar" ? "bar" : c.type;
+    const t = c.type === "area" ? "line" : c.type === "hbar" || stacked ? "bar" : c.type;
     const single = yi.length === 1;
     const max = Math.max(...data.filter((v): v is number => v != null));
     const last = data.length - 1;
@@ -118,7 +149,7 @@ export function chartOption(c: ChartArtifact, theme: { ink: string; muted: strin
       areaStyle: c.type === "area" || (t === "line" && single)
         ? { opacity: 1, color: grad(single ? (print ? "rgba(93,122,10,.22)" : "rgba(200,241,53,.28)") : "rgba(124,196,255,.12)", "rgba(0,0,0,0)", false) }
         : undefined,
-      barMaxWidth: 30, barCategoryGap: "28%", showSymbol: t === "line" && rows.length < 14, symbolSize: 6,
+      barMaxWidth: 30, barCategoryGap: "28%", ...(stacked ? { stack: "total" } : {}), showSymbol: t === "line" && rows.length < 14, symbolSize: 6,
       // One series: the brand accent (no set to separate). Several: the validated categorical order.
       itemStyle: { borderRadius: barEnd(horizontal), ...(single ? { color: ACC } : {}) },
       lineStyle: t === "line" ? { width: single ? 3 : 2.25, ...(single ? { color: ACC, shadowBlur: print ? 0 : 12, shadowColor: "rgba(200,241,53,.5)" } : {}) } : undefined,
@@ -165,4 +196,28 @@ function marks(c: ChartArtifact, rows: unknown[][], cats: string[], xi: number, 
     ...(lines.length ? { markLine: { symbol: ["none", "none"], silent: true, data: lines } } : {}),
     ...(areas.length ? { markArea: { silent: true, data: areas } } : {}),
   };
+}
+
+
+/**
+ * Dashboard variety: the same numbers shown the way that suits them, so a sheet isn't a wall of bars.
+ * Only changes the drawing, never the data; charts with call-outs keep their bars (the call-outs need an axis).
+ */
+export function vary(c: ChartArtifact, i: number): ChartArtifact {
+  if (!["bar", "hbar"].includes(c.type) || c.rows.length < 3) return c;
+  const yi = c.y.map((y) => c.columns.indexOf(y)).filter((k) => k >= 0);
+  const vals = c.rows.map((r) => Number(r[yi[0]]));
+  if (yi.length > 1) {   // a few series: stacked bars on one tile, upright grouped columns on the next
+    if (yi.length > 3 || c.rows.length > 16) return c;
+    return i % 2 === 0 ? { ...c, type: "stacked" } : { ...c, type: "bar", annotations: [] };
+  }
+  if (vals.some((v) => !(v >= 0))) return c;
+  const total = vals.reduce((a, b) => a + b, 0);
+  const share = /share|%|pct|percent/i.test(c.y[0] + c.value_format) && total > 85 && total < 115;
+  const n = c.rows.length;
+  if (share && n <= 8) return { ...c, type: "donut" };
+  const options = [n <= 9 ? "radial" : null, n >= 6 && n <= 24 ? "treemap" : null, "lollipop"].filter(Boolean) as string[];
+  const type = options[i % options.length];
+  // The new forms have no axis for call-outs: those move to a caption under the chart (see Showcase).
+  return type === c.type || type === "hbar" ? c : { ...c, type, annotations: [] };
 }
