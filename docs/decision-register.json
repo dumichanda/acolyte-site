@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-19T11:00",
+ "updated": "2026-11-19T12:00",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -1598,6 +1598,17 @@
    "why": "One page mixing reports and dashboards was crowded; a single dashboard page of bar charts didn't show what the analyst can do.",
    "alternatives": "Keep one combined page; leave every chart as the analyst drew it.",
    "note": "Signed-in clients keep their own dashboards on the same page."
+  },
+  {
+   "id": "D89",
+   "at": "2026-11-19T12:00",
+   "kind": "Product",
+   "by": "You",
+   "status": "Active",
+   "title": "Filters on Reports and Dashboards",
+   "decision": "Reports: filter by analyst, month and edition (full month or month to date), plus a search over titles, summaries and figures, with a count and Clear filters. Sample dashboards: each sheet has a filter bar (period plus up to three data filters found in its charts, e.g. Province, Region, Agency or Retailer); charts, key insights and the Ask bar follow the filters, and charts without that column say they are not affected.",
+   "why": "As reports and sheets grow, people need to narrow them to their own month, area or retailer.",
+   "alternatives": "Analyst tabs only."
   }
  ]
 }
