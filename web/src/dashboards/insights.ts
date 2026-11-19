@@ -40,8 +40,9 @@ export function dimensions(charts: ChartArtifact[]): { col: string; values: stri
       if (i === di || c.y.includes(col)) return;
       const vals = c.rows.map((r) => r[i]).filter((v) => typeof v === "string" && v !== "") as string[];
       if (vals.length < 2 || vals.some((v) => asDate(v))) return;
-      const e = m.get(col) || { values: new Set<string>(), tiles: 0 };
-      vals.forEach((v) => e.values.add(v)); e.tiles++; m.set(col, e);
+      const key = [...m.keys()].find((k) => k.toLowerCase() === col.toLowerCase()) || col;   // "Province" = "province"
+      const e = m.get(key) || { values: new Set<string>(), tiles: 0 };
+      vals.forEach((v) => e.values.add(v)); e.tiles++; m.set(key, e);
     });
   }
   return [...m.entries()].map(([col, e]) => ({ col, values: [...e.values].sort(), tiles: e.tiles }))
@@ -61,7 +62,7 @@ export interface Filtered { chart: ChartArtifact; note: string; timed: boolean }
 export function applyFilters(c: ChartArtifact, f: Filters): Filtered {
   let rows = c.rows, note = "";
   for (const [col, val] of Object.entries(f.dims)) {
-    const i = c.columns.indexOf(col);
+    const i = c.columns.findIndex((x) => x.toLowerCase() === col.toLowerCase());
     if (val && i >= 0) rows = rows.filter((r) => String(r[i]) === val);
   }
   const di = dateCol(c);

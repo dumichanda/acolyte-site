@@ -88,3 +88,7 @@
 .sc-sowhat { display: flex; gap: 12px; align-items: baseline; padding: 12px 14px; border-radius: 12px; background: #c8f13514; border: 1px solid #c8f13540; }
 .sc-sowhat b { color: var(--accent); white-space: nowrap; }
 .rp-to-dash { margin-top: 18px; }
+.rp-more { margin-top: 10px; align-items: end; }
+.rp-more .rp-search input { min-width: 240px; }
+.sc-empty { padding: 24px 0; text-align: center; }
+.rp-more input[type=search] { font: inherit; font-size: 13px; text-transform: none; letter-spacing: 0; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }

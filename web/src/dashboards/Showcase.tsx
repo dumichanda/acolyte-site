@@ -3,8 +3,10 @@ import { url } from "../site";
 import { vary, type ChartArtifact, type Kpi, type ReportArtifact } from "../analyst/chart";
 import ChartBlock from "../reports/ChartBlock";
 import { ANALYSTS, latestPerAnalyst, loadIndex, loadReport, monthLabel, type ReportCard, type ReportFile } from "../reports/data";
-import { DEFAULT_FILTERS, keyInsights, viewContext } from "./insights";
-import { AskBar, KeyInsights } from "./view";
+import { applyFilters, dimensions, keyInsights, viewContext, type Filters } from "./insights";
+import { AskBar, FilterBar, KeyInsights } from "./view";
+
+const ALL: Filters = { period: "all", dims: {} };   // sample data is a snapshot: show everything until filtered
 import "../reports/reports.css";
 
 /**
@@ -59,6 +61,11 @@ export default function Showcase() {
   const f = card ? files[card.id] : undefined;
   const sheets = useMemo(() => (f ? sheetsOf(f.report) : []), [f]);
   const cur = sheets.find((s) => s.key === sheet) || sheets[0];
+  const [flt, setFlt] = useState<Filters>(ALL);
+  useEffect(() => setFlt(ALL), [card?.industry, cur?.key]);
+  const dims = useMemo(() => (cur ? dimensions(cur.charts) : []), [cur]);
+  const views = useMemo(() => (cur ? cur.charts.map((c) => applyFilters(c, flt)) : []), [cur, flt]);
+  const shownCharts = views.map((v) => v.chart);
   const go = (ind: string, sh = "overview") => { setPick(ind); setSheet(sh); history.replaceState(null, "", `#${ind}/${sh}`); };
 
   if (cards === null) return <p className="muted">Loading the sample dashboards…</p>;
@@ -85,18 +92,22 @@ export default function Showcase() {
             <div className="rp-board-head"><h3>{ANALYSTS[card!.industry]?.name} · {cur.name}</h3><span className="muted small">{label}</span>
               <a className="link" href={url(ANALYSTS[card!.industry]?.ask || "/analyst/")}>Open in Ask AI →</a></div>
             {cur.intro && <p className="sc-intro">{cur.intro}</p>}
+            {(dims.length > 0 || views.some((v) => v.timed)) && <FilterBar f={flt} set={setFlt} dims={dims} base={ALL} />}
             <Kpis items={cur.kpis} />
             {cur.key === "overview" && (
-              <KeyInsights items={keyInsights(cur.charts, 4)} label={label}
+              <KeyInsights items={keyInsights(shownCharts, 4)} label={label}
                 ask={<AskBar industry={card!.industry} suggestions={["What stands out here?", "Is this good or bad news?", "What should I do about it?"]}
-                  context={() => viewContext(`${ANALYSTS[card!.industry]?.name} dashboard, ${cur.name} sheet (${label})`, DEFAULT_FILTERS,
-                    cur.charts.map((ch) => ({ chart: ch, note: "", timed: true })), keyInsights(cur.charts, 4))} />} />
+                  context={() => viewContext(`${ANALYSTS[card!.industry]?.name} dashboard, ${cur.name} sheet (${label})`, flt,
+                    views, keyInsights(shownCharts, 4))} />} />
             )}
-            <div className="rp-tiles sc-tiles">{cur.charts.map((ch) => (
+            <div className="rp-tiles sc-tiles">{views.map(({ chart: ch, note }) => (
               <div key={ch.id} className={"rp-tile" + (ch.type === "table" || ch.type === "line" || ch.type === "area" ? " wide" : "")}>
                 <h4>{ch.title}</h4>{ch.subtitle && <p className="muted small">{ch.subtitle}</p>}
-                <ChartBlock c={ch} height={["hbar", "lollipop", "stacked"].includes(ch.type) ? Math.max(260, Math.min(560, ch.rows.length * 22 + 70))
-                  : ch.type === "radial" || ch.type === "donut" ? 300 : 280} /></div>))}</div>
+                {note && <p className="muted small">Showing the {note}.</p>}
+                {(() => { const off = Object.entries(flt.dims).filter(([col, v]) => v && !ch.columns.some((x) => x.toLowerCase() === col.toLowerCase())).map(([col]) => col);
+                  return off.length ? <p className="muted small">Not affected by the {off.join(" and ")} filter (this chart has no {off.join(" or ")}).</p> : null; })()}
+                {!ch.rows.length ? <p className="muted small sc-empty">Nothing in this chart matches the filter.</p> : <ChartBlock c={ch} height={["hbar", "lollipop", "stacked"].includes(ch.type) ? Math.max(260, Math.min(560, ch.rows.length * 22 + 70))
+                  : ch.type === "radial" || ch.type === "donut" ? 300 : 280} />}</div>))}</div>
             {cur.so_what && <div className="sc-sowhat"><b>So what</b><span>{cur.so_what}</span></div>}
           </div>
         </div>

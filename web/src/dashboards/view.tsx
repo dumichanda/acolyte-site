@@ -6,8 +6,8 @@ import { DEFAULT_FILTERS, PERIODS, type Filters, type Insight, type Period } fro
 
 const TONE_ICON: Record<Insight["tone"], string> = { up: "▲", down: "▼", flat: "■", info: "●" };
 
-export function FilterBar({ f, set, dims }: { f: Filters; set: (f: Filters) => void; dims: { col: string; values: string[] }[] }) {
-  const changed = f.period !== "month" || Object.values(f.dims).some(Boolean);
+export function FilterBar({ f, set, dims, base = DEFAULT_FILTERS }: { f: Filters; set: (f: Filters) => void; dims: { col: string; values: string[] }[]; base?: Filters }) {
+  const changed = f.period !== base.period || Object.values(f.dims).some(Boolean);
   return (
     <div className="filter-bar" role="group" aria-label="Dashboard filters">
       <label>Period
@@ -17,7 +17,7 @@ export function FilterBar({ f, set, dims }: { f: Filters; set: (f: Filters) => v
         <label key={d.col}>{d.col}
           <select value={f.dims[d.col] || ""} onChange={(e) => set({ ...f, dims: { ...f.dims, [d.col]: e.target.value } })}>
             <option value="">All</option>{d.values.map((v) => <option key={v} value={v}>{v}</option>)}</select></label>))}
-      {changed && <button className="link" onClick={() => set(DEFAULT_FILTERS)}>Reset to this month</button>}
+      {changed && <button className="link" onClick={() => set(base)}>{base.period === "month" ? "Reset to this month" : "Clear filters"}</button>}
     </div>
   );
 }

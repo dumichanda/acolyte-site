@@ -2,6 +2,7 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../index.css";
 import "./reports.css";
+import "../dashboards/view.css";
 import PlatformNav from "../PlatformNav";
 import { url } from "../site";
 import type { ReportArtifact } from "../analyst/chart";
@@ -108,6 +109,7 @@ function App() {
   const [cards, setCards] = useState<ReportCard[] | null>(null);
   const [files, setFiles] = useState<Record<number, ReportFile>>({});
   const [filter, setFilter] = useState<string>("all");
+  const [month, setMonth] = useState("all"), [kind, setKind] = useState("all"), [q, setQ] = useState("");
   const [open, setOpen] = useState<number | null>(() => Number((location.hash.match(/^#report-(\d+)$/) || [])[1]) || null);
 
   useEffect(() => { loadIndex().then(setCards); }, []);
@@ -122,7 +124,13 @@ function App() {
   }, [open]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const show = (id: number | null) => { location.hash = id ? `report-${id}` : ""; setOpen(id); scrollTo(0, 0); };
-  const shown = (cards || []).filter((c) => filter === "all" || c.industry === filter);
+  const months = [...new Set((cards || []).map((c) => c.period))].sort().reverse();
+  const stem = (w: string) => w.replace(/(ies|es|s)$/, "");   // "yields" finds "yield"
+  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean).map(stem);
+  const shown = (cards || []).filter((c) => (filter === "all" || c.industry === filter) && (month === "all" || c.period === month)
+    && (kind === "all" || (kind === "mtd") === c.month_to_date)
+    && words.every((w) => `${c.title} ${c.takeaway || ""} ${ANALYSTS[c.industry]?.name || ""} ${(c.kpis || []).map((k) => k.label).join(" ")}`.toLowerCase().includes(w)));
+  const filtered = filter !== "all" || month !== "all" || kind !== "all" || !!words.length;
 
   return (
     <div className="wrap reports-page">
@@ -135,6 +143,18 @@ function App() {
             <div className="rp-filters" role="group" aria-label="Filter by analyst">
               {[["all", "All analysts"], ...Object.entries(ANALYSTS).map(([k, v]) => [k, v.name])].map(([k, label]) => (
                 <button key={k} className={filter === k ? "on" : ""} aria-pressed={filter === k} onClick={() => setFilter(k)}>{label}</button>))}
+            </div>
+            <div className="filter-bar rp-more" role="group" aria-label="More filters">
+              <label>Month
+                <select value={month} onChange={(e) => setMonth(e.target.value)}>
+                  <option value="all">All months</option>{months.map((m) => <option key={m} value={m}>{monthLabel(m, false)}</option>)}</select></label>
+              <label>Edition
+                <select value={kind} onChange={(e) => setKind(e.target.value)}>
+                  <option value="all">All editions</option><option value="full">Full month</option><option value="mtd">Month to date</option></select></label>
+              <label className="rp-search">Search
+                <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="e.g. yields, Black Friday, Takealot" /></label>
+              {filtered && <button className="link" onClick={() => { setFilter("all"); setMonth("all"); setKind("all"); setQ(""); }}>Clear filters</button>}
+              <span className="muted small">{shown.length} of {(cards || []).length} reports</span>
             </div>
           </header>
           {cards === null ? <p className="muted">Loading reports…</p> : shown.length ? (

@@ -120,7 +120,7 @@ export function chartOption(c: ChartArtifact, theme: { ink: string; muted: strin
   const stacked = c.type === "stacked";
   const horizontal = c.type === "hbar" || stacked;
   const catAxis = { type: "category" as const, data: horizontal ? [...cats].reverse() : cats, axisTick: { show: false },
-    axisLabel: { color: theme.ink, fontSize: 12, interval: 0, rotate: !horizontal && cats.length > 6 ? 35 : 0, width: horizontal ? 180 : 110, overflow: "truncate" as const },
+    axisLabel: { color: theme.ink, fontSize: 12, interval: 0, rotate: !horizontal && (cats.length > 6 || (cats.length > 3 && cats.some((x) => x.length > 9))) ? 35 : 0, width: horizontal ? 180 : 110, overflow: "truncate" as const },
   };
   const ACC = theme.accent || (print ? "#5d7a0a" : "#c8f135"), ACC2 = theme.accent2 || (print ? "#3f5306" : "#8fb31f");
   const grad = (a: string, b: string, h: boolean) => ({ type: "linear", x: 0, y: 0, x2: h ? 1 : 0, y2: h ? 0 : 1,
