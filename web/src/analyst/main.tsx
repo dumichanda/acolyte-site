@@ -393,9 +393,9 @@ function ReportView({ r, actions = true }: { r: ReportArtifact; actions?: boolea
 
 function dataSourceLabel(r: ReportArtifact) {
   const sql = Object.values(r.charts || {}).map((c) => c.sql || "").join(" ");
-  if (/retail_/.test(sql)) return "SA retail price dataset (Google Shopping South Africa)";
+  if (/retail_/.test(sql)) return "SA retail price dataset (third-party data providers)";
   const p = /property_|bond_rate/.test(sql), j = /\b(jobs|job_tools|job_skills|employers|daily_stats|salary_benchmarks)\b/.test(sql);
-  return p && j ? "SA jobs and property datasets" : p ? "SA property dataset (Private Property listings)" : "SA jobs dataset (public job ads)";
+  return p && j ? "SA jobs and property datasets" : p ? "SA property dataset (third-party listing providers)" : "SA jobs dataset (public job ads)";
 }
 
 function Voice({ onText }: { onText: (t: string) => void }) {

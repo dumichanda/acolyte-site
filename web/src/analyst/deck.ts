@@ -236,11 +236,11 @@ export const SHOWCASE_NOTE = "Demonstration on public market data, shown as summ
 
 export function dataSource(r: ReportArtifact): { data: string; caveat: string } {
   const sql = Object.values(r.charts || {}).map((c) => c.sql || "").join(" ");
-  if (/retail_/.test(sql)) return { data: "online retail prices (Google Shopping South Africa)", caveat: "advertised online prices; not every retailer lists every item every day" };
+  if (/retail_/.test(sql)) return { data: "online retail prices (third-party data providers)", caveat: "advertised online prices; not every retailer lists every item every day" };
   const property = /property_|bond_rate/.test(sql);
   const jobs = /\b(jobs|job_tools|job_skills|employers|daily_stats)\b/.test(sql);
   if (property && jobs) return { data: "public job ads and property listings", caveat: "public job ads and property listings; asking prices, not sale prices" };
-  if (property) return { data: "public property listings (Private Property)", caveat: "public property listings; asking prices, not sale prices" };
+  if (property) return { data: "public property listings (third-party data providers)", caveat: "public property listings; asking prices, not sale prices" };
   return { data: "public job ads", caveat: "public job-ad data, not a census of employment" };
 }
 

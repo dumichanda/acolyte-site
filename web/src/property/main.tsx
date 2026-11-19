@@ -63,7 +63,7 @@ function BriefPreview({ p }: { p: PropertySummary | null }) {
           </div>
         </> : <p className="muted">Live numbers appear here after the first morning refresh.</p>}
       </div>
-      <div className="src mono">Residential listings on Private Property across {p?.regions ?? 48} regions · full counts, refreshed daily</div>
+      <div className="src mono">Residential listings from third-party data providers across {p?.regions ?? 48} regions · full counts, refreshed daily</div>
     </div>
   );
 }
@@ -144,7 +144,7 @@ function App() {
                   <span className="v mono">{n(x.for_sale)} · {n(x.to_rent)}</span>
                 </div>
               ))}
-              <div className="note">Residential listings on Private Property, {new Date(p.day).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" })}.
+              <div className="note">Residential listings from third-party data providers, {new Date(p.day).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" })}.
                 {p.days_of_data < 7 ? " Trends build up as each day is added." : ` ${p.days_of_data} days of history.`}</div>
             </div>
           ) : <p className="note">Live numbers appear here after the first morning refresh.</p>}
@@ -175,7 +175,7 @@ function App() {
         <div className="inner">
           <span className="eyebrow">About the data</span>
           <div className="pp-facts">
-            <div><b>Source</b><p>Public listings on Private Property, collected every morning and shown only as counts, medians and trends, to demonstrate the analyst. Acolyte does not sell or supply listing data; your analyst works on data you own or license.</p></div>
+            <div><b>Source</b><p>Public listings from third-party data providers, collected every morning and shown only as counts, medians and trends, to demonstrate the analyst. Acolyte does not sell or supply listing data; your analyst works on data you own or license.</p></div>
             <div><b>What it measures</b><p>Asking prices and rents, not transfer prices. Yields are indicative gross yields from asking prices.</p></div>
             <div><b>POPIA</b><p>No agent or seller personal details are stored, only agency and branch names. Your questions and dashboards stay in your account.</p></div>
           </div>

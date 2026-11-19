@@ -10,7 +10,12 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
+import sys
+
 from db import connect
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from analyst.providers import scrub_obj  # noqa: E402  (no data-supplier names on the public site)
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "web" / "public" / "data" / "reports"
@@ -38,6 +43,7 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     index = []
     for rid, ind, period, mtd, title, rep, fin in rows:
+        rep, title = scrub_obj(rep), scrub_obj(title)
         ex = (rep or {}).get("exec") or {}
         index.append({"id": rid, "industry": ind, "analyst": NAMES.get(ind, ind), "period": period, "month_to_date": mtd,
                       "title": title or (rep or {}).get("title"), "takeaway": ex.get("takeaway") or (rep or {}).get("summary"),

@@ -60,7 +60,7 @@ PROPERTY_DASHBOARD = [
 WHERE NOT is_province_total AND category = 'residential' AND day = (SELECT max(day) FROM property_stock)
   AND previous_day IS NOT NULL ORDER BY abs(change) DESC LIMIT 15"""},
     {"type": "line", "x": "Day", "y": ["For sale", "To rent"], "value_format": "number",
-     "title": "Homes on the market, South Africa", "subtitle": "Residential listings on Private Property, all provinces",
+     "title": "Homes on the market, South Africa", "subtitle": "Residential listings from third-party data providers, all provinces",
      "sql": """SELECT day AS "Day",
        sum(listings) FILTER (WHERE deal_type = 'sale') AS "For sale",
        sum(listings) FILTER (WHERE deal_type = 'rent') AS "To rent"
@@ -189,7 +189,7 @@ MONTHLY = {
         "audience": "estate agency principals, developers and property investors", "since": "14 November 2026",
         "sections": ("residential stock by province and region, and how it moved within the month; asking prices, rents and "
                      "indicative 2-bed gross yields by region against the bond rate; price cuts and offers pending; agency "
-                     "share of listings in the biggest regions; the flow of new listings (Property24 newest)"),
+                     "share of listings in the biggest regions; the flow of new listings (newest-listings feed)"),
     },
     "retail": {
         "audience": "FMCG brand, category and pricing managers", "since": "14 November 2026",

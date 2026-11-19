@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 
 import psycopg
 
+from .providers import scrub_obj
+
 USD_TO_ZAR = float(os.environ.get("USD_TO_ZAR", "18"))
 
 # Limits per plan. Budgets are the AI cost (USD at list prices) behind the usage rings.
@@ -432,7 +434,7 @@ def get_brief(db: str, industry: str, day=None) -> dict | None:
         r = _rows(conn, """SELECT industry, day, status, report, summary, cost_usd, error, started_at, finished_at
                            FROM admin.briefs WHERE industry = %s AND (%s::date IS NULL OR day = %s::date)
                            ORDER BY (status = 'ready') DESC, day DESC LIMIT 1""", (industry, day, day))
-    return _jsonable(r[0]) if r else None
+    return scrub_obj(_jsonable(r[0])) if r else None
 
 
 def brief_status(db: str, industry: str, day) -> str | None:
@@ -504,18 +506,18 @@ def report_status(db: str, industry: str, period, with_error: bool = False):
 def list_reports(db: str) -> list[dict]:
     """Published, ready reports (metadata only)."""
     with psycopg.connect(db) as conn:
-        return _jsonable(_rows(conn, """
+        return scrub_obj(_jsonable(_rows(conn, """
             SELECT id, industry, period, month_to_date, title, finished_at,
                    report->'exec'->>'takeaway' AS takeaway, report->'exec'->'kpis' AS kpis,
                    jsonb_array_length(COALESCE(report->'sections', '[]')) AS sections
-            FROM admin.reports WHERE status = 'ready' AND published ORDER BY period DESC, industry"""))
+            FROM admin.reports WHERE status = 'ready' AND published ORDER BY period DESC, industry""")))
 
 
 def get_report(db: str, rid: int) -> dict | None:
     with psycopg.connect(db) as conn:
         r = _rows(conn, """SELECT id, industry, period, month_to_date, title, report, finished_at FROM admin.reports
                            WHERE id = %s AND status = 'ready' AND published""", (rid,))
-    return _jsonable(r[0]) if r else None
+    return scrub_obj(_jsonable(r[0])) if r else None
 
 
 # ---------------------------------------------------------------- client branding (admin sets, client's exports use)
