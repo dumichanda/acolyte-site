@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-20T12:00",
+ "updated": "2026-11-20T20:10",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -1621,6 +1621,30 @@
    "why": "An outside review scored the site 74/100, citing an exposed CRM link, two different menus, layout bugs, no Google indexing and a long form.",
    "alternatives": "Keep the full form on the home page; leave indexing until later.",
    "note": "Still open from the review: company details and team (needs your details), starting prices (needs your decision), Render Starter for the slow first answer, and submitting the sitemap in Google Search Console."
+  },
+  {
+   "id": "D91",
+   "status": "Active",
+   "at": "2026-11-20T20:00",
+   "kind": "Operations",
+   "by": "Claude",
+   "title": "Daily refresh fixed: save on a fresh connection, parallel searches",
+   "decision": "Fetchers write their results on a new database connection after searching (with keep-alives), Property24 and retail searches run 6 at a time, the Scrappa budget is thread-safe, and the run limit is 45 minutes. A source stops at the first 'no credits / no plan' reply.",
+   "why": "From 17 to 20 Nov every daily run was cancelled at its 35-minute limit, and the property fetchers lost their results when Neon dropped the idle connection after 7-12 minutes of searching, so paid searches saved nothing.",
+   "alternatives": "Raise the time limit only.",
+   "note": "The manual run on 20 Nov succeeded: 8,203 property listings, 1,046 Property24, 2,132 retail offers, 150 job ads."
+  },
+  {
+   "id": "D92",
+   "status": "Active",
+   "at": "2026-11-20T20:10",
+   "kind": "Data",
+   "by": "Both",
+   "title": "Essentials Basket and sample-size rule",
+   "decision": "A 40-item essentials basket (exact brand and size, plus any-brand same-size match) to track across every major retailer, published as a monthly Essentials Index; the analyst counts n behind every figure, won't rank groups under 30 records or price indices under 20 matched items, and gives margins at 90% confidence.",
+   "why": "At 90% confidence a ±5% retailer index needs about 44 matched items; regional property yields rested on 5-22 listings.",
+   "alternatives": "Keep the mixed retail basket.",
+   "note": "Coverage test 20 Nov (Google Shopping): Takealot 18/40, Woolworths 18, Checkers incl. Sixty60 14, Amazon 11, Shoprite 11, Makro 8; Pick n Pay, SPAR and Boxer not found online. Makro, Clicks and Dis-Chem targeted searches unfinished when Scrappa credits ran out."
   }
  ]
 }
