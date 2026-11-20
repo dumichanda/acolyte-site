@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-20T09:00",
+ "updated": "2026-11-20T12:00",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -1609,6 +1609,18 @@
    "decision": "Reports: filter by analyst, month and edition (full month or month to date), plus a search over titles, summaries and figures, with a count and Clear filters. Sample dashboards: each sheet has a filter bar (period plus up to three data filters found in its charts, e.g. Province, Region, Agency or Retailer); charts, key insights and the Ask bar follow the filters, and charts without that column say they are not affected.",
    "why": "As reports and sheets grow, people need to narrow them to their own month, area or retailer.",
    "alternatives": "Analyst tabs only."
+  },
+  {
+   "id": "D90",
+   "at": "2026-11-20T12:00",
+   "kind": "Product",
+   "by": "Both",
+   "status": "Active",
+   "title": "Fixes from the external site review (74/100)",
+   "decision": "One menu on every page (Ask AI, Dashboards, Reports, Use cases, Automation, Book a session; CRM only on browsers where you or an agent signed in). Frosted backdrop behind the floating logo, even six-item feature row, no blank sections after jumping to an anchor, Ask AI question box no longer covers the suggested questions before the first question, Ask button inside its box. Search: robots.txt (CRM and Admin excluded and marked noindex), sitemap.xml, rewritten page descriptions (the home page no longer says 'trained on SA market data'), and a plain-text page per monthly report at /reports/<n>/ generated at build time. Home-page contact form cut to name, work email, company and question; the full form stays at /contact/.",
+   "why": "An outside review scored the site 74/100, citing an exposed CRM link, two different menus, layout bugs, no Google indexing and a long form.",
+   "alternatives": "Keep the full form on the home page; leave indexing until later.",
+   "note": "Still open from the review: company details and team (needs your details), starting prices (needs your decision), Render Starter for the slow first answer, and submitting the sitemap in Google Search Console."
   }
  ]
 }

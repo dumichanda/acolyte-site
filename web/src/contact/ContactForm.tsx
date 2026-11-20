@@ -32,7 +32,7 @@ const Text = ({ id, label, req = true, type = "text", auto }: { id: string; labe
   <div><label htmlFor={id}>{label}{req && " *"}</label><input id={id} name={id} type={type} required={req} autoComplete={auto} /></div>
 );
 
-export default function ContactForm({ preset }: { preset?: string }) {
+export default function ContactForm({ preset, short = false }: { preset?: string; short?: boolean }) {
   const [status, setStatus] = useState<Status>("idle");
   const [err, setErr] = useState("");
   const [ref, setRef] = useState("");
@@ -42,6 +42,10 @@ export default function ContactForm({ preset }: { preset?: string }) {
     const f = new FormData(e.currentTarget);
     const body: Record<string, unknown> = Object.fromEntries([...f.entries()].map(([k, v]) => [k, String(v).trim() || null]));
     body.marketing = f.get("marketing") === "yes";
+    if (short) {   // one name box on the short form
+      const [first, ...rest] = String(f.get("name") || "").trim().split(/\s+/);
+      body.first_name = first || ""; body.last_name = rest.join(" "); delete body.name;
+    }
     setStatus("sending"); setErr("");
     try {
       const r = await fetch(`${SITE.analystApi}/contact`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -59,6 +63,24 @@ export default function ContactForm({ preset }: { preset?: string }) {
       <p>Someone from Acolyte will reply within one business day.{ref && <> Your reference is <b>{ref}</b>.</>}</p>
       <p><a href={url("/reports/")}>Read this month's free reports →</a></p>
     </div>
+  );
+  if (short) return (
+    <form className="f cf-card cf-short" onSubmit={submit}>
+      <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" style={{ display: "none" }} />
+      <div className="cf-grid">
+        <Text id="name" label="Your name" auto="name" />
+        <Text id="email" label="Work email" type="email" auto="email" />
+        <div className="full"><label htmlFor="company">Company *</label><input id="company" name="company" required autoComplete="organization" /></div>
+        <div className="full"><label htmlFor="message">What would you like to know?</label>
+          <textarea id="message" name="message" maxLength={3000} placeholder="e.g. How our prices compare with the market every week." /></div>
+      </div>
+      <label className="consent"><input type="checkbox" name="marketing" value="yes" />
+        <span>Send me the free monthly report and occasional news. Unsubscribe any time.</span></label>
+      <p className="cf-fine">We use these details to reply, as set out in our <a href={url("/privacy/")}>privacy notice</a>.
+        Prefer to tell us more? Use the <a href={url("/contact/")}>full form</a>.</p>
+      {status === "error" && <div className="msg err">{err}</div>}
+      <div><button className="btn-signal" type="submit" disabled={status === "sending"}>{status === "sending" ? "Sending…" : <>Book a free data session <span className="arr">→</span></>}</button></div>
+    </form>
   );
   return (
     <form className="f cf-card" onSubmit={submit} noValidate={false}>

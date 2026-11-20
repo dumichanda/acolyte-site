@@ -895,17 +895,17 @@ CHOICE = r"^[A-Za-z0-9 &/,()'.+-]{1,60}$"
 
 class ContactIn(BaseModel):
     first_name: str = Field(min_length=1, max_length=60)
-    last_name: str = Field(min_length=1, max_length=60)
-    phone: str = Field(min_length=7, max_length=30, pattern=r"^[0-9 +()-]+$")
+    last_name: str = Field(default="", max_length=60)
+    phone: str = Field(default="", max_length=30, pattern=r"^[0-9 +()-]*$")   # optional on the short home-page form
     email: str = Field(min_length=5, max_length=120, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-    job_role: str = Field(pattern=CHOICE)
+    job_role: str = Field(default="Not given", pattern=CHOICE)
     company: str = Field(min_length=1, max_length=120)
-    company_type: str = Field(pattern=CHOICE)
-    industry: str = Field(pattern=CHOICE)
-    province: str = Field(pattern=CHOICE)
+    company_type: str = Field(default="Not given", pattern=CHOICE)
+    industry: str = Field(default="Not given", pattern=CHOICE)
+    province: str = Field(default="Not given", pattern=CHOICE)
     postal_code: str | None = Field(default=None, max_length=10)
-    analyst: str = Field(pattern="^(property|retail|marketplace|jobs|own_data|not_sure)$")
-    nature: str = Field(pattern="^(sales|support|billing|privacy)$")
+    analyst: str = Field(default="not_sure", pattern="^(property|retail|marketplace|jobs|own_data|not_sure)$")
+    nature: str = Field(default="sales", pattern="^(sales|support|billing|privacy)$")
     message: str | None = Field(default=None, max_length=3000)
     marketing: bool = False
     website: str | None = None          # honeypot: people never fill it in, bots do

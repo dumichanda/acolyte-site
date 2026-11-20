@@ -574,7 +574,7 @@ export default function Landing() {
               {SITE.city && <div><b>Based in</b>{SITE.city}, working across South Africa</div>}
             </div>
           </div>
-          <ContactForm />
+          <ContactForm short />
         </div>
       </section>
 

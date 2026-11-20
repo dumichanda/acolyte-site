@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /crm/
+Disallow: /admin/
+
+Sitemap: https://acolytegroup.co.za/sitemap.xml
