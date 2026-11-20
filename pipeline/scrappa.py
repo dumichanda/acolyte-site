@@ -59,6 +59,15 @@ class Client:
                 self.log.append((label or path, None, 1, "ok"))
                 return d
             except urllib.error.HTTPError as e:
+                if e.code in (402, 403):   # out of credits / no active plan: stop this source's run instead of hammering
+                    body = e.read()[:300].decode(errors="replace")
+                    self.log.append((label or path, None, 0, f"http {e.code}"))
+                    if "credit" in body.lower() or "subscription" in body.lower() or "package" in body.lower():
+                        with self._lock:
+                            self.left = 0
+                        print(f"Scrappa: no credits left or no active plan ({e.code}). Stopping this source for today.", flush=True)
+                        raise Budget()
+                    return None
                 if e.code in (429, 500, 502, 503, 504) and attempt < 2:
                     time.sleep(3 * (attempt + 1))
                     continue
