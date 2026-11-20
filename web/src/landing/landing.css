@@ -55,6 +55,8 @@ body:has(.lp) { background: #0c0c0e; }
 .lp nav.bar .inner { display: flex; justify-content: space-between; align-items: center; }
 .lp nav.bar .pill { pointer-events: auto; display: flex; align-items: center; gap: 6px; background: #0c0c0ecc; backdrop-filter: blur(14px); border: 1px solid var(--line); border-radius: 999px; padding: 6px 6px 6px 18px; }
 .lp .logo { display: inline-flex; align-items: center; gap: 9px; font-weight: 700; font-size: 19px; letter-spacing: -0.04em; text-decoration: none; color: var(--text); pointer-events: auto; }
+/* the floating logo gets the same frosted backdrop as the menu, so it never sits on top of headings */
+.lp nav.bar .logo { background: #0c0c0ecc; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--line); border-radius: 999px; padding: 7px 16px 7px 10px; }
 .lp .logo img { width: 26px; height: 26px; }
 .lp nav .links a { color: var(--mute); text-decoration: none; font-size: 14px; padding: 8px 12px; border-radius: 999px; }
 .lp nav .links a:hover { color: var(--text); }
@@ -281,7 +283,7 @@ body:has(.lp) { background: #0c0c0e; }
 .lp .hire .role ul { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 10px; }
 .lp .hire .role li { display: flex; gap: 10px; align-items: baseline; font-size: 15px; }
 .lp .hire .role li::before { content: ""; width: 7px; height: 7px; border-radius: 2px; background: var(--signal); flex-shrink: 0; transform: translateY(-1px); }
-.lp .hire .does { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; margin-top: 40px; border-top: 1px solid var(--line-2); }
+.lp .hire .does { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; margin-top: 40px; border-top: 1px solid var(--line-2); }
 .lp .hire .does div { padding: 20px 18px 0 0; display: grid; gap: 4px; align-content: start; font-size: 14px; color: var(--mute); }
 .lp .hire .does div + div { border-left: 1px solid var(--line); padding-left: 18px; }
 .lp .hire .does b { color: var(--text); font-weight: 600; }
@@ -340,7 +342,8 @@ body:has(.lp) { background: #0c0c0e; }
   .lp .samples .sample-grid { grid-template-columns: 1fr 1fr; }
   .lp .hire .roles2, .lp .hire .roles2.three, .lp .hire .roles2.four { grid-template-columns: 1fr; }
   .lp .hire .levels { grid-template-columns: 1fr; }
-  .lp .hire .does { grid-template-columns: 1fr 1fr; row-gap: 18px; }
+  .lp .hire .does { grid-template-columns: 1fr 1fr 1fr; row-gap: 18px; }
+  .lp .hire .does div:nth-child(3n+1) { border-left: none; padding-left: 0; }
   .lp .hire .does div + div { border-left: none; padding-left: 0; }
   .lp .proof .uses { grid-template-columns: 1fr 1fr; }
   .lp section { padding: 88px 0; }

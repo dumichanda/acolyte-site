@@ -5,6 +5,7 @@ import { rands } from "../types";
 import { SITE, url } from "../site";
 import MatrixRain from "./MatrixRain";
 import BigStat from "./BigStat";
+import { isStaff, NAV } from "../PlatformNav";
 import { ANALYSTS as REPORT_ANALYSTS, latestPerAnalyst, loadIndex, monthLabel, type ReportCard } from "../reports/data";
 
 const reduced = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -24,11 +25,16 @@ function useReveal(dep: unknown) {
   useEffect(() => {
     const els = document.querySelectorAll<HTMLElement>(".lp .reveal:not(.in)");
     if (reduced || !("IntersectionObserver" in window)) { els.forEach((e) => e.classList.add("in")); return; }
+    // Anything already above or in view (e.g. after jumping to /#use-cases) shows at once, so nothing is left blank.
+    const showPassed = () => els.forEach((e) => { if (e.getBoundingClientRect().top < innerHeight * 0.9) e.classList.add("in"); });
+    showPassed();
+    addEventListener("hashchange", showPassed);
+    const t = setTimeout(showPassed, 400);   // after the browser's own jump to the #anchor
     const io = new IntersectionObserver((entries) => entries.forEach((e) => {
       if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
     }), { threshold: 0.15 });
     els.forEach((e) => io.observe(e));
-    return () => io.disconnect();
+    return () => { io.disconnect(); clearTimeout(t); removeEventListener("hashchange", showPassed); };
   }, [dep]);
 }
 
@@ -409,11 +415,8 @@ export default function Landing() {
         <div className="inner">
           <a className="logo" href={url("/")}><img src={url("/favicon.svg")} alt="" />acolyte</a>
           <div className="pill links">
-            <a href="#analyst">Your analyst</a>
-            <a href={url("/reports/")}>Reports</a>
-            <a href="#use-cases">Use cases</a>
-            <a href={url("/analyst/")}>Ask AI</a>
-            <a href="#automation">Automation</a>
+            {NAV.map((l) => <a key={l.href} href={l.href.startsWith("/#") ? l.href.slice(1) : url(l.href)}>{l.label}</a>)}
+            {isStaff() && <a href={url("/crm/")}>CRM</a>}
             <a className="btn-signal" href="#contact">Book a session</a>
           </div>
         </div>

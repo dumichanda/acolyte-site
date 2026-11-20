@@ -769,7 +769,7 @@ function App() {
             <div ref={endRef} />
           </div>
 
-          <form className="composer" onSubmit={(e) => { e.preventDefault(); ask(q); }}>
+          <form className={"composer" + (items.length ? "" : " resting")} onSubmit={(e) => { e.preventDefault(); ask(q); }}>
             <textarea rows={2} value={q} placeholder={placeholder} disabled={!ready}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(q); } }} />
@@ -788,7 +788,7 @@ function App() {
               <button className="btn primary" disabled={!ready || busy || !q.trim()}>{busy ? "Thinking…" : "Ask"}</button>
             </div>
           </form>
-          <p className="muted small">Built on public {ws === "property" ? "property listings" : ws === "jobs" ? "job ads" : "online retail prices"}. Answers can be wrong; check the queries. <a href={url("/#contact")}>Want this on your own data?</a></p>
+          <p className="muted small">Built on public {ws === "property" ? "property listings" : ws === "jobs" ? "job ads" : "online retail prices"}. Answers can be wrong: ask how it worked a figure out before you act on it. <a href={url("/#contact")}>Want this on your own data?</a></p>
         </section>
 
         <section className="canvas">
@@ -808,7 +808,7 @@ function App() {
             <>
               <div className="canvas-empty">
                 <div className="big">Charts and reports appear here</div>
-                <p className="muted">Each one is drawn from the live data, can be downloaded as PNG, CSV or PDF, and shows the query behind it.</p>
+                <p className="muted">Each one is drawn from the live data, can be downloaded as PNG, CSV or PDF, and lists what was looked up.</p>
               </div>
               <LatestReports industry={ws} onOpen={openReport} />
             </>

@@ -26,7 +26,10 @@
 .analyst .err { color: #ff6a3d; font-size: 13px; margin-top: 6px; }
 .analyst .composer { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 10px; position: sticky; bottom: 12px; }
 .analyst .composer textarea { width: 100%; background: transparent; border: none; color: var(--ink); font: inherit; font-size: 15px; resize: none; outline: none; }
-.analyst .composer .row { display: flex; align-items: center; gap: 10px; }
+.analyst .composer .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.analyst .composer .row > :last-child { margin-left: auto; }
+/* before the first question the box stays in place, so it never covers the suggested questions while you scroll */
+.analyst .composer.resting { position: static; }
 .analyst .speak { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
 .analyst .mic { background: var(--bg); border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 6px 12px; cursor: pointer; font: inherit; }
 .analyst .mic.on { border-color: #ff6a3d; color: #ff6a3d; }
