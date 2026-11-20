@@ -104,7 +104,7 @@ function App() {
               <a className="btn-line" href={ASK}>Ask it a question now</a>
             </div>
             <div className="meta mono reveal d3 in">
-              <span><b>{p ? n(p.for_sale + p.to_rent) : "200k+"}</b> listings counted daily</span><span><b>{p?.regions ?? 48}</b> regions</span><span><b>07:00</b> brief</span>
+              <span><b>5</b> expert skills</span><span><b>07:00</b> brief</span><span><b>Your</b> data, read-only</span>
             </div>
           </div>
           <BriefPreview p={p} />
@@ -129,7 +129,7 @@ function App() {
           <div className="row">
             <div>
               <span className="eyebrow">Demonstration: the live market</span>
-              <h2>The whole market, <em>counted every morning.</em></h2>
+              <h2>Watch it work <em>on the market.</em></h2>
               <p className="lede">To show the analyst at work: listing counts for every province and region and price trends from a daily sample, summarised. For your agency it reads your own listings and sales.</p>
             </div>
             <a className="btn-signal" href={ASK}>Ask about your area <span className="arr">→</span></a>

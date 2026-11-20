@@ -105,7 +105,7 @@ interface Skill { name: string; ask: string }
 const WORKSPACES: Record<Analyst, { label: string; name: string; sub: string; placeholder: string; starters: string[]; skills: Skill[]; brief?: string }> = {
   jobs: {
     label: "Jobs & talent", name: "Acolyte Talent Analyst", placeholder: "Ask about South Africa's job market…",
-    sub: "Your AI analyst for SA hiring: roles, skills, employers, salaries and automation potential, from live job ads.",
+    sub: "Your AI talent analyst: roles, skills, pay and hiring on your own HR and hiring data, shown here on public SA job ads.",
     starters: [
       "What changed in SA hiring this week compared with last week?",
       "Which roles are SA employers hiring for most this month?",
@@ -124,7 +124,7 @@ const WORKSPACES: Record<Analyst, { label: string; name: string; sub: string; pl
   },
   property: {
     label: "Property", name: "Acolyte Property Analyst", placeholder: "Ask about SA property: stock, prices, rents, agencies…",
-    sub: "Your AI analyst for SA property: stock, asking prices, rents, yields, price cuts and agency share, refreshed every morning.",
+    sub: "Your AI property analyst: stock, prices, rents, yields and agency share on your own listings and sales, shown here on the public SA market.",
     starters: [
       "What changed in the property market since yesterday?",
       "Where is residential stock for sale highest, by region?",
@@ -144,7 +144,7 @@ const WORKSPACES: Record<Analyst, { label: string; name: string; sub: string; pl
   },
   retail: {
     label: "Retail pricing", name: "Acolyte Retail Pricing Analyst", placeholder: "Ask about SA shelf prices, retailers, baskets…",
-    sub: "Your AI pricing analyst for FMCG: everyday-item prices across SA grocery chains, wholesalers, pharmacies and marketplaces, checked every morning.",
+    sub: "Your AI pricing analyst for FMCG: price position, gaps and promotions on your own prices and sales, shown here on public SA shelf prices.",
     starters: [
       "Which prices moved since yesterday, and which look like promotions?",
       "Which retailer is cheapest for a like-for-like basket today?",
@@ -164,7 +164,7 @@ const WORKSPACES: Record<Analyst, { label: string; name: string; sub: string; pl
   },
   marketplace: {
     label: "Marketplaces", name: "Acolyte Marketplace Analyst", placeholder: "Ask about Amazon.co.za and Takealot prices…",
-    sub: "Your AI analyst for SA online marketplaces: Amazon.co.za and Takealot prices, sellers and reviews against grocery and wholesale, every morning.",
+    sub: "Your AI marketplace analyst: pricing, sellers and reviews on your own Seller Central and Seller Portal data, shown here on Amazon.co.za and Takealot.",
     starters: [
       "What changed on Amazon.co.za and Takealot since yesterday?",
       "Is Amazon.co.za or Takealot cheaper on everyday items?",
