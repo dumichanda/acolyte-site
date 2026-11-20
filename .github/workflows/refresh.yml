@@ -34,7 +34,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}

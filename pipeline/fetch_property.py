@@ -23,7 +23,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
-from db import connect
+from db import connect, fresh
 
 BASE = "https://scrappa.co/api/privateproperty/"
 PORTAL = "privateproperty"
@@ -168,6 +168,7 @@ def main() -> None:
             if br and br.get("interest_rate"):
                 conn.execute("INSERT INTO property.bond_rate VALUES (%s, %s) ON CONFLICT (day) DO UPDATE SET rate = EXCLUDED.rate",
                              (today, br["interest_rate"]))
+            conn.commit()
 
             # Jobs: (location, deal, category, page). Page 1 of each region also gives the region's stock count.
             jobs = []
@@ -187,7 +188,7 @@ def main() -> None:
                 p = {"type": cat, "deal_type": deal, "location_id": loc_id, "page": max(page, 1)}
                 return job, c.get("listings/search", p, f"{cat}/{deal}/{name}", max(page, 1))
 
-            with ThreadPoolExecutor(max_workers=4) as pool:
+            with ThreadPoolExecutor(max_workers=6) as pool:
                 for (loc_id, name, level, prov, deal, cat, page), d in pool.map(run, jobs):
                     if not d:
                         continue
@@ -202,6 +203,7 @@ def main() -> None:
         except Budget:
             print("Run call budget reached; saving what was fetched.")
 
+        conn = fresh(conn)   # the fetch took minutes: write on a new connection so nothing paid for is lost
         with conn.cursor() as cur:
             rows = [row + (row[10],) for row in listings.values()]
             cur.executemany(UPSERT, rows)

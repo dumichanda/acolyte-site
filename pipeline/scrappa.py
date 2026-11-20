@@ -36,14 +36,18 @@ def allowance(conn, run_cap: int) -> int:
 
 
 class Client:
+    """Thread-safe: several searches may run at once (the budget is still never exceeded)."""
     def __init__(self, source: str, max_calls: int):
+        import threading
         self.source, self.left, self.used = source, max_calls, 0
         self.log: list[tuple] = []
+        self._lock = threading.Lock()
 
     def get(self, path: str, params: dict, label: str = "") -> dict | None:
-        if self.left <= 0:
-            raise Budget()
-        self.left -= 1
+        with self._lock:
+            if self.left <= 0:
+                raise Budget()
+            self.left -= 1
         url = BASE + path + "?" + urllib.parse.urlencode(params, doseq=True)
         for attempt in range(3):
             try:

@@ -15,7 +15,7 @@ import re
 from datetime import date
 from pathlib import Path
 
-from db import connect
+from db import connect, fresh
 import scrappa
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -95,11 +95,20 @@ def main() -> None:
             cities = city_ids(conn, c)
             if a.cities:
                 cities = cities[: a.cities]
-            for page in range(1, a.pages + 1):
-                for cid, cname, prov in cities:
-                    for deal in ("sale", "rent"):
-                        d = c.get("property24/search", {"deal_type": deal, "location_id": cid, "location_type": 2,
+            jobs = [(page, cid, cname, prov, deal) for page in range(1, a.pages + 1) for cid, cname, prov in cities
+                    for deal in ("sale", "rent")]
+
+            def run(j):
+                page, cid, cname, prov, deal = j
+                try:
+                    return j, c.get("property24/search", {"deal_type": deal, "location_id": cid, "location_type": 2,
                                                          "sort": "newest", "page": page}, f"p24 {deal}/{cname}/{page}")
+                except scrappa.Budget:
+                    return j, None
+
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=6) as pool:
+                for (page, cid, cname, prov, deal), d in pool.map(run, jobs):
                         if not d:
                             continue
                         if page == 1 and d.get("total_filtered_results") is not None:
@@ -117,6 +126,8 @@ def main() -> None:
                                              brand(ag), ag, page == 1, False, False, False, r.get("url"))
         except scrappa.Budget:
             print("Run call budget reached; saving what was fetched.")
+        conn.commit()
+        conn = fresh(conn)   # write on a new connection after the long fetch
         with conn.cursor() as cur:
             cur.executemany(UPSERT, [row + (row[10],) for row in listings.values()])
             cur.executemany("""INSERT INTO property.prices (portal, listing_id, seen_on, price) VALUES (%s,%s,%s,%s)

@@ -10,7 +10,7 @@ import argparse
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from db import connect
+from db import connect, fresh
 import scrappa
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -61,6 +61,8 @@ def main() -> None:
                             rows.append((v.get("query"), label, analyst, day, v.get("value"), date.today()))
         except scrappa.Budget:
             print("Budget reached.")
+        conn.commit()
+        conn = fresh(conn)
         with conn.cursor() as cur:
             cur.executemany("""INSERT INTO signals.search_interest VALUES (%s,%s,%s,%s,%s,%s)
                                ON CONFLICT (term, term_group, day) DO UPDATE SET interest = EXCLUDED.interest,

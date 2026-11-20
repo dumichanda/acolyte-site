@@ -15,7 +15,18 @@ def connect() -> psycopg.Connection:
     url = os.environ.get("DATABASE_URL") or ("" if os.environ.get("GITHUB_ACTIONS") else DEFAULT_URL)
     if not url:
         raise SystemExit("DATABASE_URL is empty. Add your Neon connection string as a GitHub Actions secret.")
-    return psycopg.connect(url)
+    # keep-alives: a fetch can spend minutes on API calls between writes; the database must not drop the connection
+    return psycopg.connect(url, keepalives=1, keepalives_idle=30, keepalives_interval=10, keepalives_count=6)
+
+
+def fresh(conn: psycopg.Connection | None = None) -> psycopg.Connection:
+    """A new connection for writing results after a long fetch (Neon closes idle connections). Commit before calling."""
+    if conn is not None:
+        try:
+            conn.close()
+        except Exception:
+            pass
+    return connect()
 
 
 def setup_analyst_role(conn: psycopg.Connection) -> None:

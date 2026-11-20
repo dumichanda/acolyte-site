@@ -12,7 +12,7 @@ import re
 from datetime import date
 from pathlib import Path
 
-from db import connect
+from db import connect, fresh
 import scrappa
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -139,10 +139,18 @@ def main() -> None:
         allowed = scrappa.allowance(conn, a.max_calls)
         c = scrappa.Client("google_shopping", allowed)
         rows = []
+        def run(job):
+            item, spec = job
+            q = spec["queries"][0]   # one query per item per day; extra queries are alternates
+            try:
+                return item, spec, q, c.get("google/shopping", {"q": q, "gl": "za", "hl": "en"}, q)
+            except scrappa.Budget:
+                return item, spec, q, None
+
+        from concurrent.futures import ThreadPoolExecutor
         try:
-            for item, spec in todo:
-                for q in spec["queries"][:1]:   # one query per item per day; extra queries are alternates
-                    d = c.get("google/shopping", {"q": q, "gl": "za", "hl": "en"}, q)
+            with ThreadPoolExecutor(max_workers=6) as pool:
+                for item, spec, q, d in pool.map(run, todo):
                     for r in (d or {}).get("shopping_results") or []:
                         if not r.get("product_id") or not r.get("title"):
                             continue
@@ -153,6 +161,8 @@ def main() -> None:
                                      matches(r["title"], spec["match"]), q))
         except scrappa.Budget:
             print("Run call budget reached.")
+        conn.commit()
+        conn = fresh(conn)   # write on a new connection after the fetch
         with conn.cursor() as cur:
             cur.executemany("""INSERT INTO retail.offers (day, item, product_id, seller, retailer, channel, title, price, rating,
                                    reviews, position, matches_item, query) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
