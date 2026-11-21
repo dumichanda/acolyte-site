@@ -27,7 +27,7 @@ def _flags(r: dict, basket: dict, b) -> tuple:
 
 def main() -> None:
     since = date.today() - timedelta(days=int(os.environ.get("LOAD_DAYS", "14")))
-    files = sorted((ROOT / "data" / "essentials").glob("*.csv"))
+    files = sorted((ROOT / "data" / "essentials").glob("*_????-??-??.csv"))   # dated offer files only (not pnp_links.csv)
     rows = []
     basket = {it["item"]: it for it in load()}
     for p in files:
