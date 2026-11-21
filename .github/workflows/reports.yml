@@ -15,6 +15,9 @@ on:
         description: "Rewrite reports that already exist"
         type: boolean
         default: false
+      analysts:
+        description: "Which analysts (blank = all: property retail marketplace jobs)"
+        default: ""
 
 permissions:
   contents: write
@@ -76,7 +79,7 @@ jobs:
           done
           # One report at a time: the server writes each as a long deep-model run and has limited memory.
           # A free Render instance can restart mid-report (redeploy, memory, AI hiccup): retry each report up to 3 times.
-          for ind in property retail marketplace jobs; do
+          for ind in ${{ inputs.analysts || 'property retail marketplace jobs' }}; do
             F=$FORCE
             for attempt in 1 2 3; do
               for i in $(seq 1 8); do code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$API/health"); [ "$code" = "200" ] && break; sleep 15; done
