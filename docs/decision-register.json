@@ -1669,6 +1669,18 @@
       "why": "Fixed thresholds give regions just either side of a limit very different samples; shares keep the sample proportional to the market and the cost inside the budget.",
       "alternatives": "Page tiers by listing count (2 under 1,000, 4 up to 5,000, 6 above).",
       "note": "The fixed tiers also had a bug: the workflow default of 5 pages gave small regions more pages than mid-size ones."
+    },
+    {
+      "id": "D95",
+      "at": "2026-11-21T16:00",
+      "kind": "Data",
+      "by": "You",
+      "status": "Active",
+      "title": "90% confidence in every region: margin rule, not minimum counts",
+      "decision": "Target: every region's median within ±10% at 90% confidence. The property fetch works out each region's need from its own 30-day price spread (with a finite-population correction), fetches only the shortfall against its 30-day sample, and rotates pages daily so the sample grows; spare budget follows share of listings. The analyst ranks or headlines a group only when its margin is within ±10%; wider groups are merged upward or shown as indicative with their margin. Replaces the 30-record and 20-item minimums.",
+      "why": "A fixed count means different confidence in different places: price spread varies by region. A margin target gives the same confidence everywhere.",
+      "alternatives": "Fixed minimum counts (30 records, 20 matched items).",
+      "note": "Asking prices vary a lot within a region (spread of 50-140% of the average across property types), so one day's pages can't reach ±10%; the 30-day rotating sample does. Sub-groups (beds, property type) need more listings and are merged or marked indicative."
     }
   ]
 }

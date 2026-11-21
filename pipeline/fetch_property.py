@@ -3,7 +3,9 @@
 Each run:
   1. refreshes the location tree (9 provinces -> ~48 regions) once a week,
   2. records the full number of listings per province and region (sale/rent, residential; commercial per province),
-  3. samples pages (20 listings each) per region and deal type in proportion to the region's share of all\n     listings (PROPERTY_BUDGET_PCT % of the run's allowance), upserting listings and
+  3. samples pages (20 listings each) per region and deal type so each region's 30-day sample reaches a median within
+     +-PROPERTY_MARGIN_PCT (default 10%) at 90% confidence, from its own price spread; pages rotate daily so the sample
+     grows; spare budget follows each region's share of listings (PROPERTY_BUDGET_PCT % of the run), upserting listings and
      their asking price for the day,
   4. records the public bond rate.
 
@@ -133,20 +135,50 @@ def refresh_locations(conn, c: Client) -> None:
     print(f"Locations: {len(provs)} provinces, {len(rows) - len(provs)} regions.")
 
 
-def share_pages(regions: list[tuple], last: dict, allowed: int, fixed_calls: int) -> dict:
-    """Pages per (region, deal): 1 each, then the rest of the property budget in proportion to each region's share of
-    listings (largest remainders first), capped at the region's own number of pages."""
+Z90 = 1.645            # 90% confidence
+MEDIAN_SE = 1.25       # a median's standard error is about 1.25x a mean's
+
+
+def needed_listings(cv: float, population: int, margin: float) -> int:
+    """Listings needed for a median within +-margin at 90% confidence, given the price spread (coefficient of
+    variation) and the region's total listings (finite-population correction: never more than exist)."""
+    n0 = (Z90 * MEDIAN_SE * cv / margin) ** 2
+    return int(-(-n0 // (1 + (n0 - 1) / population))) if population else int(-(-n0 // 1))
+
+
+def share_pages(regions: list[tuple], last: dict, allowed: int, fixed_calls: int, spread: dict | None = None,
+                have: dict | None = None) -> dict:
+    """Pages per (region, deal). Property spends PROPERTY_BUDGET_PCT % of the run's allowance:
+    1. page 1 for every region (it also gives the region's listing count);
+    2. pages to close the gap between the listings already in its 30-day sample (have) and what it needs for a median
+       within +-PROPERTY_MARGIN_PCT at 90% confidence, from its own price spread (spread[(region, deal)] = coefficient of variation; regions with no history use the median spread);
+       if the budget can't cover every region's need, each gets the same % of its need;
+    3. anything left in proportion to each region's share of all listings.
+    Never more pages than a region has."""
     pct = float(os.environ.get("PROPERTY_BUDGET_PCT", "80")) / 100
+    margin = float(os.environ.get("PROPERTY_MARGIN_PCT", "10")) / 100
     budget = max(len(regions), int(allowed * pct) - fixed_calls - 2)          # 2 = location refresh and bond rate
+    spread = spread or {}
+    known = sorted(v for v in spread.values() if v)
+    typical = known[len(known) // 2] if known else 0.8
     n = {(r[0], r[4]): last.get((r[0], r[4])) or 0 for r in regions}
-    total = sum(n.values()) or 1
     room = {k: max(0, -(-v // 20) - 1) if v else 0 for k, v in n.items()}   # pages beyond page 1 that exist
     pages = {k: 1 for k in n}
+    have = have or {}
+    # extra pages (beyond page 1, which mostly repeats listings already seen) to close the gap
+    need = {k: min(room[k], max(0, -(-(needed_listings(spread.get(k) or typical, n[k], margin) - have.get(k, 0)) // 20)))
+            for k in n}
     extra = budget - len(n)
-    if extra > 0:
-        want = {k: extra * v / total for k, v in n.items()}
+    if extra > 0 and sum(need.values()):
+        f = min(1.0, extra / sum(need.values()))                               # same % of need for every region
         for k in n:
-            pages[k] += min(room[k], int(want[k]))
+            pages[k] += int(need[k] * f)
+    left = budget - sum(pages.values())
+    total = sum(n.values()) or 1
+    if left > 0:                                                               # 3. the rest by share of listings
+        want = {k: left * v / total for k, v in n.items()}
+        for k in n:
+            pages[k] += min(room[k] - (pages[k] - 1), int(want[k]))
         left = budget - sum(pages.values())
         for k in sorted(n, key=lambda k: want[k] - int(want[k]), reverse=True):
             if left <= 0:
@@ -154,6 +186,10 @@ def share_pages(regions: list[tuple], last: dict, allowed: int, fixed_calls: int
             if pages[k] - 1 < room[k]:
                 pages[k] += 1
                 left -= 1
+    met = sum(1 for k in n if pages[k] - 1 >= need[k])
+    ok = sum(1 for k in n if have.get(k, 0) >= needed_listings(spread.get(k) or typical, n[k], margin))
+    print(f"Property sample (90% confidence, ±{margin:.0%}): {ok}/{len(n)} region-deals already meet the target on their "
+          f"30-day sample; today's {budget} pages close the gap for {met}/{len(n)}.")
     return pages
 
 
@@ -208,12 +244,31 @@ def main() -> None:
                    WHERE portal = %s AND category = 'residential' ORDER BY location_id, deal_type, day DESC""", (PORTAL,))}
             regions = [(loc_id, name, level, prov, deal) for loc_id, name, level, prov in locs if level == 2
                        for deal in ("sale", "rent")]
-            pages = share_pages(regions, last, allowed, len(jobs))
-            for page in range(1, max(pages.values(), default=1) + 1):                  # breadth first over regions
-                for loc_id, name, level, prov, deal in regions:
-                    if page <= pages[(loc_id, deal)]:
-                        jobs.append((loc_id, name, level, prov, deal, "residential", page))
-            print(f"Property: {len(jobs)} searches planned (pages per region follow its share of listings; busiest region {max(pages.values(), default=0)} pages).")
+            # price spread per region and deal over the last 30 days (coefficient of variation of asking prices)
+            names = {r[0]: r[1] for r in regions}
+            cv = {(r[0], r[1]): r[2] for r in conn.execute(
+                """SELECT l.location_id, s.deal_type, stddev(s.price) / NULLIF(avg(s.price), 0)
+                   FROM property.listings s JOIN property.locations l ON l.portal = s.portal AND l.name = s.region
+                   WHERE s.portal = %s AND s.category = 'residential' AND s.price > 0 AND NOT coalesce(s.is_poa, false)
+                     AND s.last_seen >= current_date - 30
+                   GROUP BY 1, 2 HAVING count(*) >= 5""", (PORTAL,))} if names else {}
+            have = {(r[0], r[1]): r[2] for r in conn.execute(
+                """SELECT l.location_id, s.deal_type, count(*) FROM property.listings s
+                   JOIN property.locations l ON l.portal = s.portal AND l.name = s.region
+                   WHERE s.portal = %s AND s.category = 'residential' AND s.last_seen >= current_date - 30
+                   GROUP BY 1, 2""", (PORTAL,))} if names else {}
+            pages = share_pages(regions, last, allowed, len(jobs), {k: float(v) for k, v in cv.items() if v}, have)
+            # Page 1 every day (newest listings and the stock count); the other pages rotate through the region's whole
+            # list day by day, so the 30-day sample keeps growing instead of re-reading the same pages.
+            order = []
+            for loc_id, name, level, prov, deal in regions:
+                k, total_pages = (loc_id, deal), max(1, -(-(last.get((loc_id, deal)) or 0) // 20))
+                p = pages[k]
+                start = (today.toordinal() * max(p - 1, 1)) % max(total_pages - 1, 1)
+                seq = [1] + [2 + (start + i) % max(total_pages - 1, 1) for i in range(p - 1)] if total_pages > 1 else [1]
+                order += [(i, (loc_id, name, level, prov, deal, "residential", pg)) for i, pg in enumerate(dict.fromkeys(seq))]
+            jobs += [j for _, j in sorted(order, key=lambda x: x[0])]                    # breadth first over regions
+            print(f"Property: {len(jobs)} searches planned (pages per region follow its share of listings; busiest region {max(pages.values(), default=0)} pages, rotating daily).")
 
             def run(job):
                 loc_id, name, level, prov, deal, cat, page = job

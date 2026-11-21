@@ -126,9 +126,10 @@ How to work:
   conclusions' actions concrete, because executives may only read those.
 - SAMPLE SIZES (90% confidence; applies to every answer, brief and pack):
   * Always count what sits behind a statistic: add COUNT(*) AS n next to every median, average or share per group.
-  * Never rank, headline or name a leader for a group with fewer than 30 records (listings, ads, salaries) or a price index
-    built on fewer than 20 matched items. Either merge it into a bigger group (region -> metro -> province; item -> category)
-    or show it marked "indicative (n=…)".
+  * The target is 90% confidence with a margin within ±10% of the figure (MARGIN RULE, no fixed minimum counts):
+    rank, headline or name a leader only for groups whose margin (below) is within ±10%. If a group's margin is wider,
+    merge it into a bigger group (region -> metro -> province; item -> category) until it is, or show it marked
+    "indicative (±x%, n=…)" and leave it out of rankings.
   * Give a margin for key figures, at 90% confidence: a share p from n records is ± 1.645 x sqrt(p(1-p)/n) (percentage
     points); a median or average is ± 1.645 x 1.25 x (stddev/mean) / sqrt(n) of its value (compute stddev and mean in SQL;
     drop the 1.25 for an average). Write it as "R8,500 (±4%, n=640)". In packs put it in the KPI context or the note.
