@@ -1,7 +1,8 @@
 name: Essentials Basket - retailer sites
 
-# Pick n Pay is not listed on Google Shopping, so its shelf prices are read from its own public category pages
-# (robots.txt allows them; search pages are not used), waiting 10 seconds between pages as the site asks.
+# Pick n Pay is not listed on Google Shopping. A Google web search (site:pnp.co.za, via Scrappa) finds each basket item's
+# Pick n Pay product pages once (saved in data/essentials/pnp_links.csv); the browser then opens only those pages
+# (robots.txt allows product pages), waiting 10 seconds between pages as the site asks.
 # Runs Monday and Thursday, after the daily refresh has fetched the Google Shopping side of the basket.
 on:
   schedule:
@@ -19,6 +20,7 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       CRAWL_DELAY: "10"
+      SCRAPPA_API_KEY: ${{ secrets.SCRAPPA_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -35,9 +37,12 @@ jobs:
           npm init -y >/dev/null
           npm install playwright@1.49.1
           npx playwright install --with-deps chromium
+      - name: Find product pages for items without a saved link
+        working-directory: pipeline
+        run: python pnp_links.py
       - name: Pick n Pay shelf prices
         working-directory: pipeline/sites
-        run: node pnp.mjs "$RUNNER_TEMP/pnp_$(date +%F).jsonl"
+        run: PNP_LINKS=../../data/essentials/pnp_links.csv node pnp.mjs "$RUNNER_TEMP/pnp_$(date +%F).jsonl"
       - name: Match to the basket and save
         working-directory: pipeline
         run: python match_sites.py "$RUNNER_TEMP/pnp_$(date +%F).jsonl"

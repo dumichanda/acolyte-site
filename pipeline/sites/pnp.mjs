@@ -4,7 +4,7 @@
 //   node pnp.mjs <out.jsonl>
 import { createRequire } from 'node:module';
 const { chromium } = createRequire(import.meta.url)('playwright');   // global install locally; npm i playwright in CI
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 // sub-categories (top-level pages are landing pages without a product grid); together they cover the basket
 const CATS = process.env.PNP_CATS ? process.env.PNP_CATS.split(',') : [
@@ -69,7 +69,34 @@ await page.goto('https://www.pnp.co.za/', { waitUntil: 'networkidle', timeout: 9
 requests++;
 await sleep(DELAY);
 
-for (const cat of CATS) {
+async function product(url) {
+  // one product page (allowed by robots.txt): its name and normal shelf price (not the Smart Shopper member price)
+  await page.goto(url, { waitUntil: 'networkidle', timeout: 90000 }).catch(() => {});
+  await page.waitForSelector('h1', { timeout: 20000 }).catch(() => {});
+  requests++;
+  return page.evaluate(() => {
+    const inGrid = e => e.closest('.product-grid-item, cx-carousel, ui-carousel');
+    const prices = [...document.querySelectorAll('.price')].filter(e => !inGrid(e)).map(e => e.textContent.trim());
+    return { title: document.querySelector('h1')?.textContent.trim() || null, shown: prices[0] || '',
+             out: /out of stock|currently unavailable/i.test(document.body.innerText.slice(0, 20000)) };
+  });
+}
+
+if (process.env.PNP_LINKS) {
+  // product-page mode: only the pages listed (found by pnp_links.py with a Google web search)
+  const urls = [...new Set(readFileSync(process.env.PNP_LINKS, 'utf8').split('\n').slice(1).map(l => l.split(',').pop().trim()).filter(Boolean))];
+  for (const url of urls) {
+    const code = (url.match(/\/p\/([^/?#]+)/) || [])[1];
+    const g = await product(url);
+    const price = money(g.shown);
+    if (g.title && price) seen.set(code, { retailer: 'Pick n Pay', code, title: g.title, price, in_stock: !g.out, url, category: 'product page' });
+    else console.log(`no price: ${url}`);
+    await sleep(DELAY);
+  }
+  console.log(`product pages: ${seen.size} of ${urls.length} read`);
+}
+
+for (const cat of (process.env.PNP_LINKS ? [] : CATS)) {
   let n = 0, pages = 0;
   for (; n < MAX_PAGES; n++) {
     const grid = await open(cat, n);
