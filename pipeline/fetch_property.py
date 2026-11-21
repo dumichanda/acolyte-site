@@ -187,7 +187,7 @@ def main() -> None:
 
             def pages_for(loc_id, deal):
                 n = last.get((loc_id, deal)) or 0
-                want = a.pages if n < 1000 else 4 if n < 5000 else cap
+                want = a.pages if n < 1000 else max(a.pages, 4) if n < 5000 else cap   # bigger regions never get fewer pages
                 return max(1, min(cap, want, -(-n // 20) if n else a.pages))   # never more pages than there are listings
             for page in range(1, cap + 1):                                              # breadth first over regions
                 for loc_id, name, level, prov in locs:
