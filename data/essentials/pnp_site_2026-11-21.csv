@@ -1680,3 +1680,6 @@ day,item,product_id,seller,retailer,channel,title,price,rating,reviews,position,
 2026-11-21,Frozen chicken pieces 2kg,site:000000000000904966_EA,Pick n Pay,Pick n Pay,grocery chain,Epol Chicken Flavour Adult Cat Food 2kg,104.99,,,,False,site:pnp.co.za,True
 2026-11-21,Cat food 1.75kg,site:000000000000242271_EA,Pick n Pay,Pick n Pay,grocery chain,Catmor Tuna Adult Cat Food 1.75kg,109.99,,,,False,site:pnp.co.za,True
 2026-11-21,Tuna 170g,site:000000000000164212_EA,Pick n Pay,Pick n Pay,grocery chain,PnP Tuna for Cats 170g,14.99,,,,False,site:pnp.co.za,True
+2026-11-21,Frozen fish fingers 800g,site:000000000000229571_EA,Pick n Pay,Pick n Pay,grocery chain,Sea Harvest Fish Fingers 800g,136.99,,,,True,site:pnp.co.za,True
+2026-11-21,Energy drink 473ml,site:000000000000520644_EA,Pick n Pay,Pick n Pay,grocery chain,Red Bull Energy Drink 473ml,35.99,,,,True,site:pnp.co.za,True
+2026-11-21,Energy drink 473ml,site:000000000000781127_EA,Pick n Pay,Pick n Pay,grocery chain,Red Bull Energy Drink Sugar Free 473ml,35.99,,,,True,site:pnp.co.za,True
