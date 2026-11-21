@@ -1,6 +1,6 @@
 """Combine one day's Essentials Basket offer files (Google Shopping + retailer sites) into a dataset workbook.
 
-Same rules as analyst.essentials_prices / essentials_index: Checkers Sixty60 counts as Checkers; offers outside 0.4-2.5x
+Same rules as analyst.essentials_prices / essentials_index: Checkers Sixty60 counts as Checkers; offers outside 0.5-2x
 the item's median price (usually multipacks or the wrong size) are left out; 'same brand' = cheapest offer of the exact
 brand and size, 'cheapest equivalent' = cheapest offer of any brand of the same type and size.
 
@@ -16,8 +16,9 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 
-from fetch_essentials import ROOT, load
+from fetch_essentials import ROOT, classify, load
 
+LOW, HIGH = 0.5, 2.0   # same band as analyst.essentials_prices
 day = sys.argv[1]
 files = sorted((ROOT / "data" / "essentials").glob(f"*_{day}.csv"))
 basket = {it["item"]: it for it in load()}
@@ -30,12 +31,12 @@ for p in files:
             r["source"] = "Retailer website" if r["query"].startswith("site:") else "Google Shopping"
             r["retailer"] = "Checkers" if r["retailer"] == "Checkers Sixty60" else r["retailer"]
             r["price"] = float(r["price"])
-            r["same"], r["any"] = r["matches_item"] == "True", r["matches_generic"] == "True" or r["matches_item"] == "True"
+            r["same"], r["any"] = classify(r["title"], basket[r["item"]])   # today's rules, also for files saved earlier
             if r["any"]:
                 offers.append(r)
 
 med = {i: median([o["price"] for o in offers if o["item"] == i]) for i in {o["item"] for o in offers}}
-kept = [o for o in offers if 0.4 * med[o["item"]] <= o["price"] <= 2.5 * med[o["item"]]]
+kept = [o for o in offers if LOW * med[o["item"]] <= o["price"] <= HIGH * med[o["item"]]]
 # one row per offer: the same product can come back from several searches, keep it once
 seen, uniq = set(), []
 for o in sorted(kept, key=lambda o: (o["item"], o["retailer"], o["price"])):

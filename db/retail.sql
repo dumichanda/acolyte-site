@@ -104,7 +104,7 @@ SELECT day, item, category, retailer, channel,
        min(price) AS cheapest_equivalent_zar,
        (array_agg(title ORDER BY price))[1] AS cheapest_equivalent_title,
        count(*) AS offers
-FROM o WHERE price BETWEEN 0.4 * med AND 2.5 * med
+FROM o WHERE price BETWEEN 0.5 * med AND 2.0 * med
 GROUP BY day, item, category, retailer, channel;
 
 -- Per retailer and day: how many basket items it priced, and its price level against the item median across retailers

@@ -12,8 +12,8 @@ from datetime import date
 from pathlib import Path
 
 from db import connect
-from fetch_essentials import load, prepare, save, write_csv
-from fetch_retail import matches, retailer_of
+from fetch_essentials import classify, load, prepare, save, write_csv
+from fetch_retail import retailer_of
 
 SITE = {"Pick n Pay": "pnp.co.za"}
 
@@ -25,8 +25,7 @@ def offers(catalog: list[dict], items: list[dict], day: date) -> list[tuple]:
             continue
         retailer, channel = retailer_of(p["retailer"])
         for it in items:
-            sku = matches(p["title"], it["match"].split("|"))
-            gen = sku or matches(p["title"], it["generic"].split("|"))
+            sku, gen = classify(p["title"], it)
             if gen:
                 rows.append((day, it["item"], f'site:{p["code"]}', p["retailer"], retailer, channel, p["title"][:300],
                              float(p["price"]), None, None, None, sku, f'site:{SITE.get(p["retailer"], p["retailer"])}', gen))

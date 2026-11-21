@@ -50,7 +50,7 @@ def retailer_of(seller: str | None) -> tuple[str, str]:
     return (seller or "Unknown").strip()[:80], "other online store"
 
 
-MULTIPACK = re.compile(r"\b(\d+\s*x\s*\d|x\s*\d+\b|\d+\s*(pack|pk)\b|pack of|case\b|bulk|bundle|carton|combo)", re.I)
+MULTIPACK = re.compile(r"\b(\d+\s*x\s*\d|x\s*\d+\b|\d+\s*(pack|pk)\b|pack of|set of|twin\s*pack|case\b|bulk|bundle|carton|combo)|\s\+\s", re.I)
 
 
 def norm(title: str) -> str:

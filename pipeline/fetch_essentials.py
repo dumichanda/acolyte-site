@@ -40,14 +40,20 @@ def size_of(match: str) -> tuple[float | None, str | None]:
     return (v / 1000, "kg") if u == "g" else (v / 1000, "l") if u == "ml" else (v, u)
 
 
+def classify(title: str, it: dict) -> tuple[bool, bool]:
+    """(same brand, any brand). Same brand = the exact brand and size AND the same product type, so a brand's other
+    products of that size (Sunfoil canola for Sunfoil sunflower oil) don't count."""
+    gen = matches(title, it["generic"].split("|"))
+    return gen and matches(title, it["match"].split("|")), gen
+
+
 def offers_from(d: dict | None, it: dict, q: str, today) -> list[tuple]:
     out = []
     for r in (d or {}).get("shopping_results") or []:
         if not r.get("product_id") or not r.get("title"):
             continue
         retailer, channel = retailer_of(r.get("source"))
-        sku = matches(r["title"], it["match"].split("|"))
-        gen = sku or matches(r["title"], it["generic"].split("|"))
+        sku, gen = classify(r["title"], it)
         out.append((today, it["item"], str(r["product_id"]), (r.get("source") or "")[:120], retailer, channel, r["title"][:300],
                     num(r.get("extracted_price")), num(r.get("rating")), int(num(r.get("reviews")) or 0) or None,
                     int(num(r.get("position")) or 0) or None, sku, q, gen))
@@ -127,7 +133,7 @@ def save(rows: list[tuple]) -> None:
                                    reviews, position, matches_item, query, matches_generic)
                                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                                ON CONFLICT (day, item, product_id, seller) DO UPDATE SET price = EXCLUDED.price,
-                                   matches_generic = EXCLUDED.matches_generic OR retail.offers.matches_generic""", rows)
+                                   matches_item = EXCLUDED.matches_item, matches_generic = EXCLUDED.matches_generic""", rows)
         conn.commit()
 
 
