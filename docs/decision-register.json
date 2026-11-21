@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-20T20:10",
+ "updated": "2026-11-21T10:00",
  "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
  "roles": {
   "PM": {
@@ -1645,6 +1645,18 @@
    "why": "At 90% confidence a ±5% retailer index needs about 44 matched items; regional property yields rested on 5-22 listings.",
    "alternatives": "Keep the mixed retail basket.",
    "note": "Coverage test 20 Nov (Google Shopping): Takealot 18/40, Woolworths 18, Checkers incl. Sixty60 14, Amazon 11, Shoprite 11, Makro 8; Pick n Pay, SPAR and Boxer not found online. Makro, Clicks and Dis-Chem targeted searches unfinished when Scrappa credits ran out."
+  },
+  {
+   "id": "D93",
+   "at": "2026-11-21T10:00",
+   "kind": "Data",
+   "by": "You",
+   "status": "Active",
+   "title": "124-item Essentials Basket, two views, twice a week; property stays daily with a bigger sample where volume allows",
+   "decision": "Essentials Basket of 124 everyday packaged items in 12 groups, fetched Monday and Thursday: one general search per item, then a search naming each trackable retailer the general search missed (Shoprite, Checkers incl. Sixty60, Woolworths, Makro; Dis-Chem and Clicks for personal care, health and baby). Two views: same brand everywhere, and cheapest equivalent (any brand, same size). Views analyst.essentials_prices and analyst.essentials_index. Property stays daily; pages per region now follow its volume (2 pages under 1,000 listings, 4 up to 5,000, 6 above) so busy regions reach about 30 two-bed listings, with the sample-size rule handling the rest.",
+   "why": "About 44 matched items per retailer give a ±5% index at 90% confidence; regional 2-bed medians rested on 5-22 listings.",
+   "alternatives": "40 items; property counts daily and prices twice a week (option B, declined).",
+   "note": "Pick n Pay, SPAR and Boxer are not in the price source. Expected Scrappa use about 33,000 a month (property about 19,500, Property24 3,600, retail 3,000, talent 2,100, essentials 4,500); monthly cap raised to 35,000, per-run cap to 800."
   }
  ]
 }

@@ -1,41 +1,125 @@
 category,item,query,match,generic
 Staples,Maize meal 5kg,White Star Super Maize Meal 5kg,white star|5kg,maize|5kg
+Staples,Maize meal 5kg (Iwisa),Iwisa Super Maize Meal 5kg,iwisa|5kg,maize|5kg
+Staples,Maize meal 10kg,White Star Super Maize Meal 10kg,white star|10kg,maize|10kg
 Staples,Rice 2kg,Tastic Long Grain Parboiled Rice 2kg,tastic|2kg,rice|2kg
-Staples,White sugar 2.5kg,Huletts White Sugar 2.5kg,huletts|2.5kg,sugar|2.5kg
-Staples,Cake flour 2.5kg,Snowflake Cake Wheat Flour 2.5kg,snowflake|2.5kg,flour|2.5kg
+Staples,Rice 2kg (Spekko),Spekko Long Grain Parboiled Rice 2kg,spekko|2kg,rice|2kg
+Staples,Basmati rice 1kg,Tastic Basmati Rice 1kg,tastic|basmati|1kg,basmati|1kg
+Staples,White sugar 2.5kg,Huletts White Sugar 2.5kg,huletts|white|2.5kg,white sugar|2.5kg
+Staples,White sugar 2.5kg (Selati),Selati White Sugar 2.5kg,selati|2.5kg,white sugar|2.5kg
+Staples,Brown sugar 2kg,Huletts Brown Sugar 2kg,huletts|brown|2kg,brown sugar|2kg
+Staples,Cake flour 2.5kg,Snowflake Cake Wheat Flour 2.5kg,snowflake|cake|2.5kg,cake flour|2.5kg
+Staples,Cake flour 2.5kg (Golden Cloud),Golden Cloud Cake Wheat Flour 2.5kg,golden cloud|2.5kg,cake flour|2.5kg
+Staples,Bread flour 2.5kg,Snowflake White Bread Flour 2.5kg,snowflake|bread|2.5kg,bread flour|2.5kg
+Staples,Self-raising flour 1kg,Snowflake Self Raising Flour 1kg,snowflake|self raising|1kg,self raising|1kg
 Staples,Sunflower oil 2L,Sunfoil Sunflower Oil 2L,sunfoil|2l,sunflower|2l
+Staples,Sunflower oil 750ml,Sunfoil Sunflower Oil 750ml,sunfoil|750ml,sunflower|750ml
 Staples,Oats 1kg,Jungle Oats 1kg,jungle|1kg,oats|1kg
+Staples,Instant porridge 1kg,Ace Instant Maize Porridge 1kg,ace|porridge|1kg,porridge|1kg
+Staples,Maltabella 1kg,Maltabella Sorghum Porridge 1kg,maltabella|1kg,sorghum|1kg
 Staples,Spaghetti 500g,Fatti's & Moni's Spaghetti 500g,fatti|spaghetti|500g,spaghetti|500g
+Staples,Macaroni 500g,Fatti's & Moni's Macaroni 500g,fatti|macaroni|500g,macaroni|500g
 Staples,Salt 1kg,Cerebos Iodated Salt 1kg,cerebos|1kg,salt|1kg
+Staples,Samp 1kg,Imbo Samp 1kg,samp|1kg,samp|1kg
+Staples,Sugar beans 500g,Imbo Sugar Beans 500g,sugar beans|500g,sugar beans|500g
+Staples,Lentils 500g,Imbo Brown Lentils 500g,lentils|500g,lentils|500g
 Dairy & eggs,Long-life milk 1L,Clover Full Cream Long Life Milk 1L,clover|long life|1l,long life|milk|1l
+Dairy & eggs,Long-life milk 1L (Parmalat),Parmalat Full Cream Long Life Milk 1L,parmalat|1l,long life|milk|1l
+Dairy & eggs,Fresh milk 2L,Clover Fresh Full Cream Milk 2L,clover|fresh|2l,fresh|milk|2l
 Dairy & eggs,Large eggs 18,Nulaid Large Eggs 18,nulaid|18,eggs|18
+Dairy & eggs,Large eggs 6,Nulaid Large Eggs 6,nulaid|6,eggs|6
 Dairy & eggs,Margarine 500g,Rama Original Spread 500g,rama|500g,spread|500g
+Dairy & eggs,Butter 500g,Clover Salted Butter 500g,clover|butter|500g,butter|500g
+Dairy & eggs,Cheddar cheese 900g,Clover Cheddar Cheese 900g,cheddar|900g,cheddar|900g
+Dairy & eggs,Amasi 2L,Clover Amasi 2L,clover|amasi|2l,amasi|2l
+Dairy & eggs,Yoghurt 1kg,Clover Danone Plain Yoghurt 1kg,yoghurt|1kg,yoghurt|1kg
+Dairy & eggs,Condensed milk 385g,Nestle Sweetened Condensed Milk 385g,nestle|condensed|385g,condensed milk|385g
+Dairy & eggs,Milk powder 400g,Nespray Full Cream Milk Powder 400g,nespray|400g,milk powder|400g
 Tins & spreads,Pilchards 400g,Lucky Star Pilchards in Tomato Sauce 400g,lucky star|pilchard|400g,pilchard|400g
+Tins & spreads,Tuna 170g,Lucky Star Tuna Chunks in Brine 170g,lucky star|tuna|170g,tuna|170g
 Tins & spreads,Baked beans 410g,KOO Baked Beans in Tomato Sauce 410g,koo|baked beans|410g,baked beans|410g
+Tins & spreads,Chakalaka 410g,KOO Chakalaka Mild 410g,koo|chakalaka|410g,chakalaka|410g
+Tins & spreads,Peeled tomatoes 410g,KOO Peeled and Diced Tomatoes 410g,koo|tomato|410g,tomato|410g
+Tins & spreads,Mixed vegetables 410g,KOO Mixed Vegetables 410g,koo|vegetable|410g,mixed vegetables|410g
 Tins & spreads,Peanut butter 400g,Black Cat Smooth Peanut Butter 400g,black cat|400g,peanut butter|400g
+Tins & spreads,Jam 450g,All Gold Apricot Jam 450g,all gold|jam|450g,jam|450g
 Tins & spreads,Tomato sauce 700ml,All Gold Tomato Sauce 700ml,all gold|tomato sauce|700ml,tomato sauce|700ml
 Tins & spreads,Mayonnaise 750g,Crosse & Blackwell Mayonnaise 750g,crosse|mayonnaise|750g,mayonnaise|750g
+Tins & spreads,Chutney 470g,Mrs H.S. Ball's Chutney 470g,ball|chutney|470g,chutney|470g
 Tins & spreads,Instant noodles 73g,Maggi 2-Minute Noodles Chicken 73g,maggi|noodles|73g,noodles|73g
 Tins & spreads,Soup 50g,Royco Brown Onion Soup 50g,royco|soup|50g,soup|50g
+Tins & spreads,Stock cubes 12,Knorr Chicken Stock Cubes 12,knorr|stock|12,stock cubes|12
+Tins & spreads,Spice 200g,Robertsons Barbecue Spice 200g,robertsons|200g,spice|200g
+Tins & spreads,Vinegar 750ml,Safari Brown Vinegar 750ml,vinegar|750ml,vinegar|750ml
+Tins & spreads,Marmite 250g,Marmite Yeast Extract 250g,marmite|250g,yeast extract|250g
 Breakfast,Weet-Bix 900g,Weet-Bix 900g,weet bix|900g,weet|900g
-Frozen,Frozen chicken pieces 2kg,Rainbow IQF Chicken Mixed Portions 2kg,rainbow|2kg,chicken|2kg
+Breakfast,Corn flakes 1kg,Kellogg's Corn Flakes 1kg,kellogg|corn flakes|1kg,corn flakes|1kg
+Breakfast,Muesli 750g,Bokomo Original Muesli 750g,muesli|750g,muesli|750g
+Breakfast,Rusks 500g,Ouma Buttermilk Rusks 500g,ouma|500g,rusks|500g
+Snacks,Potato chips 120g,Simba Salt and Vinegar Chips 120g,simba|120g,chips|120g
+Snacks,Maize snacks 135g,Nik Naks Cheese 135g,nik naks|135g,maize|135g
+Snacks,Biscuits 200g,Bakers Tennis Biscuits 200g,tennis|200g,biscuits|200g
+Snacks,Marie biscuits 200g,Bakers Marie Biscuits 200g,marie|200g,marie|200g
+Snacks,Chocolate 80g,Cadbury Dairy Milk Chocolate 80g,cadbury|dairy milk|80g,chocolate|80g
+Frozen & meat,Frozen chicken pieces 2kg,Rainbow IQF Chicken Mixed Portions 2kg,rainbow|2kg,chicken|2kg
+Frozen & meat,Frozen chicken 5kg,County Fair IQF Mixed Chicken Portions 5kg,county fair|5kg,chicken|5kg
+Frozen & meat,Frozen fish fingers 800g,I&J Fish Fingers 800g,fish fingers|800g,fish fingers|800g
+Frozen & meat,Frozen chips 2kg,McCain Slap Chips 2kg,mccain|chips|2kg,chips|2kg
+Frozen & meat,Frozen mixed veg 1kg,McCain Mixed Vegetables 1kg,mccain|vegetables|1kg,mixed vegetables|1kg
+Frozen & meat,Polony 1kg,Enterprise Polony 1kg,polony|1kg,polony|1kg
+Frozen & meat,Viennas 1kg,Enterprise Viennas 1kg,vienna|1kg,vienna|1kg
 Beverages,Tea bags 100,Five Roses Tea Bags 100,five roses|100,tea|100
 Beverages,Rooibos tea 80,Freshpak Rooibos Tea Bags 80,freshpak|80,rooibos|80
+Beverages,Rooibos tea 160,Freshpak Rooibos Tea Bags 160,freshpak|160,rooibos|160
 Beverages,Instant coffee 750g,Ricoffy Instant Coffee 750g,ricoffy|750g,coffee|750g
+Beverages,Instant coffee 200g,Nescafe Classic Instant Coffee 200g,nescafe|classic|200g,coffee|200g
+Beverages,Hot chocolate 500g,Milo Chocolate Malt 500g,milo|500g,malt|500g
 Beverages,Cola 2L,Coca-Cola Original 2L,coca|2l,cola|2l
+Beverages,Cola 2L (Pepsi),Pepsi Cola 2L,pepsi|2l,cola|2l
 Beverages,Squash concentrate 2L,Oros Orange Squash 2L,oros|2l,squash|2l
+Beverages,Fruit juice 1L,Ceres 100% Fruit Juice Medley of Fruits 1L,ceres|1l,juice|1l
+Beverages,Fruit juice 2L,Liqui Fruit Breakfast Blend 2L,liqui fruit|2l,juice|2l
+Beverages,Still water 5L,Valpre Still Spring Water 5L,valpre|5l,water|5l
+Beverages,Energy drink 473ml,Red Bull Energy Drink 473ml,red bull|473ml,energy|473ml
 Household,Washing powder 2kg,OMO Auto Washing Powder 2kg,omo|2kg,washing powder|2kg
+Household,Washing powder 2kg (Surf),Surf Hand Washing Powder 2kg,surf|2kg,washing powder|2kg
+Household,Laundry liquid 2L,OMO Auto Liquid Detergent 2L,omo|liquid|2l,liquid|detergent|2l
+Household,Fabric softener 2L,Sta-Soft Fabric Softener 2L,sta soft|2l,fabric softener|2l
 Household,Dishwashing liquid 750ml,Sunlight Dishwashing Liquid 750ml,sunlight|dishwash|750ml,dishwash|750ml
+Household,Dishwasher tablets 30,Finish All in One Dishwasher Tablets 30,finish|30,dishwasher|30
 Household,Bleach 750ml,Domestos Thick Bleach 750ml,domestos|750ml,bleach|750ml
+Household,Bleach 1.5L,Jik Regular Bleach 1.5L,jik|1.5l,bleach|1.5l
+Household,Multi-purpose cleaner 750ml,Handy Andy Cream Cleaner 750ml,handy andy|750ml,cleaner|750ml
+Household,Pine gel 750ml,Mr Muscle Pine Gel 750ml,pine|750ml,pine|750ml
 Household,Laundry bar 500g,Sunlight Laundry Bar 500g,sunlight|bar|500g,laundry|bar|500g
 Household,Toilet paper 9 pack,Baby Soft 2 Ply Toilet Paper 9 Pack,baby soft|9 pack,toilet|9 pack
+Household,Toilet paper 18 pack,Twinsaver 2 Ply Toilet Paper 18 Pack,twinsaver|18 pack,toilet|18 pack
+Household,Paper towel 2 pack,Baby Soft Paper Towel 2 Pack,paper towel|2 pack,paper towel|2 pack
+Household,Refuse bags 20,Glad Refuse Bags 20,glad|refuse|20,refuse bags|20
 Household,Insect spray 300ml,Doom Super Multi Insect Spray 300ml,doom|300ml,insect|300ml
+Household,Candles 6,Price's Household Candles 6,candles|6,candles|6
+Household,Matches 10 pack,Lion Safety Matches 10 Pack,lion|matches,matches|10
+Household,AA batteries 4,Duracell AA Batteries 4 Pack,duracell|aa|4,aa batteries|4
 Personal care,Bath soap 150g,Protex Deep Clean Bath Soap 150g,protex|150g,soap|150g
+Personal care,Bath soap 175g (Lux),Lux Soft Touch Bar Soap 175g,lux|175g,soap|175g
 Personal care,Toothpaste 100ml,Colgate Regular Toothpaste 100ml,colgate|100ml,toothpaste|100ml
+Personal care,Toothbrush,Colgate Extra Clean Toothbrush,colgate|toothbrush,toothbrush
 Personal care,Roll-on deodorant 50ml,Shield Roll-On 50ml,shield|50ml,roll on|50ml
+Personal care,Aerosol deodorant 150ml,Axe Africa Body Spray 150ml,axe|150ml,body spray|150ml
 Personal care,Body lotion 400ml,Vaseline Intensive Care Body Lotion 400ml,vaseline|lotion|400ml,lotion|400ml
 Personal care,Petroleum jelly 250ml,Vaseline Blue Seal Petroleum Jelly 250ml,vaseline|petroleum jelly|250ml,petroleum jelly|250ml
+Personal care,Shampoo 400ml,Head & Shoulders Shampoo 400ml,head|shoulders|400ml,shampoo|400ml
 Personal care,Sanitary pads 8,Always Maxi Thick Pads 8,always|8,pads|8
+Personal care,Disposable razors 5,Gillette Blue II Disposable Razors 5,gillette|5,razors|5
+Personal care,Hand wash 500ml,Dettol Original Hand Wash 500ml,dettol|500ml,hand wash|500ml
+Personal care,Antiseptic 750ml,Dettol Antiseptic Liquid 750ml,dettol|antiseptic|750ml,antiseptic|750ml
+Health,Paracetamol 24,Panado Tablets 24,panado|24,paracetamol|24
+Health,Rehydration sachets,Rehidrat Sachets,rehidrat,rehydrat
 Baby,Nappies size 4,Pampers Active Baby Nappies Size 4,pampers|size 4,nappies|size 4
-Baby,Baby wipes 64,Huggies Baby Wipes 64,huggies|wipes|64,wipes|64
+Baby,Nappies size 3 (Huggies),Huggies Gold Nappies Size 3,huggies|size 3,nappies|size 3
+Baby,Baby wipes,Pampers Baby Wipes Fresh Clean 52,pampers|wipes|52,wipes|52
 Baby,Baby formula 900g,NAN Optipro 1 Infant Formula 900g,nan|900g,formula|900g
+Baby,Baby cereal 250g,Purity Baby Cereal 250g,purity|250g,baby cereal|250g
+Baby,Baby food jar 125ml,Purity Baby Food 125ml,purity|125ml,baby food|125ml
+Pet,Dog food 8kg,Montego Classic Dog Food 8kg,montego|8kg,dog food|8kg
+Pet,Cat food 1.75kg,Whiskas Adult Cat Food 1.75kg,whiskas|1.75kg,cat food|1.75kg

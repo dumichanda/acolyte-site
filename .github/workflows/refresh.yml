@@ -43,8 +43,8 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}   # agent harness (Job Scout, Company Researcher)
       SCRAPPA_API_KEY: ${{ secrets.SCRAPPA_API_KEY }}         # SA property dataset (Private Property via Scrappa)
-      SCRAPPA_MAX_CALLS_PER_RUN: ${{ vars.SCRAPPA_MAX_CALLS_PER_RUN || '600' }}
-      SCRAPPA_MONTHLY_BUDGET: ${{ vars.SCRAPPA_MONTHLY_BUDGET || '25000' }}
+      SCRAPPA_MAX_CALLS_PER_RUN: ${{ vars.SCRAPPA_MAX_CALLS_PER_RUN || '800' }}
+      SCRAPPA_MONTHLY_BUDGET: ${{ vars.SCRAPPA_MONTHLY_BUDGET || '35000' }}
       PROPERTY_PAGES: ${{ vars.PROPERTY_PAGES || '5' }}
       P24_PAGES: ${{ vars.P24_PAGES || '1' }}                                  # Property24 newest listings per city and deal type
       RETAIL_MAX_CALLS_PER_RUN: ${{ vars.RETAIL_MAX_CALLS_PER_RUN || '100' }}   # one Google Shopping search per basket item

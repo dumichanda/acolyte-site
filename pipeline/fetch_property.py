@@ -177,11 +177,25 @@ def main() -> None:
                     for deal in ("sale", "rent"):
                         jobs.append((loc_id, name, level, prov, deal, "residential", 0))   # count only
                         jobs.append((loc_id, name, level, prov, deal, "commercial", 0))
-            for page in range(1, a.pages + 1):                                          # breadth first over regions
+            # Pages per region follow its volume (last stock count), so busy regions reach a usable sample (a 2-bed
+            # median needs about 30 listings; ~1 in 4 listings is a 2-bed and a page holds 20): small regions keep the
+            # base number of pages, larger ones get more, up to PROPERTY_MAX_PAGES.
+            last = {(r[0], r[1]): r[2] for r in conn.execute(
+                """SELECT DISTINCT ON (location_id, deal_type) location_id, deal_type, listings FROM property.stock
+                   WHERE portal = %s AND category = 'residential' ORDER BY location_id, deal_type, day DESC""", (PORTAL,))}
+            cap = int(os.environ.get("PROPERTY_MAX_PAGES", "6"))
+
+            def pages_for(loc_id, deal):
+                n = last.get((loc_id, deal)) or 0
+                want = a.pages if n < 1000 else 4 if n < 5000 else cap
+                return max(1, min(cap, want, -(-n // 20) if n else a.pages))   # never more pages than there are listings
+            for page in range(1, cap + 1):                                              # breadth first over regions
                 for loc_id, name, level, prov in locs:
                     if level == 2:
                         for deal in ("sale", "rent"):
-                            jobs.append((loc_id, name, level, prov, deal, "residential", page))
+                            if page <= pages_for(loc_id, deal):
+                                jobs.append((loc_id, name, level, prov, deal, "residential", page))
+            print(f"Property: {len(jobs)} searches planned (pages per region follow its volume, up to {cap}).")
 
             def run(job):
                 loc_id, name, level, prov, deal, cat, page = job

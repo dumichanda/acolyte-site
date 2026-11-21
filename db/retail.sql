@@ -78,3 +78,48 @@ SELECT p.day, p.item, p.category, b.brand_type, p.retailer, p.channel, p.price_z
        round(p.price_zar / NULLIF(b.size_value, 0), 2) AS price_per_unit_zar,
        CASE b.size_unit WHEN 'kg' THEN 'per kg' WHEN 'l' THEN 'per litre' ELSE 'per unit' END AS unit_basis
 FROM analyst.retail_prices p JOIN retail.basket b USING (item);
+
+-- ---------------------------------------------------------------- Essentials Basket (twice a week, every major player)
+-- ~120 everyday packaged items, each an exact brand+size ("same brand everywhere") with a same-type-same-size match
+-- ("cheapest equivalent", any brand incl. house brands). Fetched by pipeline/fetch_essentials.py.
+ALTER TABLE retail.basket ADD COLUMN IF NOT EXISTS basket TEXT NOT NULL DEFAULT 'fmcg';   -- fmcg | essentials
+ALTER TABLE retail.basket ADD COLUMN IF NOT EXISTS generic TEXT[];                        -- tokens for any brand, same size
+ALTER TABLE retail.offers ADD COLUMN IF NOT EXISTS matches_generic BOOLEAN NOT NULL DEFAULT FALSE;
+
+DROP VIEW IF EXISTS analyst.essentials_prices, analyst.essentials_index CASCADE;
+-- One row per day, item and retailer: the same-brand price and the cheapest equivalent price (offers far from the item
+-- median, usually multipacks or the wrong size, are left out).
+CREATE VIEW analyst.essentials_prices AS
+WITH base AS (
+  SELECT o.day, o.item, b.category, CASE o.retailer WHEN 'Checkers Sixty60' THEN 'Checkers' ELSE o.retailer END AS retailer,
+         CASE o.retailer WHEN 'Checkers Sixty60' THEN 'grocery chain' ELSE o.channel END AS channel,
+         o.title, o.price, o.matches_item, o.matches_generic
+  FROM retail.offers o JOIN retail.basket b USING (item)
+  WHERE b.basket = 'essentials' AND o.price > 0 AND o.channel <> 'other online store' AND (o.matches_item OR o.matches_generic)
+), meds AS (
+  SELECT day, item, percentile_cont(0.5) WITHIN GROUP (ORDER BY price) AS med FROM base GROUP BY day, item
+), o AS (SELECT base.*, meds.med FROM base JOIN meds USING (day, item))
+SELECT day, item, category, retailer, channel,
+       min(price) FILTER (WHERE matches_item) AS same_brand_price_zar,
+       min(price) AS cheapest_equivalent_zar,
+       (array_agg(title ORDER BY price))[1] AS cheapest_equivalent_title,
+       count(*) AS offers
+FROM o WHERE price BETWEEN 0.4 * med AND 2.5 * med
+GROUP BY day, item, category, retailer, channel;
+
+-- Per retailer and day: how many basket items it priced, and its price level against the item median across retailers
+-- (100 = median; below 100 = cheaper), for both views.
+CREATE VIEW analyst.essentials_index AS
+WITH m AS (
+  SELECT day, item, percentile_cont(0.5) WITHIN GROUP (ORDER BY same_brand_price_zar) AS med_brand,
+         percentile_cont(0.5) WITHIN GROUP (ORDER BY cheapest_equivalent_zar) AS med_cheap
+  FROM analyst.essentials_prices GROUP BY day, item
+)
+SELECT p.day, p.retailer, p.channel,
+       count(*) FILTER (WHERE p.same_brand_price_zar IS NOT NULL) AS items_same_brand,
+       count(*) AS items_any_brand,
+       (SELECT count(*) FROM retail.basket WHERE basket = 'essentials') AS basket_items,
+       round(100 * avg(p.same_brand_price_zar / NULLIF(m.med_brand, 0))::numeric, 1) AS same_brand_index,
+       round(100 * avg(p.cheapest_equivalent_zar / NULLIF(m.med_cheap, 0))::numeric, 1) AS cheapest_equivalent_index
+FROM analyst.essentials_prices p JOIN m USING (day, item)
+GROUP BY p.day, p.retailer, p.channel;
