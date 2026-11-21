@@ -3,7 +3,7 @@
 Each run:
   1. refreshes the location tree (9 provinces -> ~48 regions) once a week,
   2. records the full number of listings per province and region (sale/rent, residential; commercial per province),
-  3. samples the first PROPERTY_PAGES pages (20 listings each) per region and deal type, upserting listings and
+  3. samples pages (20 listings each) per region and deal type in proportion to the region's share of all\n     listings (PROPERTY_BUDGET_PCT % of the run's allowance), upserting listings and
      their asking price for the day,
   4. records the public bond rate.
 
@@ -11,7 +11,7 @@ Every call costs 1 Scrappa credit (failed calls are free) and is logged in fetch
 Budget: SCRAPPA_MAX_CALLS_PER_RUN (default 400) and SCRAPPA_MONTHLY_BUDGET (default 15000).
 Skips itself when SCRAPPA_API_KEY is not set.
 
-    python fetch_property.py [--pages 2] [--max-calls 400]
+    python fetch_property.py [--max-calls 400]
 """
 import argparse
 import json
@@ -133,9 +133,32 @@ def refresh_locations(conn, c: Client) -> None:
     print(f"Locations: {len(provs)} provinces, {len(rows) - len(provs)} regions.")
 
 
+def share_pages(regions: list[tuple], last: dict, allowed: int, fixed_calls: int) -> dict:
+    """Pages per (region, deal): 1 each, then the rest of the property budget in proportion to each region's share of
+    listings (largest remainders first), capped at the region's own number of pages."""
+    pct = float(os.environ.get("PROPERTY_BUDGET_PCT", "80")) / 100
+    budget = max(len(regions), int(allowed * pct) - fixed_calls - 2)          # 2 = location refresh and bond rate
+    n = {(r[0], r[4]): last.get((r[0], r[4])) or 0 for r in regions}
+    total = sum(n.values()) or 1
+    room = {k: max(0, -(-v // 20) - 1) if v else 0 for k, v in n.items()}   # pages beyond page 1 that exist
+    pages = {k: 1 for k in n}
+    extra = budget - len(n)
+    if extra > 0:
+        want = {k: extra * v / total for k, v in n.items()}
+        for k in n:
+            pages[k] += min(room[k], int(want[k]))
+        left = budget - sum(pages.values())
+        for k in sorted(n, key=lambda k: want[k] - int(want[k]), reverse=True):
+            if left <= 0:
+                break
+            if pages[k] - 1 < room[k]:
+                pages[k] += 1
+                left -= 1
+    return pages
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--pages", type=int, default=int(os.environ.get("PROPERTY_PAGES", "2")))
     ap.add_argument("--max-calls", type=int, default=int(os.environ.get("SCRAPPA_MAX_CALLS_PER_RUN", "400")))
     a = ap.parse_args()
     key = os.environ.get("SCRAPPA_API_KEY", "")
@@ -177,25 +200,20 @@ def main() -> None:
                     for deal in ("sale", "rent"):
                         jobs.append((loc_id, name, level, prov, deal, "residential", 0))   # count only
                         jobs.append((loc_id, name, level, prov, deal, "commercial", 0))
-            # Pages per region follow its volume (last stock count), so busy regions reach a usable sample (a 2-bed
-            # median needs about 30 listings; ~1 in 4 listings is a 2-bed and a page holds 20): small regions keep the
-            # base number of pages, larger ones get more, up to PROPERTY_MAX_PAGES.
+            # Pages per region follow its share of all listings (last stock count), no fixed tiers: property spends
+            # PROPERTY_BUDGET_PCT % of this run's allowance; every region gets page 1 (it also gives the stock count) and
+            # the rest is shared out in proportion to each region's % of listings, never more pages than it has listings.
             last = {(r[0], r[1]): r[2] for r in conn.execute(
                 """SELECT DISTINCT ON (location_id, deal_type) location_id, deal_type, listings FROM property.stock
                    WHERE portal = %s AND category = 'residential' ORDER BY location_id, deal_type, day DESC""", (PORTAL,))}
-            cap = int(os.environ.get("PROPERTY_MAX_PAGES", "6"))
-
-            def pages_for(loc_id, deal):
-                n = last.get((loc_id, deal)) or 0
-                want = a.pages if n < 1000 else max(a.pages, 4) if n < 5000 else cap   # bigger regions never get fewer pages
-                return max(1, min(cap, want, -(-n // 20) if n else a.pages))   # never more pages than there are listings
-            for page in range(1, cap + 1):                                              # breadth first over regions
-                for loc_id, name, level, prov in locs:
-                    if level == 2:
-                        for deal in ("sale", "rent"):
-                            if page <= pages_for(loc_id, deal):
-                                jobs.append((loc_id, name, level, prov, deal, "residential", page))
-            print(f"Property: {len(jobs)} searches planned (pages per region follow its volume, up to {cap}).")
+            regions = [(loc_id, name, level, prov, deal) for loc_id, name, level, prov in locs if level == 2
+                       for deal in ("sale", "rent")]
+            pages = share_pages(regions, last, allowed, len(jobs))
+            for page in range(1, max(pages.values(), default=1) + 1):                  # breadth first over regions
+                for loc_id, name, level, prov, deal in regions:
+                    if page <= pages[(loc_id, deal)]:
+                        jobs.append((loc_id, name, level, prov, deal, "residential", page))
+            print(f"Property: {len(jobs)} searches planned (pages per region follow its share of listings; busiest region {max(pages.values(), default=0)} pages).")
 
             def run(job):
                 loc_id, name, level, prov, deal, cat, page = job
