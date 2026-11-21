@@ -45,7 +45,7 @@ jobs:
       SCRAPPA_API_KEY: ${{ secrets.SCRAPPA_API_KEY }}         # SA property dataset (Private Property via Scrappa)
       SCRAPPA_MAX_CALLS_PER_RUN: ${{ vars.SCRAPPA_MAX_CALLS_PER_RUN || '800' }}
       SCRAPPA_MONTHLY_BUDGET: ${{ vars.SCRAPPA_MONTHLY_BUDGET || '35000' }}
-      PROPERTY_PAGES: ${{ vars.PROPERTY_PAGES || '2' }}      # pages for regions under 1,000 listings (4 up to 5,000, PROPERTY_MAX_PAGES above)
+      PROPERTY_BUDGET_PCT: ${{ vars.PROPERTY_BUDGET_PCT || '80' }}   # % of the run's Scrappa allowance for property listings; pages per region follow its % of all listings
       P24_PAGES: ${{ vars.P24_PAGES || '1' }}                                  # Property24 newest listings per city and deal type
       RETAIL_MAX_CALLS_PER_RUN: ${{ vars.RETAIL_MAX_CALLS_PER_RUN || '100' }}   # one Google Shopping search per basket item
       TALENT_JOB_SEARCHES: ${{ vars.TALENT_JOB_SEARCHES || '16' }}             # Google Jobs + LinkedIn searches a day
