@@ -1,0 +1,43 @@
+name: Essentials Basket - retailer sites
+
+# Pick n Pay is not listed on Google Shopping, so its shelf prices are read from its own public category pages
+# (robots.txt allows them; search pages are not used), waiting 10 seconds between pages as the site asks.
+# Runs Monday and Thursday, after the daily refresh has fetched the Google Shopping side of the basket.
+on:
+  schedule:
+    - cron: "17 6 * * 1,4"   # 08:17 SAST
+  workflow_dispatch:
+
+concurrency:
+  group: essentials-sites
+  cancel-in-progress: false
+
+jobs:
+  sites:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      CRAWL_DELAY: "10"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Browser
+        working-directory: pipeline/sites
+        run: |
+          npm init -y >/dev/null
+          npm install playwright@1.49.1
+          npx playwright install --with-deps chromium
+      - name: Pick n Pay shelf prices
+        working-directory: pipeline/sites
+        run: node pnp.mjs "$RUNNER_TEMP/pnp_$(date +%F).jsonl"
+      - name: Match to the basket and save
+        working-directory: pipeline
+        run: python match_sites.py "$RUNNER_TEMP/pnp_$(date +%F).jsonl"

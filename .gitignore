@@ -4,3 +4,8 @@ __pycache__/
 web/node_modules/
 web/dist/
 /reports/
+
+# raw retailer catalogues (matched offers are kept in data/essentials/*.csv)
+data/essentials/catalog/
+pipeline/sites/node_modules/
+pipeline/sites/package*.json
