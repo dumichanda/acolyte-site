@@ -127,7 +127,7 @@ def main() -> None:
                                VALUES (%s,%s,%s,%s,%s,%s,%s)
                                ON CONFLICT (item) DO UPDATE SET category = EXCLUDED.category, queries = EXCLUDED.queries,
                                match = EXCLUDED.match, brand_type = EXCLUDED.brand_type, size_value = EXCLUDED.size_value,
-                               size_unit = EXCLUDED.size_unit""",
+                               size_unit = EXCLUDED.size_unit, daily = TRUE""",
                             [(k, v["category"], v["queries"], v["match"], v["brand_type"], v["size_value"], v["size_unit"])
                              for k, v in basket.items()])
         conn.commit()

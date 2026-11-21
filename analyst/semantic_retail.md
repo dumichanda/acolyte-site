@@ -57,3 +57,27 @@ by metro or province.
 day, item, category, brand_type ('name brand' or 'house brand', e.g. Ritebrand at Shoprite, Checkers Housebrand,
 PnP own brand, Woolworths own), retailer, channel, price_zar, size_value, size_unit, price_per_unit_zar, unit_basis.
 Use for fair comparisons across pack sizes and for the house-brand discount vs name brands in the same category.
+
+## analyst.essentials_prices — the Essentials Basket (124 everyday items, twice a week)
+A separate basket of 124 everyday packaged items in 12 groups (Staples, Dairy & eggs, Tins & spreads, Breakfast, Snacks,
+Frozen & meat, Beverages, Household, Personal care, Health, Baby, Pet), priced on Mondays and Thursdays at every major
+retailer we can reach, Pick n Pay included (read from its own shelf prices; regular price, not member prices).
+One row per day, item and retailer:
+| column | meaning |
+|---|---|
+| day, item, category, retailer, channel | as above (Checkers Sixty60 counts as Checkers) |
+| same_brand_price_zar | cheapest offer of the exact brand, size and product type ("same brand everywhere"); NULL if not listed |
+| cheapest_equivalent_zar | cheapest offer of ANY brand of the same type and size, house brands included ("cheapest equivalent") |
+| cheapest_equivalent_title | the product behind that price |
+| offers | matching offers kept |
+Offers outside 0.5x-2x of the item's median price are left out (multipacks, wrong sizes).
+Own-brand saving at a retailer = same_brand_price_zar − cheapest_equivalent_zar (and as % of the same-brand price).
+
+## analyst.essentials_index — the Essentials Index per retailer and day
+day, retailer, channel, items_same_brand, items_any_brand, basket_items (124), same_brand_index,
+cheapest_equivalent_index. Index = the retailer's price ÷ the item's median price across retailers, averaged over the
+items it priced, × 100: 100 = the median, below 100 = cheaper. same_brand_index compares identical products;
+cheapest_equivalent_index compares what a shopper pays when they buy the cheapest of that type.
+Retailers price different numbers of items, so always show items_same_brand / items_any_brand next to an index, and
+apply the MARGIN RULE (margin of an index from n items ≈ 1.645 × spread of the item ratios / √n). For a head-to-head
+between two retailers, recompute the index over the items BOTH priced, from essentials_prices.

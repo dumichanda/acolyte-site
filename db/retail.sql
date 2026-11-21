@@ -13,6 +13,10 @@ CREATE TABLE IF NOT EXISTS retail.basket (
 ALTER TABLE retail.basket ADD COLUMN IF NOT EXISTS brand_type TEXT NOT NULL DEFAULT 'name brand';  -- or 'house brand'
 ALTER TABLE retail.basket ADD COLUMN IF NOT EXISTS size_value NUMERIC;   -- in size_unit
 ALTER TABLE retail.basket ADD COLUMN IF NOT EXISTS size_unit TEXT;       -- kg, l or units
+ALTER TABLE retail.basket ADD COLUMN IF NOT EXISTS basket TEXT NOT NULL DEFAULT 'fmcg';   -- fmcg | essentials
+-- in the daily FMCG basket: an item can be in both baskets (set by fetch_retail.py and fetch_essentials.py)
+ALTER TABLE retail.basket ADD COLUMN IF NOT EXISTS daily BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE retail.basket ADD COLUMN IF NOT EXISTS generic TEXT[];                        -- tokens for any brand, same size
 
 CREATE TABLE IF NOT EXISTS retail.offers (
     day          DATE NOT NULL,
@@ -30,6 +34,7 @@ CREATE TABLE IF NOT EXISTS retail.offers (
     query        TEXT,
     PRIMARY KEY (day, item, product_id, seller)
 );
+ALTER TABLE retail.offers ADD COLUMN IF NOT EXISTS matches_generic BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS offers_item_day ON retail.offers (item, day);
 
 -- ---------------------------------------------------------------- analyst views
@@ -44,6 +49,7 @@ SELECT o.day, o.item, b.category, o.retailer, o.seller, o.channel, o.title, o.pr
 FROM retail.offers o
 JOIN retail.basket b USING (item)
 LEFT JOIN retail.offers o2 ON o2.day = o.day AND o2.item = o.item AND o2.matches_item AND o2.price > 0
+WHERE b.daily                                   -- the daily FMCG basket (the Essentials Basket has its own views)
 GROUP BY o.day, o.item, b.category, o.retailer, o.seller, o.channel, o.title, o.price, o.rating, o.reviews,
          o.position, o.matches_item, o.product_id;
 
@@ -58,7 +64,7 @@ GROUP BY day, item, category, retailer, channel;
 -- Basket cost per retailer per day, over the items that retailer listed that day (coverage shows how complete it is).
 CREATE VIEW analyst.retail_basket_cost AS
 SELECT day, retailer, channel, count(*) AS items_priced,
-       (SELECT count(*) FROM retail.basket) AS basket_items,
+       (SELECT count(*) FROM retail.basket WHERE daily) AS basket_items,
        sum(price_zar) AS basket_cost_zar
 FROM analyst.retail_prices GROUP BY day, retailer, channel;
 
@@ -82,9 +88,6 @@ FROM analyst.retail_prices p JOIN retail.basket b USING (item);
 -- ---------------------------------------------------------------- Essentials Basket (twice a week, every major player)
 -- ~120 everyday packaged items, each an exact brand+size ("same brand everywhere") with a same-type-same-size match
 -- ("cheapest equivalent", any brand incl. house brands). Fetched by pipeline/fetch_essentials.py.
-ALTER TABLE retail.basket ADD COLUMN IF NOT EXISTS basket TEXT NOT NULL DEFAULT 'fmcg';   -- fmcg | essentials
-ALTER TABLE retail.basket ADD COLUMN IF NOT EXISTS generic TEXT[];                        -- tokens for any brand, same size
-ALTER TABLE retail.offers ADD COLUMN IF NOT EXISTS matches_generic BOOLEAN NOT NULL DEFAULT FALSE;
 
 DROP VIEW IF EXISTS analyst.essentials_prices, analyst.essentials_index CASCADE;
 -- One row per day, item and retailer: the same-brand price and the cheapest equivalent price (offers far from the item

@@ -102,13 +102,17 @@ def prepare(conn, items: list[dict]) -> None:
     if conn.execute("SELECT 1 FROM pg_roles WHERE rolname = 'analyst_reader'").fetchone():
         conn.execute("GRANT SELECT ON ALL TABLES IN SCHEMA analyst TO analyst_reader")
     with conn.cursor() as cur:
-        cur.executemany("""INSERT INTO retail.basket (item, category, queries, match, brand_type, size_value, size_unit, basket, generic)
-                           VALUES (%s,%s,%s,%s,'name brand',%s,%s,'essentials',%s)
+        cur.executemany("""INSERT INTO retail.basket (item, category, queries, match, brand_type, size_value, size_unit, basket, generic, daily)
+                           VALUES (%s,%s,%s,%s,'name brand',%s,%s,'essentials',%s, FALSE)
                            ON CONFLICT (item) DO UPDATE SET category = EXCLUDED.category, queries = EXCLUDED.queries,
                            match = EXCLUDED.match, size_value = EXCLUDED.size_value, size_unit = EXCLUDED.size_unit,
                            basket = 'essentials', generic = EXCLUDED.generic""",
                         [(it["item"], it["category"], [it["query"]], it["match"].split("|"), *size_of(it["match"]),
                           it["generic"].split("|")) for it in items])
+        # items in both baskets stay in the daily views; essentials-only items are kept out of them
+        with open(ROOT / "data" / "retail_basket.csv", newline="") as f:
+            daily = sorted({r["item"] for r in csv.DictReader(f)})
+        cur.execute("UPDATE retail.basket SET daily = (item = ANY(%s)) WHERE basket = 'essentials'", (daily,))
     conn.commit()
 
 

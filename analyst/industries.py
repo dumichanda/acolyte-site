@@ -133,6 +133,17 @@ FROM retail_prices WHERE day = {_RLATEST} GROUP BY item HAVING count(*) >= 2 ORD
      "title": "Price coverage by category", "subtitle": "Average number of retailers pricing each item, latest day",
      "sql": f"""SELECT category AS "Category", round(avg(n), 1) AS "Retailers per item" FROM
   (SELECT category, item, count(*) n FROM retail_prices WHERE day = {_RLATEST} GROUP BY 1, 2) x GROUP BY 1 ORDER BY 2 DESC"""},
+    {"type": "hbar", "x": "Retailer", "y": ["Same brand", "Cheapest equivalent"], "value_format": "number",
+     "title": "Essentials Index", "subtitle": "124 everyday items, latest collection; 100 = the median retailer, below = cheaper",
+     "sql": """SELECT retailer || ' (' || items_any_brand || ' items)' AS "Retailer", same_brand_index AS "Same brand",
+       cheapest_equivalent_index AS "Cheapest equivalent" FROM essentials_index
+WHERE day = (SELECT max(day) FROM essentials_index) ORDER BY items_any_brand DESC LIMIT 10"""},
+    {"type": "bar", "x": "Category", "y": ["Own-brand saving %"], "value_format": "number",
+     "title": "Own-brand saving by category", "subtitle": "Same brand vs cheapest equivalent at the same retailer, Essentials Basket",
+     "sql": """SELECT category AS "Category",
+       round(avg(100.0 * (same_brand_price_zar - cheapest_equivalent_zar) / same_brand_price_zar)) AS "Own-brand saving %"
+FROM essentials_prices WHERE day = (SELECT max(day) FROM essentials_prices) AND same_brand_price_zar > 0
+GROUP BY 1 ORDER BY 2 DESC"""},
     {"type": "table", "x": "Item", "y": ["Price"], "value_format": "rand",
      "title": "Latest prices", "subtitle": "Lowest matching price per retailer",
      "sql": f"""SELECT item AS "Item", retailer AS "Retailer", channel AS "Channel", price_zar AS "Price"
@@ -178,8 +189,10 @@ BRIEFS = {
         "changed since the previous day (analyst.retail_price_changes: biggest moves, likely promotions). Then cover, in order "
         "of importance: (1) which retailer is cheapest on a like-for-like basket today and by how much; (2) price index by "
         "retailer and by channel; (3) the widest price spreads and biggest price moves since the earliest day (likely "
-        "promotions), or the current spread if there is one day of data; (4) Amazon.co.za and Takealot versus grocery. "
-        "Keep it to 4-6 sections, and state how many items each comparison rests on."),
+        "promotions), or the current spread if there is one day of data; (4) Amazon.co.za and Takealot versus grocery; "
+        "(5) on the morning after a Monday or Thursday collection, the Essentials Index (analyst.essentials_index: both "
+        "views, with the items each retailer priced). Keep it to 4-6 sections, and state how many items each comparison "
+        "rests on."),
 }
 
 
@@ -193,9 +206,11 @@ MONTHLY = {
     },
     "retail": {
         "audience": "FMCG brand, category and pricing managers", "since": "14 November 2026",
-        "sections": ("which retailer is cheapest on a like-for-like basket; price index by retailer and by channel; the house-"
-                     "brand discount against name brands (retail_unit_prices); the widest price spreads and the month's price "
-                     "moves and likely promotions"),
+        "sections": ("the Essentials Index: 124 everyday items at every major retailer, same brand everywhere and cheapest "
+                     "equivalent (analyst.essentials_index and essentials_prices), with the items each retailer priced and the "
+                     "own-brand saving by category; which retailer is cheapest on a like-for-like basket; price index by "
+                     "retailer and by channel; the house-brand discount against name brands (retail_unit_prices); the widest "
+                     "price spreads and the month's price moves and likely promotions"),
     },
     "marketplace": {
         "audience": "brands and sellers on Amazon.co.za and Takealot", "since": "14 November 2026",
