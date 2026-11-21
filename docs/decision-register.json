@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-21T10:00",
+  "updated": "2026-11-21T16:15",
   "note": "Times are UTC in the data and shown in SAST (UTC+2) on the page.",
   "roles": {
     "PM": {
@@ -538,6 +538,40 @@
       "days": {
         "FE": 3,
         "UX": 1,
+        "QA": 0.5
+      }
+    },
+    {
+      "at": "2026-11-20T19:00",
+      "title": "Daily refresh reliability",
+      "what": "Fresh connections with keep-alives after long fetches, parallel searches, thread-safe Scrappa budget, stop on no-credit replies, 45-minute limit.",
+      "days": {
+        "DE": 1.5,
+        "OPS": 0.5,
+        "QA": 0.5
+      }
+    },
+    {
+      "at": "2026-11-21T15:00",
+      "title": "Essentials Basket: 124 items across retailers",
+      "what": "Basket definitions, Google Shopping fetch with resumable cache, Pick n Pay collector (category and product-page modes, Google-found links), matcher and rules, loader, dataset workbook, workflow into Neon, site permission checks.",
+      "days": {
+        "DE": 4,
+        "BE": 1,
+        "DS": 1,
+        "OPS": 1,
+        "QA": 1,
+        "SEC": 0.5
+      }
+    },
+    {
+      "at": "2026-11-21T16:00",
+      "title": "Property sample at 90% confidence per region",
+      "what": "Per-region sample size from its own price spread with finite-population correction, shortfall against the 30-day sample, rotating pages, budget as a percentage; analyst margin rule replacing minimum counts.",
+      "days": {
+        "DS": 1.5,
+        "DE": 1,
+        "AI": 0.5,
         "QA": 0.5
       }
     }
@@ -1681,6 +1715,54 @@
       "why": "A fixed count means different confidence in different places: price spread varies by region. A margin target gives the same confidence everywhere.",
       "alternatives": "Fixed minimum counts (30 records, 20 matched items).",
       "note": "Asking prices vary a lot within a region (spread of 50-140% of the average across property types), so one day's pages can't reach ±10%; the 30-day rotating sample does. Sub-groups (beds, property type) need more listings and are merged or marked indicative."
+    },
+    {
+      "id": "D96",
+      "at": "2026-11-21T12:00",
+      "kind": "Data",
+      "by": "You",
+      "status": "Active",
+      "title": "No AI-generated price data",
+      "decision": "The 'PriceCheck SA' sheet was not merged: its prices are fixed multiples of Checkers' on every item (Shoprite x0.96, Pick n Pay x1.02, Makro x0.93), own-brand names follow one template and Pick n Pay appears on every item although it is not in Google Shopping. The basket is built only from observed prices.",
+      "why": "Invented prices in a client-facing index would break the no-fabricated-data rule.",
+      "alternatives": "Merge the sheet as a second source.",
+      "note": ""
+    },
+    {
+      "id": "D97",
+      "at": "2026-11-21T12:30",
+      "kind": "Data",
+      "by": "Both",
+      "status": "Active",
+      "title": "Retailer websites: only where the site allows it",
+      "decision": "Pick n Pay shelf prices come from its own site: a Google web search (site:pnp.co.za, via Scrappa) finds each item's product pages, which the browser opens 10 seconds apart (robots.txt allows product and category pages, not search pages). Regular shelf price only, not the Smart Shopper price. Checkers, Shoprite, Dis-Chem, Makro, Clicks and Woolworths block automated visitors or show bot checks, so they stay on Google Shopping; SPAR has no online prices (store-set). Blocks are never worked around. chrome-devtools-mcp was tried for site inspection; Playwright runs the scheduled collection.",
+      "why": "Pick n Pay was missing from the price source; reading only what a site permits keeps the collection defensible.",
+      "alternatives": "Browse whole categories (about 280 pages a run); get past bot checks.",
+      "note": "First run 21 Nov: Pick n Pay 101 of 124 items (80 same brand). Product links kept in data/essentials/pnp_links.csv."
+    },
+    {
+      "id": "D98",
+      "at": "2026-11-21T14:00",
+      "kind": "Data",
+      "by": "You",
+      "status": "Active",
+      "title": "Matching rules for the basket",
+      "decision": "Same brand = the exact brand and size and the same product type (Sunfoil canola no longer counts as Sunfoil sunflower oil). Sets, twin packs and '+' bundles count as multipacks. Offers outside 0.5-2x the item's median are dropped. Saved offers are re-checked with the current rules when loaded.",
+      "why": "Spot checks found canola matched as sunflower oil, bundles priced as single items and marketplace sellers far above shelf prices.",
+      "alternatives": "Per-item fixes.",
+      "note": ""
+    },
+    {
+      "id": "D99",
+      "at": "2026-11-21T14:30",
+      "kind": "Operations",
+      "by": "You",
+      "status": "Active",
+      "title": "Everything runs from 05:07 SAST, straight into Neon",
+      "decision": "The daily refresh runs at 05:07 SAST; when it finishes, the Essentials Basket workflow starts: Google Shopping, Pick n Pay links for items without one, Pick n Pay product pages, then saved offer files, all written to Neon (retail.offers and retail.basket, read through analyst.essentials_prices and essentials_index). Collection on ESSENTIALS_DAYS (Monday and Thursday); other days only load saved files. Google Shopping moved out of the daily refresh (it needs about 40 minutes).",
+      "why": "One chained run avoids two jobs writing at once and keeps the refresh inside its 45-minute limit.",
+      "alternatives": "Separate fixed times per workflow.",
+      "note": "21 Nov: 7,296 offers loaded (5,612 Google Shopping, 1,684 Pick n Pay). Private repo: about 1,800 of 2,000 free Actions minutes a month."
     }
   ]
 }
