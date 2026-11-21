@@ -1,26 +1,41 @@
-name: Essentials Basket - retailer sites
+name: Essentials Basket
 
-# Pick n Pay is not listed on Google Shopping. A Google web search (site:pnp.co.za, via Scrappa) finds each basket item's
-# Pick n Pay product pages once (saved in data/essentials/pnp_links.csv); the browser then opens only those pages
-# (robots.txt allows product pages), waiting 10 seconds between pages as the site asks.
-# Runs Monday and Thursday, after the daily refresh has fetched the Google Shopping side of the basket.
+# The whole Essentials Basket (124 everyday items, every major SA retailer we can reach), straight into Neon:
+#   1. Google Shopping (via Scrappa): one search per item, then searches naming each retailer it missed.
+#   2. Pick n Pay (not on Google Shopping): items with no saved product page get one Google web search (site:pnp.co.za);
+#      the browser then opens only the saved product pages (allowed by robots.txt), 10 seconds apart as the site asks.
+#   3. Offers saved as files in data/essentials/ (collected elsewhere) are loaded too.
+# Starts when the 05:07 SAST daily refresh finishes; collects on ESSENTIALS_DAYS (default Monday and Thursday).
 on:
-  schedule:
-    - cron: "17 6 * * 1,4"   # 08:17 SAST
+  workflow_run:
+    workflows: ["Refresh Automation Index"]
+    types: [completed]
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "all = collect and load; load_only = only load the saved files in data/essentials/"
+        type: choice
+        options: [all, load_only]
+        default: all
+
+permissions:
+  contents: write
 
 concurrency:
-  group: essentials-sites
+  group: essentials
   cancel-in-progress: false
 
 jobs:
-  sites:
+  essentials:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 150
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      CRAWL_DELAY: "10"
       SCRAPPA_API_KEY: ${{ secrets.SCRAPPA_API_KEY }}
+      SCRAPPA_MONTHLY_BUDGET: ${{ vars.SCRAPPA_MONTHLY_BUDGET || '35000' }}
+      ESSENTIALS_DAYS: ${{ vars.ESSENTIALS_DAYS || '0,3' }}
+      ESSENTIALS_MAX_CALLS: ${{ vars.ESSENTIALS_MAX_CALLS || '600' }}
+      CRAWL_DELAY: "10"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -28,21 +43,51 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
+
+      - name: Collection day?
+        id: day
+        run: |
+          d=$(TZ=Africa/Johannesburg python -c "import datetime; print(datetime.date.today().weekday())")
+          if [ "${{ inputs.mode }}" = "load_only" ]; then echo "collect=false" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] || [[ ",$ESSENTIALS_DAYS," == *",$d,"* ]]; then echo "collect=true" >> "$GITHUB_OUTPUT"
+          else echo "collect=false" >> "$GITHUB_OUTPUT"; echo "Not a collection day ($d); loading saved files only."; fi
+
+      - name: Load saved offer files
+        working-directory: pipeline
+        run: python load_essentials.py
+
+      - name: Google Shopping
+        if: steps.day.outputs.collect == 'true'
+        working-directory: pipeline
+        run: python fetch_essentials.py --force
+
+      - name: Pick n Pay product pages for items without one
+        if: steps.day.outputs.collect == 'true'
+        working-directory: pipeline
+        run: python pnp_links.py
+
       - name: Browser
+        if: steps.day.outputs.collect == 'true'
         working-directory: pipeline/sites
         run: |
           npm init -y >/dev/null
           npm install playwright@1.49.1
           npx playwright install --with-deps chromium
-      - name: Find product pages for items without a saved link
-        working-directory: pipeline
-        run: python pnp_links.py
+
       - name: Pick n Pay shelf prices
+        if: steps.day.outputs.collect == 'true'
         working-directory: pipeline/sites
-        run: PNP_LINKS=../../data/essentials/pnp_links.csv node pnp.mjs "$RUNNER_TEMP/pnp_$(date +%F).jsonl"
-      - name: Match to the basket and save
+        run: PNP_LINKS=../../data/essentials/pnp_links.csv node pnp.mjs "$RUNNER_TEMP/pnp_$(TZ=Africa/Johannesburg date +%F).jsonl"
+
+      - name: Match Pick n Pay to the basket and save
+        if: steps.day.outputs.collect == 'true'
         working-directory: pipeline
-        run: python match_sites.py "$RUNNER_TEMP/pnp_$(date +%F).jsonl"
+        run: python match_sites.py "$RUNNER_TEMP/pnp_$(TZ=Africa/Johannesburg date +%F).jsonl"
+
+      - name: Keep new product links
+        if: steps.day.outputs.collect == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/essentials/pnp_links.csv
+          git diff --cached --quiet || (git commit -m "Pick n Pay product links" && git pull --rebase && git push)

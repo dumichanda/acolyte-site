@@ -32,11 +32,38 @@ def offers(catalog: list[dict], items: list[dict], day: date) -> list[tuple]:
     return rows
 
 
+def save_links(path: str, rows: list[tuple], catalog: list[dict], items: list[dict], per_item: int = 3) -> None:
+    """Keep links already saved for items this catalogue didn't find; replace the rest with today's best matches."""
+    import csv
+    url = {f'site:{p["code"]}': p.get("url") for p in catalog}
+    by: dict[str, list[tuple]] = {}
+    for r in sorted(rows, key=lambda r: r[7]):
+        by.setdefault(r[1], []).append(r)
+    old: dict[str, list[str]] = {}
+    if Path(path).exists():
+        with open(path, newline="") as f:
+            for r in csv.DictReader(f):
+                old.setdefault(r["item"], []).append(r["url"])
+    out = []
+    for it in items:
+        rs = by.get(it["item"], [])
+        pick = [r for r in rs if r[11]][:1] + [r for r in rs if not r[11]][: per_item - 1]
+        links = [url[r[2]] for r in pick if url.get(r[2])] or old.get(it["item"], [])[:per_item]
+        out += [(it["item"], u) for u in dict.fromkeys(links)]
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["item", "url"])
+        w.writerows(out)
+    print(f"Saved {len(out)} product pages for {len({i for i, _ in out})} items -> {path}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("catalog")
     ap.add_argument("--out")
     ap.add_argument("--day", default="")
+    ap.add_argument("--links-out", help="also save the product pages worth re-checking (per item: cheapest same brand + "
+                                        "the 2 cheapest equivalents), so later runs open only those pages")
     a = ap.parse_args()
     path = Path(a.catalog)
     day = date.fromisoformat(a.day) if a.day else date.fromisoformat(path.stem.split("_")[-1]) if "_" in path.stem else date.today()
@@ -47,6 +74,8 @@ def main() -> None:
     anyb = {r[1] for r in rows}
     print(f"{path.name}: {len(catalog)} products -> {len(rows)} offers; basket items found: {len(same)} same brand, "
           f"{len(anyb)} any brand (of {len(items)})")
+    if a.links_out:
+        save_links(a.links_out, rows, catalog, items)
     if a.out:
         write_csv(a.out, rows)
     else:
