@@ -9,6 +9,7 @@ Runs on ESSENTIALS_DAYS (weekday numbers, default "0,3" = Monday and Thursday) u
 """
 import argparse
 import csv
+import json
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor
@@ -71,7 +72,7 @@ def main() -> None:
     today = date.today()
     if a.out:
         c = scrappa.Client("google_shopping", a.max_calls)
-        rows = collect(c, items, today)
+        rows = collect(c, items, today, Path(a.out).parent / "cache" / f"google_shopping_{today}")
         write_csv(a.out, rows)
         print(f"Essentials: {c.used} searches, {len(rows)} offers written to {a.out}.")
         return
@@ -130,15 +131,25 @@ def save(rows: list[tuple]) -> None:
         conn.commit()
 
 
-def collect(c, items: list[dict], today) -> list[tuple]:
+def collect(c, items: list[dict], today, cache: Path | None = None) -> list[tuple]:
+    """cache: a folder where each search result is saved as it arrives, so an interrupted run can resume without
+    paying for the same searches again (used by --out runs)."""
     rows: list[tuple] = []
+    if cache:
+        cache.mkdir(parents=True, exist_ok=True)
 
     def search(job):
         it, q = job
+        f = cache / (re.sub(r"[^a-z0-9]+", "_", q.lower()).strip("_")[:150] + ".json") if cache else None
+        if f and f.exists():
+            return it, q, json.loads(f.read_text())
         try:
-            return it, q, c.get("google/shopping", {"q": q, "gl": "za", "hl": "en"}, f"essentials: {q}")
+            d = c.get("google/shopping", {"q": q, "gl": "za", "hl": "en"}, f"essentials: {q}")
         except scrappa.Budget:
             return it, q, None
+        if f and d is not None:
+            f.write_text(json.dumps(d))
+        return it, q, d
 
     with ThreadPoolExecutor(max_workers=4) as pool:          # 1. one general search per item
         for it, q, d in pool.map(search, [(it, it["query"]) for it in items]):
